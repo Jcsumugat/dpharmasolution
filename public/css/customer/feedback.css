@@ -1,0 +1,85 @@
+/* Feedback Form Styles */
+
+.feedback-section {
+  background: #ffffff;
+  padding: 40px;
+  border-radius: 15px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  max-width: 700px;
+  margin: 40px auto;
+}
+
+.feedback-section .section-header {
+  text-align: center;
+  margin-bottom: 25px;
+}
+
+.feedback-section .section-title {
+  font-size: 26px;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.feedback-section .section-subtitle {
+  font-size: 15px;
+  color: #666;
+  line-height: 1.5;
+}
+
+/* Form */
+.feedback-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.feedback-form .form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.feedback-form label {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #222;
+}
+
+.feedback-form input,
+.feedback-form textarea {
+  padding: 12px 14px;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  font-size: 15px;
+  transition: all 0.3s ease;
+}
+
+.feedback-form input:focus,
+.feedback-form textarea:focus {
+  border-color: #0077cc;
+  box-shadow: 0 0 6px rgba(0, 119, 204, 0.3);
+  outline: none;
+}
+
+/* Button */
+.feedback-form .form-actions {
+  text-align: center;
+}
+
+.feedback-form .btn-primary {
+  background: #0077cc;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  padding: 12px 25px;
+  border: none;
+  border-radius: 25px;
+  cursor: pointer;
+  transition: background 0.3s ease, transform 0.2s ease;
+}
+
+.feedback-form .btn-primary:hover {
+  background: #005fa3;
+  transform: translateY(-2px);
+}

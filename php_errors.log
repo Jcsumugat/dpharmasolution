@@ -1,0 +1,32 @@
+[10-May-2025 01:33:30 UTC] PHP Fatal error:  Allowed memory size of 268435456 bytes exhausted (tried to allocate 131072 bytes) in C:\Users\Toshiba Satellite\dpharmasolution\vendor\laravel\serializable-closure\src\Support\ReflectionClosure.php on line 524
+[12-May-2025 20:46:34 Asia/Manila] PHP Fatal error:  Cannot declare class Database\Seeders\AdminUserSeeder, because the name is already in use in C:\Users\Toshiba Satellite\dpharmasolution\database\migrations\0001_01_01_000000_create_users_table.php on line 9
+[22-May-2025 12:58:26 Asia/Manila] PHP Fatal error:  Cannot declare class CreateSuppliersTable, because the name is already in use in C:\Users\Toshiba Satellite\dpharmasolution\database\migrations\2025_05_22_120949_suppliers_table.php on line 7
+[22-May-2025 13:04:37 Asia/Manila] PHP Fatal error:  Cannot declare class CreateSuppliersTable, because the name is already in use in C:\Users\Toshiba Satellite\dpharmasolution\database\migrations\2025_05_22_120949_suppliers_table.php on line 7
+[25-May-2025 11:32:50 Asia/Manila] PHP Fatal error:  Cannot declare class CreatePrescriptionItemsTable, because the name is already in use in C:\Users\Toshiba Satellite\dpharmasolution\database\migrations\2025_05_25_112818_create_prescription_item_table.php on line 7
+[25-May-2025 11:41:56 Asia/Manila] PHP Fatal error:  Cannot declare class CreatePrescriptionItemsTable, because the name is already in use in C:\Users\Toshiba Satellite\dpharmasolution\database\migrations\2025_05_25_112818_create_prescription_item_table.php on line 7
+[25-May-2025 11:50:44 Asia/Manila] PHP Fatal error:  Cannot declare class CreatePrescriptionItemsTable, because the name is already in use in C:\Users\Toshiba Satellite\dpharmasolution\database\migrations\2025_05_25_114922_create_prescription_item_table.php on line 7
+[27-May-2025 10:04:14 Asia/Manila] PHP Warning:  Unknown: Failed to open stream: No such file or directory in Unknown on line 0
+[27-May-2025 10:04:14 Asia/Manila] PHP Fatal error:  Failed opening required 't' (include_path='.;C:\php\pear') in Unknown on line 0
+[27-May-2025 10:04:15 Asia/Manila] PHP Warning:  Unknown: Failed to open stream: No such file or directory in Unknown on line 0
+[27-May-2025 10:04:15 Asia/Manila] PHP Fatal error:  Failed opening required 't' (include_path='.;C:\php\pear') in Unknown on line 0
+[27-May-2025 10:04:15 Asia/Manila] PHP Warning:  Unknown: Failed to open stream: No such file or directory in Unknown on line 0
+[27-May-2025 10:04:15 Asia/Manila] PHP Fatal error:  Failed opening required 't' (include_path='.;C:\php\pear') in Unknown on line 0
+[27-May-2025 10:04:24 Asia/Manila] PHP Warning:  Unknown: Failed to open stream: No such file or directory in Unknown on line 0
+[27-May-2025 10:04:24 Asia/Manila] PHP Fatal error:  Failed opening required 't' (include_path='.;C:\php\pear') in Unknown on line 0
+[27-May-2025 10:04:25 Asia/Manila] PHP Warning:  Unknown: Failed to open stream: No such file or directory in Unknown on line 0
+[27-May-2025 10:04:25 Asia/Manila] PHP Fatal error:  Failed opening required 't' (include_path='.;C:\php\pear') in Unknown on line 0
+[27-May-2025 10:04:25 Asia/Manila] PHP Warning:  Unknown: Failed to open stream: No such file or directory in Unknown on line 0
+[27-May-2025 10:04:25 Asia/Manila] PHP Fatal error:  Failed opening required 't' (include_path='.;C:\php\pear') in Unknown on line 0
+[27-May-2025 10:04:40 Asia/Manila] PHP Warning:  Unknown: Failed to open stream: No such file or directory in Unknown on line 0
+[27-May-2025 10:04:40 Asia/Manila] PHP Fatal error:  Failed opening required 't' (include_path='.;C:\php\pear') in Unknown on line 0
+[27-May-2025 10:04:41 Asia/Manila] PHP Warning:  Unknown: Failed to open stream: No such file or directory in Unknown on line 0
+[27-May-2025 10:04:41 Asia/Manila] PHP Fatal error:  Failed opening required 't' (include_path='.;C:\php\pear') in Unknown on line 0
+[27-May-2025 10:04:41 Asia/Manila] PHP Warning:  Unknown: Failed to open stream: No such file or directory in Unknown on line 0
+[27-May-2025 10:04:41 Asia/Manila] PHP Fatal error:  Failed opening required 't' (include_path='.;C:\php\pear') in Unknown on line 0
+[04-Jun-2025 08:26:52 Asia/Manila] PHP Warning:  Unknown: php_network_getaddresses: getaddrinfo for 1270.0.0.1 failed: No such host is known.  in Unknown on line 0
+[18-Jul-2025 12:16:37 Asia/Manila] PHP Fatal error:  Cannot declare class AddStatusColumnsToCustomersTable, because the name is already in use in C:\Users\Toshiba Satellite\dpharmasolution\database\migrations\2025_07_18_121614_add_status_to_customers_table.php on line 7
+[18-Jul-2025 12:18:47 Asia/Manila] PHP Fatal error:  Cannot declare class AddStatusColumnsToCustomersTable, because the name is already in use in C:\Users\Toshiba Satellite\dpharmasolution\database\migrations\2025_07_18_121614_add_status_to_customers_table.php on line 7
+[19-Jul-2025 02:04:14 Asia/Manila] PHP Fatal error:  Cannot declare class CreatePrescriptionItemTable, because the name is already in use in C:\Users\Toshiba Satellite\dpharmasolution\database\migrations\2025_05_25_114922_create_prescription_items_table.php on line 7
+[20-Jul-2025 11:34:09 Asia/Manila] PHP Fatal error:  Type of App\Http\Kernel::$middleware must not be defined (as in class Illuminate\Foundation\Http\Kernel) in C:\Users\Toshiba Satellite\dpharmasolution\app\Http\Kernel.php on line 7
+[23-Jul-2025 14:11:58 Asia/Manila] PHP Fatal error:  Cannot declare class UpdateOrdersTableChangeCustomerIdAndAddOrderDate, because the name is already in use in C:\Users\Toshiba Satellite\dpharmasolution\database\migrations\2025_07_23_140338_change_customer_id_to_sales_table.php on line 7
+[23-Jul-2025 14:13:59 Asia/Manila] PHP Fatal error:  Cannot declare class UpdateOrdersTableChangeCustomerId, because the name is already in use in C:\Users\Toshiba Satellite\dpharmasolution\database\migrations\2025_07_23_140338_change_customer_id_to_sales_table.php on line 7

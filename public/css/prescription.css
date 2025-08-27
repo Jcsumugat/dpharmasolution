@@ -1,0 +1,221 @@
+/* Message box with embedded Approve button */
+.message-box {
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 20px;
+    position: relative;
+    margin-bottom: 15px;
+    min-height: 120px;
+}
+
+.approve-form {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+}
+
+.btn {
+    padding: 8px 20px;
+    font-size: 0.9rem;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    font-weight: 500;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.btn-approve {
+    background-color: #2ecc71;
+    color: white;
+}
+
+.btn-approve:hover {
+    background-color: #27ae60;
+}
+
+.btn-deny {
+    background-color: #e74c3c;
+    color: white;
+}
+
+.btn-deny:hover {
+    background-color: #c0392b;
+}
+
+/* Right panel styling */
+.left-panel1 {
+    width: 100%;
+    max-width: 600px;
+    background-color: #ffffff;
+    padding: 20px;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    margin: auto;
+    margin-bottom: 30px;
+    overflow-x: auto;
+}
+
+.left-panel1 h2 {
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+    color: #2c3e50;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 5px;
+}
+
+.left-panel1 table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+
+.left-panel1 th,
+.left-panel1 td {
+    padding: 12px 10px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+.left-panel1 thead {
+    background-color: #f4f4f4;
+}
+
+.image-placeholder img {
+    max-width: 50px;
+    height: auto;
+    border-radius: 8px;
+}
+
+.status-badge {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    text-transform: capitalize;
+}
+
+.status-approved {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.status-pending {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.status-denied {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.prescription-item:hover {
+    background-color: #f0f8ff;
+    cursor: pointer;
+}
+
+main {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 20px;
+    padding: 20px;
+}
+
+.left-panel1,
+.right-panel {
+    width: 100%;
+    background: #fff;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+}
+
+.prescription-item.active {
+    background-color: #eef7ff;
+    border-left: 5px solid #2196F3;
+}
+
+.preview-box {
+    width: 100%;
+    max-height: 300px;
+    object-fit: contain;
+    cursor: zoom-in;
+    border-radius: 5px;
+}
+
+textarea {
+    width: 100%;
+    height: 120px;
+    resize: none;
+    padding: 10px;
+    margin-top: 5px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-family: inherit;
+}
+
+.action-buttons {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-top: 15px;
+    gap: 10px;
+}
+
+.btn-approve,
+.btn-deny {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.btn-approve {
+    margin-top: auto;
+    background-color: #4CAF50;
+    color: white;
+}
+
+.btn-deny {
+    background-color: #f44336;
+    color: white;
+}
+
+#denialReason {
+    flex-grow: 1;
+    padding: 8px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    padding-top: 60px;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.8);
+    text-align: center;
+}
+.modal.active {
+    display: block;
+}
+#modalImage {
+    max-width: 90%;
+    max-height: 80vh;
+    border-radius: 10px;
+    margin-top: 20px;
+}
+.zoomable {
+    transition: transform 0.3s ease;
+    cursor: zoom-in;
+}
+
+.zoomable:hover {
+    transform: scale(2);
+}

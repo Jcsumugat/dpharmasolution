@@ -1,0 +1,51 @@
+
+  GET|HEAD  / ........................................................................................................ 
+  GET|HEAD  admin/login ...................................................................... login › CheckLogin@show
+  POST      admin/login ............................................................... admin.login › CheckLogin@check
+  POST      admin/logout ............................................................ admin.logout › CheckLogin@logout
+  GET|HEAD  dashboard ................................................................... dashboard › CheckLogin@index
+  GET|HEAD  dashboard/customer ........................................................................ customer.index
+  GET|HEAD  dashboard/inventory .......................................... inventory.index › InventoryController@index
+  GET|HEAD  dashboard/products .............................................. products.index › ProductController@index
+  POST      dashboard/products .............................................. products.store › ProductController@store
+  GET|HEAD  dashboard/products/create ..................................... products.create › ProductController@create
+  PUT       dashboard/products/{id} ....................................... products.update › ProductController@update
+  DELETE    dashboard/products/{id} ..................................... products.destroy › ProductController@destroy
+  GET|HEAD  dashboard/products/{id}/edit ...................................... products.edit › ProductController@edit
+  GET|HEAD  dashboard/reports .......................................................................... reports.index
+  GET|HEAD  dashboard/sales .............................................................................. sales.index
+  GET|HEAD  dashboard/suppliers ........................................... suppliers.index › SupplierController@index
+  POST      dashboard/suppliers ........................................... suppliers.store › SupplierController@store
+  GET|HEAD  dashboard/suppliers/create .................................. suppliers.create › SupplierController@create
+  PUT       dashboard/suppliers/{id} .................................... suppliers.update › SupplierController@update
+  DELETE    dashboard/suppliers/{id} .................................. suppliers.destroy › SupplierController@destroy
+  GET|HEAD  dashboard/suppliers/{id}/edit ................................... suppliers.edit › SupplierController@edit
+  GET|HEAD  home ...................................................................... home › CustomerController@Home
+  GET|HEAD  home/contact-us ............................................................................... contact-us
+  GET|HEAD  home/notifications ......................................................................... notifications
+  GET|HEAD  home/products ................................................................................... products
+  GET|HEAD  home/uploads ....................................................... uploads › ClientUpload@showUploadForm
+  GET|HEAD  login ......................................................... login.form › AuthController@showLoginForm1
+  POST      login ............................................................. customer.login › AuthController@login1
+  POST      logout .................................................................... logout › AuthController@logout
+  GET|HEAD  orders ......................................................... orders.index › AdminOrderController@index
+  POST      orders/{id}/approve ........................................ orders.approve › AdminOrderController@approve
+  POST      orders/{id}/cancel ........................................... orders.cancel › AdminOrderController@cancel
+  POST      orders/{id}/partial-approve .................. orders.partialApprove › AdminOrderController@partialApprove
+  GET|HEAD  preorder/status/{token} .......................................................... ClientUpload@viewStatus
+  GET|HEAD  preorder/validate/{token} .............................. preorder.validate › ClientUpload@validatePreorder
+  GET|HEAD  reset-password ............................................................................ password.reset
+  POST      reset-password ........................................................................... password.update
+  POST      send-code ............................................................................. password.send-code
+  GET|HEAD  signup/step1 .......................................... signup.step_one › AuthController@showSignupStepOne
+  POST      signup/step1 ................................. signup.step_one.submit › AuthController@handleSignupStepOne
+  GET|HEAD  signup/step2 .......................................... signup.step_two › AuthController@showSignupStepTwo
+  POST      signup/step2 ................................. signup.step_two.submit › AuthController@handleSignupStepTwo
+  GET|HEAD  storage/{path} ............................................................................. storage.local
+  GET|HEAD  test-admin ............................................................................................... 
+  GET|HEAD  up ....................................................................................................... 
+  GET|HEAD  upload-prescription ............................... prescription.upload.form › ClientUpload@showUploadForm
+  POST      upload-prescription ...................................... prescription.upload › ClientUpload@handleUpload
+
+                                                                                                   Showing [47] routes
+
