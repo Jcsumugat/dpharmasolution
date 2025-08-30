@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Orders</title>
+    <title>Orders Management</title>
     <link rel="stylesheet" href="{{ asset('css/orders.css') }}" />
     <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
@@ -13,139 +13,229 @@
     @include('admin.admin-header')
 
     <div class="content">
-        <h2 class="page-title">Prescription Orders</h2>
+        <div class="page-title" style="display: flex;  margin-bottom: 20px;">
+            <h2>Orders Management</h2>
+            <div class="order-type-filters">
+                <button class="filter-btn active" data-filter="all">All Orders</button>
+                <button class="filter-btn" data-filter="prescription">Prescriptions</button>
+                <button class="filter-btn" data-filter="online_order">Medicine Orders</button>
+            </div>
+        </div>
 
         @foreach (['success', 'info', 'error'] as $msg)
-        @if(session($msg))
-        <div class="alert alert-{{ $msg == 'error' ? 'danger' : $msg }}">{{ session($msg) }}</div>
-        @endif
+            @if (session($msg))
+                <div class="alert alert-{{ $msg == 'error' ? 'danger' : $msg }}">{{ session($msg) }}</div>
+            @endif
         @endforeach
 
-        <table>
-            <thead>
-                <tr>
-                    <th>Order ID</th>
-                    <th>Customer ID</th>
-                    <th>Mobile</th>
-                    <th>Note</th>
-                    <th>Order Status</th>
-                    <th>Prescription File</th>
-                    <th>Date</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($prescriptions as $prescription)
-                <tr>
-                    <td>{{ $prescription->order->order_id ?? 'N/A' }}</td>
-                    <td>
-                        @if($prescription->customer)
-                        <small>ID: {{ $prescription->customer->customer_id }}</small><br>
-                        {{ $prescription->customer->email_address ?? 'N/A' }}
-                        @else
-                        <em>Guest Order</em>
-                        @endif
-                    </td>
-                    <td>{{ $prescription->mobile_number }}</td>
-                    <td>{{ $prescription->notes ?? 'None' }}</td>
-                    <td>
-                        <span class="status-badge {{ strtolower($prescription->order->status ?? 'pending') }}">
-                            {{ ucfirst($prescription->order->status ?? 'Pending') }}
-                        </span>
-                    </td>
-                    <td>
-                        @if($prescription->is_encrypted && $prescription->file_path)
-                        <div class="prescription-file-info encrypted-file">
-                            <strong>{{ $prescription->original_filename ?? 'Encrypted File' }}</strong>
-                            <span class="security-badge">🔒 ENCRYPTED</span>
-                            @if($prescription->file_size)
-                            <div class="file-size">Size: {{ number_format($prescription->file_size / 1024, 1) }} KB</div>
-                            @endif
-                            <div class="file-actions">
-                                @if(str_starts_with($prescription->file_mime_type ?? '', 'image/'))
-                                <a href="{{ route('prescription.file.view', $prescription->id) }}"
-                                    target="_blank"
-                                    class="btn-file btn-view">
-                                    👁️ View Image
-                                </a>
+        <div class="order-stats">
+            <div class="stat-card">
+                <div class="stat-number" id="total-orders">{{ $prescriptions->count() }}</div>
+                <div class="stat-label">Total Orders</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="pending-orders">{{ $prescriptions->where('status', 'pending')->count() }}
+                </div>
+                <div class="stat-label">Pending</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="prescription-count">
+                    {{ $prescriptions->where('order_type', 'prescription')->count() }}</div>
+                <div class="stat-label">Prescriptions</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="online-order-count">
+                    {{ $prescriptions->where('order_type', 'online_order')->count() }}</div>
+                <div class="stat-label">Medicine Orders</div>
+            </div>
+        </div>
+
+        <div class="search-container">
+            <input type="text" class="search-input" id="order-search"
+                placeholder="Search by Order ID, Customer, Mobile, or Notes...">
+            <select class="filter-btn" id="status-filter">
+                <option value="all">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+            </select>
+        </div>
+
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Order Info</th>
+                        <th>Customer</th>
+                        <th>Contact</th>
+                        <th>Order Details</th>
+                        <th>Document</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="orders-table-body">
+                    @foreach ($prescriptions as $prescription)
+                        <tr class="order-row" data-order-type="{{ $prescription->order_type ?? 'prescription' }}"
+                            data-status="{{ strtolower($prescription->status ?? 'pending') }}"
+                            data-search="{{ strtolower($prescription->order->order_id ?? '') }} {{ strtolower($prescription->customer->email_address ?? '') }} {{ strtolower($prescription->mobile_number ?? '') }} {{ strtolower($prescription->notes ?? '') }}">
+
+                            <td>
+                                <strong>{{ $prescription->order->order_id ?? 'ORD-' . $prescription->id }}</strong>
+                                <span class="order-type-badge {{ $prescription->order_type ?? 'prescription' }}">
+                                    {{ $prescription->order_type === 'online_order' ? 'Medicine Order' : 'Prescription' }}
+                                </span>
+                                <div class="order-meta">
+                                    <span
+                                        class="priority-indicator priority-{{ $prescription->created_at->diffInHours() > 24 ? 'low' : ($prescription->created_at->diffInHours() > 4 ? 'medium' : 'high') }}"></span>
+                                    {{ $prescription->created_at->diffForHumans() }}
+                                </div>
+                            </td>
+
+                            <td>
+                                @if ($prescription->customer)
+                                    <div><strong>I D: {{ $prescription->customer->customer_id }}</strong></div>
+                                    <div><small>{{ $prescription->customer->email_address ?? 'N/A' }}</small></div>
+                                @else
+                                    <em>Guest Order</em>
                                 @endif
-                                <a href="{{ route('prescription.file.download', $prescription->id) }}"
-                                    class="btn-file btn-download">
-                                    📥 Download
-                                </a>
-                            </div>
-                            <div style="font-size: 0.75em; color: #6c757d; margin-top: 2px;">
-                                Type: {{ $prescription->file_mime_type ?? 'Unknown' }}
-                            </div>
-                        </div>
-                        @elseif($prescription->file_path)
-                        <div class="prescription-file-info legacy-file">
-                            <strong>Legacy File</strong>
-                            <span style="background: #ffc107; color: #000; padding: 2px 6px; border-radius: 10px; font-size: 0.75em; font-weight: bold;">
-                                ⚠️ UNENCRYPTED
-                            </span>
-                            <div class="file-actions">
-                                <a href="{{ asset('storage/' . $prescription->file_path) }}"
-                                    target="_blank"
-                                    class="btn-file btn-view">
-                                    👁️ View File
-                                </a>
-                            </div>
-                            <div style="font-size: 0.75em; color: #856404; margin-top: 2px;">
-                                This file was uploaded before encryption was implemented
-                            </div>
-                        </div>
-                        @else
-                        <span class="no-file">No prescription file</span>
-                        @endif
-                    </td>
-                    <td>{{ $prescription->created_at->format('Y-m-d H:i') }}</td>
-                    <td class="action-cell">
-                        <div class="action-dropdown">
-                            <button class="dropdown-trigger" data-id="{{ $prescription->id }}">&#8230;</button>
-                            <div class="dropdown-menu">
-                                <button class="dropdown-item manage manage-order-btn" data-id="{{ $prescription->id }}">
-                                    📝 Manage Order
-                                </button>
-                                <div class="dropdown-divider"></div>
-                                <button class="dropdown-item approve open-modal" data-action="approve" data-id="{{ $prescription->id }}">
-                                    ✅ Approve Order
-                                </button>
-                                <button class="dropdown-item partial open-modal" data-action="partialApprove" data-id="{{ $prescription->id }}">
-                                    ⚠️ Partial Approval
-                                </button>
-                                <button class="dropdown-item cancel open-modal" data-action="cancel" data-id="{{ $prescription->id }}">
-                                    ❌ Cancel Order
-                                </button>
-                                <div class="dropdown-divider"></div>
-                                <button class="dropdown-item complete complete-order-btn" data-id="{{ $prescription->id }}">
-                                    🎯 Complete Order
-                                </button>
-                            </div>
-                        </div>
-                    </td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
+                            </td>
+
+                            <td>
+                                <div>{{ $prescription->mobile_number }}</div>
+                                @if ($prescription->customer && $prescription->customer->address)
+                                    <div><small>{{ Str::limit($prescription->customer->address, 30) }}</small></div>
+                                @endif
+                            </td>
+
+                            <td>
+                                <span class="status-badge {{ strtolower($prescription->status ?? 'pending') }}">
+                                    {{ ucfirst($prescription->status ?? 'Pending') }}
+                                </span>
+                                @if ($prescription->notes)
+                                    <div class="order-meta">
+                                        <strong>Notes:</strong> {{ Str::limit($prescription->notes, 50) }}
+                                    </div>
+                                @endif
+                                @if ($prescription->order_type === 'online_order')
+                                    <div class="order-meta">
+                                        Direct medicine order - no prescription validation required
+                                    </div>
+                                @else
+                                    <div class="order-meta">
+                                        Requires pharmacist prescription review
+                                    </div>
+                                @endif
+                            </td>
+
+                            <td>
+                                @if ($prescription->is_encrypted && $prescription->file_path)
+                                    <div class="prescription-file-info encrypted-file">
+                                        <strong>{{ $prescription->original_filename ?? 'Encrypted File' }}</strong>
+                                        <span class="security-badge">ENCRYPTED</span>
+                                        @if ($prescription->file_size)
+                                            <div class="file-size">Size:
+                                                {{ number_format($prescription->file_size / 1024, 1) }} KB</div>
+                                        @endif
+                                        <div class="file-actions">
+                                            @if (str_starts_with($prescription->file_mime_type ?? '', 'image/'))
+                                                <a href="{{ route('prescription.file.view', $prescription->id) }}"
+                                                    target="_blank" class="btn-file btn-view">
+                                                    View Image
+                                                </a>
+                                            @endif
+                                            <a href="{{ route('prescription.file.download', $prescription->id) }}"
+                                                class="btn-file btn-download">
+                                                Download
+                                            </a>
+                                        </div>
+                                        <div style="font-size: 0.75em; color: #6c757d; margin-top: 2px;">
+                                            Type: {{ $prescription->file_mime_type ?? 'Unknown' }}
+                                        </div>
+                                    </div>
+                                @elseif($prescription->file_path)
+                                    <div class="prescription-file-info legacy-file">
+                                        <strong>Legacy File</strong>
+                                        <span
+                                            style="background: #ffc107; color: #000; padding: 2px 6px; border-radius: 10px; font-size: 0.75em; font-weight: bold;">
+                                            UNENCRYPTED
+                                        </span>
+                                        <div class="file-actions">
+                                            <a href="{{ asset('storage/' . $prescription->file_path) }}"
+                                                target="_blank" class="btn-file btn-view">
+                                                View File
+                                            </a>
+                                        </div>
+                                        <div style="font-size: 0.75em; color: #856404; margin-top: 2px;">
+                                            Uploaded before encryption
+                                        </div>
+                                    </div>
+                                @else
+                                    <span class="no-file">No document</span>
+                                @endif
+                            </td>
+
+                            <td>{{ $prescription->created_at->format('M d, Y') }}<br><small>{{ $prescription->created_at->format('H:i') }}</small>
+                            </td>
+
+                            <td class="action-cell">
+                                <div class="action-dropdown">
+                                    <button class="dropdown-trigger" data-id="{{ $prescription->id }}">&#8230;</button>
+                                    <div class="dropdown-menu">
+                                        <button class="dropdown-item manage manage-order-btn"
+                                            data-id="{{ $prescription->id }}">
+                                            Manage Products
+                                        </button>
+                                        <div class="dropdown-divider"></div>
+                                        @if ($prescription->order_type === 'prescription')
+                                            <button class="dropdown-item approve action-btn" data-action="approve"
+                                                data-id="{{ $prescription->id }}">
+                                                Approve Prescription
+                                            </button>
+                                        @else
+                                            <button class="dropdown-item approve action-btn" data-action="approve"
+                                                data-id="{{ $prescription->id }}">
+                                                Approve Order
+                                            </button>
+                                        @endif
+                                        <button class="dropdown-item cancel action-btn" data-action="cancel"
+                                            data-id="{{ $prescription->id }}">
+                                            Cancel Order
+                                        </button>
+                                        <div class="dropdown-divider"></div>
+                                        <button class="dropdown-item complete complete-order-btn"
+                                            data-id="{{ $prescription->id }}">
+                                            Complete Order
+                                        </button>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
 
         <div class="dropdown-overlay"></div>
 
-        <form id="prescriptionForm" method="POST" style="display: none;">
-            @csrf
-            <div id="productInputsContainer"></div>
-        </form>
-
         <div id="messageModal" class="modal">
             <div class="modal-content">
-                <h3>Send a Message</h3>
+                <h3 id="modalTitle">Send a Message</h3>
                 <form id="actionForm" method="POST">
                     @csrf
                     <input type="hidden" name="id" id="prescriptionId" />
+                    <input type="hidden" name="action" id="actionType" />
+
                     <label for="messageSelect">Choose a message:</label>
                     <select id="messageSelect" name="message" class="dropdown" required>
                         <option value="">-- Select a message --</option>
                     </select>
+
+                    <label for="customMessage">Additional notes (optional):</label>
+                    <textarea id="customMessage" name="custom_message" rows="3"
+                        placeholder="Add any additional notes for the customer..."></textarea>
+
                     <div class="modal-actions">
                         <button type="button" id="cancelModal" class="btn btn-secondary">Cancel</button>
                         <button type="submit" class="btn btn-primary">Send</button>
@@ -156,23 +246,27 @@
 
         <div id="manageOrderModal" class="modal">
             <div class="modal-content">
-                <h3>Manage Order</h3>
-                <input type="text" id="productSearch" placeholder="🔍 Search products..." />
+                <h3>Manage Order Products</h3>
+                <input type="text" id="productSearch" placeholder="Search products..." />
                 <div style="display: flex; gap: 1rem;">
                     <div style="flex: 1;">
                         <h4>Available Products</h4>
                         <ul id="availableProducts">
-                            @foreach($products as $product)
-                            @php
-                            $totalStock = $product->batches ? $product->batches->sum('quantity_remaining') : 0;
-                            @endphp
-                            <li data-name="{{ strtolower($product->product_name) }}"
-                                data-id="{{ $product->id }}"
-                                data-product="{{ $product->product_name }}"
-                                data-price="{{ $product->current_sale_price ?? $product->sale_price ?? 0 }}"
-                                data-stock="{{ $totalStock }}">
-                                {{ $product->product_name }} ({{ $product->brand_name ?? 'No Brand' }}) - ₱{{ number_format($product->current_sale_price ?? $product->sale_price ?? 0, 2) }} | Stock: {{ $totalStock }}
-                            </li>
+                            @foreach ($products as $product)
+                                @php
+                                    $totalStock = $product->batches ? $product->batches->sum('quantity_remaining') : 0;
+                                    $latestBatch = $product->batches
+                                        ? $product->batches->sortByDesc('id')->first()
+                                        : null;
+                                    $salePrice = $latestBatch ? $latestBatch->sale_price : 0;
+                                @endphp
+                                <li data-name="{{ strtolower($product->product_name) }}"
+                                    data-id="{{ $product->id }}" data-product="{{ $product->product_name }}"
+                                    data-price="{{ $salePrice }}" data-stock="{{ $totalStock }}">
+                                    {{ $product->product_name }} ({{ $product->brand_name ?? 'No Brand' }}) -
+                                    ₱{{ number_format($salePrice, 2) }}
+                                    | Stock: {{ $totalStock }}
+                                </li>
                             @endforeach
                         </ul>
                     </div>
@@ -205,40 +299,88 @@
 
         <div id="completeOrderModal" class="modal-overlay">
             <div class="modal-content">
-                <h3>📝 Confirm Order Completion</h3>
+                <h3>Confirm Order Completion</h3>
                 <div id="orderSummary">
                     <p>Selected products will be displayed here...</p>
                 </div>
                 <div class="modal-buttons">
-                    <button class="btn btn-primary" id="submitOrderBtn">Submit</button>
+                    <button class="btn btn-primary" id="submitOrderBtn">Complete Order</button>
                     <button class="btn btn-secondary" id="cancelCompleteModal">Cancel</button>
                 </div>
             </div>
         </div>
     </div>
 
-    @stack('scripts')
-
     <script>
         document.addEventListener("DOMContentLoaded", () => {
             let currentOrderPrescriptionId = null;
+
             const messages = {
                 approve: [
-                    'Your order has been approved. We are preparing your order.',
-                    'Your order is ready to pick up.'
-                ],
-                partialApprove: [
-                    'Your order is partially approved due to stock shortages of some products.',
-                    'Your order is partially approved due to products unavailability.',
-                    'Some items are not in stock. We have prepared the rest of your order for pickup.'
+                    'Your order has been approved and is ready for pickup.',
+                    'Prescription approved by pharmacist. Your order is being prepared.'
                 ],
                 cancel: [
-                    'Your order has been cancelled because no products are available from your prescription.',
-                    'Unfortunately, none of the requested products are currently in stock. Sorry for the inconvenience.'
+                    'Your order has been cancelled due to stock shortages/unavailability.',
+                    'Order cancelled - some medications are currently out of stock.',
+                    'Unable to fulfill your order at this time due to product unavailability.',
+                    'Order cancelled due to prescription issues. Please contact us for assistance.'
                 ]
             };
 
             const dropdownOverlay = document.querySelector('.dropdown-overlay');
+
+            function getCSRFToken() {
+                return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            }
+
+            const searchInput = document.getElementById('order-search');
+            const statusFilter = document.getElementById('status-filter');
+            const typeFilters = document.querySelectorAll('.filter-btn[data-filter]');
+
+            function filterOrders() {
+                const searchTerm = searchInput.value.toLowerCase();
+                const statusFilter = document.getElementById('status-filter').value;
+                const activeTypeFilter = document.querySelector('.filter-btn.active').dataset.filter;
+
+                document.querySelectorAll('.order-row').forEach(row => {
+                    const searchData = row.dataset.search || '';
+                    const orderStatus = row.dataset.status;
+                    const orderType = row.dataset.orderType;
+
+                    let show = true;
+
+                    if (searchTerm && !searchData.includes(searchTerm)) {
+                        show = false;
+                    }
+
+                    if (statusFilter !== 'all' && orderStatus !== statusFilter) {
+                        show = false;
+                    }
+
+                    if (activeTypeFilter !== 'all' && orderType !== activeTypeFilter) {
+                        show = false;
+                    }
+
+                    row.style.display = show ? '' : 'none';
+                });
+            }
+
+            if (searchInput) {
+                searchInput.addEventListener('input', filterOrders);
+            }
+
+            if (statusFilter) {
+                statusFilter.addEventListener('change', filterOrders);
+            }
+
+            typeFilters.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    typeFilters.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    filterOrders();
+                });
+            });
 
             document.addEventListener('click', function(e) {
                 if (e.target.classList.contains('dropdown-trigger')) {
@@ -275,20 +417,48 @@
             const dropdown = document.getElementById('messageSelect');
             const form = document.getElementById('actionForm');
             const prescriptionIdInput = document.getElementById('prescriptionId');
-
-            function getCSRFToken() {
-                return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
-                    document.querySelector('input[name="_token"]')?.value;
-            }
+            const actionTypeInput = document.getElementById('actionType');
+            const modalTitle = document.getElementById('modalTitle');
 
             document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('action-btn')) {
+                    closeAllDropdowns();
+                    const action = e.target.dataset.action;
+                    const id = e.target.dataset.id;
+
+                    let message = '';
+                    let confirmText = '';
+
+                    if (action === 'approve') {
+                        message = 'Your order will be completed at anytime.';
+                        confirmText = 'Are you sure you want to approve this order?';
+                    } else if (action === 'cancel') {
+                        message = 'Your Order has been cancelled due to stock shortages/unavailability.';
+                        confirmText = 'Are you sure you want to cancel this order?';
+                    }
+
+                    if (confirm(confirmText)) {
+                        submitAction(id, action, message);
+                    }
+                }
+
                 if (e.target.classList.contains('open-modal')) {
                     closeAllDropdowns();
 
                     const action = e.target.dataset.action;
                     const id = e.target.dataset.id;
+
                     prescriptionIdInput.value = id;
-                    form.action = `/orders/${id}/${action.replace(/([A-Z])/g, '-$1').toLowerCase()}`;
+                    actionTypeInput.value = action;
+
+                    if (action === 'approve') {
+                        modalTitle.textContent = 'Approve Order';
+                        form.action = `/admin/orders/${id}/approve`;
+                    } else if (action === 'cancel') {
+                        modalTitle.textContent = 'Cancel Order';
+                        form.action = `/admin/orders/${id}/cancel`;
+                    }
+
                     dropdown.innerHTML = '<option value="">-- Select a message --</option>';
                     messages[action].forEach(msg => {
                         const opt = document.createElement('option');
@@ -296,25 +466,121 @@
                         opt.textContent = msg;
                         dropdown.appendChild(opt);
                     });
+
                     modal.style.display = 'flex';
                 }
             });
 
-            document.getElementById('cancelModal').addEventListener('click', () => modal.style.display = 'none');
+            function submitAction(id, action, message) {
+                const csrfToken = getCSRFToken();
+                const formData = new FormData();
+                formData.append('_token', csrfToken);
+                formData.append('id', id);
+                formData.append('message', message);
+
+                fetch(`/admin/orders/${id}/${action}`, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-CSRF-TOKEN': csrfToken
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert(data.message || 'Action completed successfully!');
+                            window.location.reload();
+                        } else {
+                            alert(data.message || 'Action failed!');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('An error occurred while processing the request.');
+                    });
+            }
+
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                const action = actionTypeInput.value;
+                const id = prescriptionIdInput.value;
+                const message = dropdown.value;
+                const customMessage = document.getElementById('customMessage').value.trim();
+
+                if (!message) {
+                    alert('Please select a message.');
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('_token', getCSRFToken());
+                // Remove this line: formData.append('id', id);
+                formData.append('message', message);
+                if (customMessage) {
+                    formData.append('custom_message', customMessage);
+                }
+
+                const submitBtn = form.querySelector('button[type="submit"]');
+                const originalText = submitBtn.textContent;
+                submitBtn.textContent = 'Processing...';
+                submitBtn.disabled = true;
+
+                fetch(`/admin/orders/${id}/${action}`, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-CSRF-TOKEN': getCSRFToken(),
+                            'Accept': 'application/json'
+                        }
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            return response.text().then(text => {
+                                console.error('Server error:', text);
+                                throw new Error(`Server error: ${response.status}`);
+                            });
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.success) {
+                            alert(data.message || 'Action completed successfully!');
+                            modal.style.display = 'none';
+                            window.location.reload();
+                        } else {
+                            alert(data.message || 'Action failed!');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('An error occurred: ' + error.message);
+                    })
+                    .finally(() => {
+                        submitBtn.textContent = originalText;
+                        submitBtn.disabled = false;
+                    });
+            });
+
+            document.getElementById('cancelModal').addEventListener('click', () => {
+                modal.style.display = 'none';
+                document.getElementById('customMessage').value = '';
+                dropdown.selectedIndex = 0;
+            });
 
             const manageModal = document.getElementById('manageOrderModal');
             let currentPrescriptionId = null;
             const selectedProductsByOrder = {};
             const availableList = document.getElementById('availableProducts');
             const selectedList = document.getElementById('selectedProducts');
-            const searchInput = document.getElementById('productSearch');
+            const productSearchInput = document.getElementById('productSearch');
 
             const qtyModal = document.getElementById('productQuantityModal');
             const qtyInput = document.getElementById('productQty');
             const productModalName = document.getElementById('productModalName');
             let selectedProductLi = null;
 
-            searchInput.addEventListener('input', function() {
+            productSearchInput.addEventListener('input', function() {
                 const searchTerm = this.value.toLowerCase();
                 document.querySelectorAll('#availableProducts li').forEach(li => {
                     const productName = li.dataset.name;
@@ -461,7 +727,8 @@
                 document.querySelectorAll('#availableProducts li').forEach(li => li.style.display = '');
 
                 selectedProducts.forEach(product => {
-                    const availableLi = document.querySelector(`#availableProducts li[data-id="${product.id}"]`);
+                    const availableLi = document.querySelector(
+                        `#availableProducts li[data-id="${product.id}"]`);
                     if (availableLi) availableLi.style.display = 'none';
 
                     const li = document.createElement('li');
@@ -478,7 +745,8 @@
                 if (e.target.classList.contains('remove-btn')) {
                     const productId = e.target.dataset.id;
                     if (selectedProductsByOrder[currentPrescriptionId]) {
-                        selectedProductsByOrder[currentPrescriptionId] = selectedProductsByOrder[currentPrescriptionId].filter(p => p.id !== productId);
+                        selectedProductsByOrder[currentPrescriptionId] = selectedProductsByOrder[
+                            currentPrescriptionId].filter(p => p.id !== productId);
                         updateSelectedProductsDisplay();
                     }
                 }
@@ -499,15 +767,9 @@
                 saveBtn.textContent = 'Saving...';
                 saveBtn.disabled = true;
 
-                const form = document.getElementById('prescriptionForm');
-                form.action = `/prescriptions/${currentPrescriptionId}/items`;
-
-                const container = document.getElementById('productInputsContainer');
-                container.innerHTML = '';
-
                 const csrfToken = getCSRFToken();
 
-                fetch(form.action, {
+                fetch(`/prescriptions/${currentPrescriptionId}/save-selection`, {
                         method: 'POST',
                         headers: {
                             'X-CSRF-TOKEN': csrfToken,
@@ -516,14 +778,20 @@
                         },
                         body: JSON.stringify({
                             items: selectedProducts.map(item => ({
-                                id: item.id,
-                                quantity: item.quantity
+                                product_id: parseInt(item.id),
+                                quantity: parseInt(item.quantity)
                             }))
                         })
                     })
                     .then(response => {
+                        console.log('Response status:', response.status);
                         if (!response.ok) {
-                            throw new Error(`HTTP error! status: ${response.status}`);
+                            return response.text().then(text => {
+                                console.log('Error response:', text);
+                                throw new Error(
+                                    `HTTP error! status: ${response.status}, response: ${text.substring(0, 200)}...`
+                                );
+                            });
                         }
                         return response.json();
                     })
@@ -537,14 +805,8 @@
                         }
                     })
                     .catch(error => {
-                        console.error('Error:', error);
-                        if (error.message.includes('404')) {
-                            alert("Route not found. Please check if the backend route exists.");
-                        } else if (error.message.includes('500')) {
-                            alert("Server error. Please check the backend implementation.");
-                        } else {
-                            alert(`Error: ${error.message}`);
-                        }
+                        console.error('Full error:', error);
+                        alert(`Error: ${error.message}`);
                     })
                     .finally(() => {
                         saveBtn.textContent = originalText;
@@ -581,7 +843,7 @@
                         const summaryDiv = document.getElementById('orderSummary');
 
                         if (data.success && data.items && data.items.length > 0) {
-                            let summaryHTML = '<h4>📋 Order Summary:</h4>';
+                            let summaryHTML = '<h4>Order Summary:</h4>';
                             summaryHTML += '<div class="order-items">';
 
                             data.items.forEach(item => {
@@ -625,7 +887,8 @@
 
                             summaryDiv.innerHTML = summaryHTML;
                         } else {
-                            summaryDiv.innerHTML = '<p>❌ No products selected yet. Please manage the order first.</p>';
+                            summaryDiv.innerHTML =
+                                '<p>No products selected yet. Please manage the order first.</p>';
                         }
 
                         const completeModal = document.getElementById('completeOrderModal');
@@ -634,7 +897,9 @@
 
                     } catch (error) {
                         console.error('Error loading order summary:', error);
-                        alert(`Error loading order summary: ${error.message}. Please ensure products are saved first.`);
+                        alert(
+                            `Error loading order summary: ${error.message}. Please ensure products are saved first.`
+                        );
                     }
                 }
             });
@@ -658,13 +923,16 @@
                         const csrfToken = getCSRFToken();
 
                         if (!csrfToken) {
-                            throw new Error('CSRF token not found. Please ensure the CSRF meta tag is in your HTML head.');
+                            throw new Error(
+                                'CSRF token not found. Please ensure the CSRF meta tag is in your HTML head.'
+                            );
                         }
 
                         const paymentMethodElement = document.getElementById('paymentMethod');
                         const orderNotesElement = document.getElementById('orderNotes');
 
-                        const paymentMethod = paymentMethodElement ? paymentMethodElement.value : 'cash';
+                        const paymentMethod = paymentMethodElement ? paymentMethodElement.value :
+                            'cash';
                         const orderNotes = orderNotesElement ? orderNotesElement.value.trim() : '';
 
                         const response = await fetch(`/orders/${currentOrderPrescriptionId}/complete`, {
@@ -679,18 +947,21 @@
                                 notes: orderNotes
                             })
                         });
-
                         let data;
                         const responseText = await response.text();
 
                         try {
                             data = JSON.parse(responseText);
                         } catch (parseError) {
-                            throw new Error(`Server returned invalid JSON. Status: ${response.status}, Response: ${responseText.substring(0, 200)}...`);
+                            throw new Error(
+                                `Server returned invalid JSON. Status: ${response.status}, Response: ${responseText.substring(0, 200)}...`
+                            );
                         }
 
                         if (response.ok && data.success) {
-                            alert(`Order completed successfully!\n\nSale ID: ${data.sale_id}\nTotal Amount: ₱${parseFloat(data.total_amount).toFixed(2)}\nTotal Items: ${data.total_items}\nPayment Method: ${data.payment_method}\n\nStock has been updated automatically.`);
+                            alert(
+                                `Order completed successfully!\n\nSale ID: ${data.sale_id}\nTotal Amount: ₱${parseFloat(data.total_amount).toFixed(2)}\nTotal Items: ${data.total_items}\nPayment Method: ${data.payment_method}\n\nStock has been updated automatically.`
+                            );
 
                             const completeModal = document.getElementById('completeOrderModal');
                             completeModal.style.display = 'none';
@@ -752,16 +1023,14 @@
                 }
             });
         });
+
         document.addEventListener("DOMContentLoaded", function() {
-            // Dropdown logic
             document.querySelectorAll('.dropdown-trigger').forEach(trigger => {
                 trigger.addEventListener('click', function(e) {
                     e.stopPropagation();
-                    // Close all other dropdowns
                     document.querySelectorAll('.dropdown-menu.show').forEach(menu => {
                         if (menu !== this.nextElementSibling) menu.classList.remove('show');
                     });
-                    // Toggle this dropdown
                     this.nextElementSibling.classList.toggle('show');
                 });
             });

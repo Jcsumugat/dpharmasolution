@@ -17,14 +17,14 @@ class ProductController extends Controller
         $products = Product::with([
             'supplier',
             'category',
-            'batches' => function($query) {
+            'batches' => function ($query) {
                 $query->where('quantity_remaining', '>', 0)
-                      ->orderBy('expiration_date');
+                    ->orderBy('expiration_date');
             }
         ])
-        ->withCount('batches')
-        ->orderBy('created_at', 'desc')
-        ->get();
+            ->withCount('batches')
+            ->orderBy('created_at', 'desc')
+            ->get();
 
         $products->each(function ($product) {
             $availableBatches = $product->batches->where('quantity_remaining', '>', 0);
@@ -40,13 +40,13 @@ class ProductController extends Controller
     public function customerIndex()
     {
         $products = Product::whereHas('batches', function ($query) {
-                $query->where('quantity_remaining', '>', 0)
-                      ->where('expiration_date', '>', now());
-            })
+            $query->where('quantity_remaining', '>', 0)
+                ->where('expiration_date', '>', now());
+        })
             ->with(['batches' => function ($query) {
                 $query->where('quantity_remaining', '>', 0)
-                      ->where('expiration_date', '>', now())
-                      ->orderBy('expiration_date', 'asc');
+                    ->where('expiration_date', '>', now())
+                    ->orderBy('expiration_date', 'asc');
             }])
             ->orderBy('product_name')
             ->get();
@@ -100,7 +100,6 @@ class ProductController extends Controller
 
             return redirect()->route('products.index')
                 ->with('success', "Product '{$product->product_name}' created successfully! (Code: {$product->product_code}). You can now add inventory batches.");
-
         } catch (\Exception $e) {
             DB::rollback();
 
@@ -132,7 +131,6 @@ class ProductController extends Controller
                 }
                 break;
             }
-
         } while ($exists);
 
         Log::info('Product code generated', [
@@ -171,7 +169,6 @@ class ProductController extends Controller
 
             return redirect()->route('products.index')
                 ->with('success', "Product '{$product->product_name}' updated successfully!");
-
         } catch (\Exception $e) {
             Log::error('Failed to update product', [
                 'product_id' => $id,
@@ -206,7 +203,6 @@ class ProductController extends Controller
 
             return redirect()->route('products.index')
                 ->with('success', "Product '{$productName}' and all its batches deleted successfully!");
-
         } catch (\Exception $e) {
             DB::rollback();
 
@@ -285,7 +281,6 @@ class ProductController extends Controller
                     'sale_price' => $validated['batch_sale_price']
                 ]
             ]);
-
         } catch (\Exception $e) {
             DB::rollback();
 
@@ -374,7 +369,6 @@ class ProductController extends Controller
                 'profit' => $totalRevenue - $totalCost,
                 'message' => "Sale processed using " . count($batchesUsed) . " batch(es), Revenue: ₱" . number_format($totalRevenue, 2)
             ];
-
         } catch (\Exception $e) {
             DB::rollback();
 
@@ -572,19 +566,19 @@ class ProductController extends Controller
         return "{$prefix}{$date}{$sequence}";
     }
     public function showBatches($productId)
-{
-    $product = Product::with(['batches' => function($query) {
-        $query->orderBy('expiration_date', 'asc');
-    }, 'supplier'])->findOrFail($productId);
+    {
+        $product = Product::with(['batches' => function ($query) {
+            $query->orderBy('expiration_date', 'asc');
+        }, 'supplier'])->findOrFail($productId);
 
-    return view('inventory.batches-modal', compact('product'));
-}
+        return view('inventory.batches-modal', compact('product'));
+    }
     public function onlyshowBatches($productId)
-{
-    $product = Product::with(['batches' => function($query) {
-        $query->orderBy('expiration_date', 'asc');
-    }, 'supplier'])->findOrFail($productId);
+    {
+        $product = Product::with(['batches' => function ($query) {
+            $query->orderBy('expiration_date', 'asc');
+        }, 'supplier'])->findOrFail($productId);
 
-    return view('products.batches-modal', compact('product'));
-}
+        return view('products.batches-modal', compact('product'));
+    }
 }

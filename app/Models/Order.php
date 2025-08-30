@@ -6,6 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use App\Models\Prescription;
 
 class Order extends Model
 {
@@ -31,7 +34,6 @@ class Order extends Model
     // Order status constants
     const STATUS_PENDING = 'pending';
     const STATUS_APPROVED = 'approved';
-    const STATUS_PARTIALLY_APPROVED = 'partially_approved';
     const STATUS_COMPLETED = 'completed';
     const STATUS_CANCELLED = 'cancelled';
     const STATUS_REJECTED = 'rejected';
@@ -121,7 +123,6 @@ class Order extends Model
         return [
             self::STATUS_PENDING => 'Pending',
             self::STATUS_APPROVED => 'Approved',
-            self::STATUS_PARTIALLY_APPROVED => 'Partially Approved',
             self::STATUS_COMPLETED => 'Completed',
             self::STATUS_CANCELLED => 'Cancelled',
             self::STATUS_REJECTED => 'Rejected',
@@ -153,14 +154,6 @@ class Order extends Model
     }
 
     /**
-     * Check if order is partially approved
-     */
-    public function isPartiallyApproved()
-    {
-        return $this->status === self::STATUS_PARTIALLY_APPROVED;
-    }
-
-    /**
      * Check if order is completed
      */
     public function isCompleted()
@@ -173,7 +166,7 @@ class Order extends Model
      */
     public function canBeModified()
     {
-        return in_array($this->status, [self::STATUS_PENDING, self::STATUS_APPROVED, self::STATUS_PARTIALLY_APPROVED]);
+        return in_array($this->status, [self::STATUS_PENDING, self::STATUS_APPROVED,]);
     }
 
     /**
@@ -226,12 +219,7 @@ class Order extends Model
     /**
      * Mark order as partially approved
      */
-    public function markAsPartiallyApproved()
-    {
-        $this->update([
-            'status' => self::STATUS_PARTIALLY_APPROVED,
-        ]);
-    }
+
 
     /**
      * Mark order as cancelled

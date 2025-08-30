@@ -41,4 +41,5 @@ class SaleItem extends Model
             $saleItem->subtotal = $saleItem->quantity * $saleItem->unit_price;
         });
     }
+    
 }

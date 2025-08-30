@@ -92,3 +92,6 @@ Stack trace:
 [25-Aug-2025 11:16:47 Asia/Manila] PHP Fatal error:  Maximum execution time of 60 seconds exceeded in C:\Users\Toshiba Satellite\dpharmasolution\vendor\laravel\framework\src\Illuminate\Database\Eloquent\Concerns\HasAttributes.php on line 1864
 [25-Aug-2025 11:19:44 Asia/Manila] PHP Fatal error:  Maximum execution time of 60 seconds exceeded in C:\Users\Toshiba Satellite\dpharmasolution\vendor\laravel\framework\src\Illuminate\Database\Connection.php on line 404
 [25-Aug-2025 11:21:58 Asia/Manila] PHP Fatal error:  Maximum execution time of 60 seconds exceeded in C:\Users\Toshiba Satellite\dpharmasolution\vendor\laravel\framework\src\Illuminate\Database\Connection.php on line 589
+[30-Aug-2025 23:40:40 Asia/Manila] PHP Fatal error:  Cannot declare class App\Models\ProductBatch, because the name is already in use in C:\Users\Toshiba Satellite\dpharmasolution\app\Models\PosTransaction.php on line 104
+[30-Aug-2025 23:41:14 Asia/Manila] PHP Fatal error:  Cannot declare class App\Models\ProductBatch, because the name is already in use in C:\Users\Toshiba Satellite\dpharmasolution\app\Models\PosTransaction.php on line 104
+[30-Aug-2025 23:46:38 Asia/Manila] PHP Fatal error:  Cannot declare class App\Models\ProductBatch, because the name is already in use in C:\Users\Toshiba Satellite\dpharmasolution\app\Models\PosTransaction.php on line 105

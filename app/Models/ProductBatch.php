@@ -17,7 +17,7 @@ class ProductBatch extends Model
         'quantity_received',
         'quantity_remaining',
         'unit_cost',
-        'sale_price', // Added sale_price to batches
+        'sale_price',
         'received_date',
         'supplier_id',
         'notes',
@@ -29,7 +29,7 @@ class ProductBatch extends Model
         'quantity_received' => 'integer',
         'quantity_remaining' => 'integer',
         'unit_cost' => 'decimal:2',
-        'sale_price' => 'decimal:2', // Added sale_price casting
+        'sale_price' => 'decimal:2',
     ];
 
     // Relationships
@@ -129,7 +129,7 @@ class ProductBatch extends Model
     public function getExpirationStatus()
     {
         $daysUntilExpiry = $this->daysUntilExpiration();
-        
+
         if ($daysUntilExpiry < 0) {
             return [
                 'status' => 'expired',
@@ -175,7 +175,7 @@ class ProductBatch extends Model
 
         // Create stock movement record with batch info in notes
         $batchNotes = "Batch: {$this->batch_number}" . ($notes ? " - {$notes}" : "");
-        
+
         StockMovement::createMovement(
             $this->product_id,
             $movementType,
@@ -201,7 +201,7 @@ class ProductBatch extends Model
 
         // Create stock movement record with batch info in notes
         $batchNotes = "Batch: {$this->batch_number}" . ($notes ? " - {$notes}" : "");
-        
+
         StockMovement::createMovement(
             $this->product_id,
             $movementType,
@@ -224,7 +224,7 @@ class ProductBatch extends Model
     {
         if ($this->quantity_remaining > 0) {
             $batchNotes = "Batch: {$this->batch_number} - {$notes}";
-            
+
             StockMovement::createMovement(
                 $this->product_id,
                 StockMovement::TYPE_EXPIRED,
@@ -247,10 +247,10 @@ class ProductBatch extends Model
     public function adjustQuantity($newQuantity, $notes = 'Manual adjustment')
     {
         $difference = $newQuantity - $this->quantity_remaining;
-        
+
         if ($difference != 0) {
             $batchNotes = "Batch: {$this->batch_number} - {$notes}";
-            
+
             StockMovement::createAdjustmentMovement(
                 $this->product_id,
                 $difference,
@@ -284,10 +284,10 @@ class ProductBatch extends Model
 
         if (!empty($updates)) {
             $this->update($updates);
-            
+
             $changeLog = implode(', ', $changes);
             $batchNotes = "Batch: {$this->batch_number} - {$notes} ({$changeLog})";
-            
+
             // Log the price change as an adjustment movement with 0 quantity
             StockMovement::createAdjustmentMovement(
                 $this->product_id,
@@ -305,7 +305,7 @@ class ProductBatch extends Model
     public function getBatchInfo()
     {
         $expirationStatus = $this->getExpirationStatus();
-        
+
         return [
             'batch_number' => $this->batch_number,
             'quantity_remaining' => $this->quantity_remaining,
@@ -338,10 +338,10 @@ class ProductBatch extends Model
     public static function createWithMovement($data, $referenceType = null, $referenceId = null)
     {
         $batch = self::create($data);
-        
+
         // Create initial stock movement
         $notes = "Initial stock - Batch: {$batch->batch_number}";
-        
+
         StockMovement::createMovement(
             $batch->product_id,
             StockMovement::TYPE_PURCHASE,

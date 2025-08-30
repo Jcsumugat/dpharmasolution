@@ -56,4 +56,5 @@ class Sale extends Model
     {
         return $this->items()->sum(DB::raw('quantity * unit_price'));
     }
+    
 }

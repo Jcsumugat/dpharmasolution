@@ -12,9 +12,14 @@ class PrescriptionItem extends Model
     protected $fillable = [
         'prescription_id',
         'product_id',
-        'quantity'
+        'quantity',
+        'batch_id'
     ];
-    
+
+    public function batch()
+    {
+        return $this->belongsTo(ProductBatch::class, 'batch_id');
+    }
 
     public function prescription()
     {

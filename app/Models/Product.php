@@ -9,7 +9,7 @@ class Product extends Model
 {
     use HasFactory;
 
-protected $fillable = [
+    protected $fillable = [
         'product_code',
         'product_name',
         'manufacturer',
@@ -93,11 +93,21 @@ protected $fillable = [
         return $this->hasMany(PrescriptionItem::class);
     }
 
-    // Optimized accessors using cached fields where possible
     public function getTotalStockAttribute()
     {
-        return $this->stock_quantity ?? 0;
+        if ($this->relationLoaded('batches')) {
+            return $this->batches
+                ->where('quantity_remaining', '>', 0)
+                ->where('expiration_date', '>', now())
+                ->sum('quantity_remaining');
+        }
+
+        return $this->batches()
+            ->where('quantity_remaining', '>', 0)
+            ->where('expiration_date', '>', now())
+            ->sum('quantity_remaining');
     }
+
 
     public function getEarliestExpirationAttribute()
     {
@@ -129,23 +139,13 @@ protected $fillable = [
             ->first()?->sale_price;
     }
 
-    // Scopes
-    public function scopeInStock($query)
-    {
-        return $query->where('stock_quantity', '>', 0);
-    }
-
-    public function scopeLowStock($query)
-    {
-        return $query->whereRaw('stock_quantity <= reorder_level');
-    }
 
     public function scopeExpiringSoon($query, $days = 30)
     {
         return $query->whereHas('batches', function ($q) use ($days) {
             $q->where('quantity_remaining', '>', 0)
-              ->where('expiration_date', '<=', now()->addDays($days))
-              ->where('expiration_date', '>', now());
+                ->where('expiration_date', '<=', now()->addDays($days))
+                ->where('expiration_date', '>', now());
         });
     }
 
@@ -197,7 +197,7 @@ protected $fillable = [
             if ($remainingQuantity <= 0) break;
 
             $quantityFromBatch = min($remainingQuantity, $batch->quantity_remaining);
-            
+
             $allocation[] = [
                 'batch' => $batch,
                 'quantity' => $quantityFromBatch,
@@ -213,10 +213,10 @@ protected $fillable = [
             'can_fulfill' => true,
             'shortage' => 0,
             'batches' => $allocation,
-            'total_cost' => collect($allocation)->sum(function($item) {
+            'total_cost' => collect($allocation)->sum(function ($item) {
                 return $item['quantity'] * $item['unit_cost'];
             }),
-            'total_revenue' => collect($allocation)->sum(function($item) {
+            'total_revenue' => collect($allocation)->sum(function ($item) {
                 return $item['quantity'] * $item['sale_price'];
             })
         ];
@@ -228,12 +228,12 @@ protected $fillable = [
     public function updateCachedFields()
     {
         $availableBatches = $this->availableBatches()->get();
-        
+
         $totalQuantity = $availableBatches->sum('quantity_remaining');
-        $totalCostValue = $availableBatches->sum(function($batch) {
+        $totalCostValue = $availableBatches->sum(function ($batch) {
             return $batch->unit_cost * $batch->quantity_remaining;
         });
-        $totalSaleValue = $availableBatches->sum(function($batch) {
+        $totalSaleValue = $availableBatches->sum(function ($batch) {
             return $batch->sale_price * $batch->quantity_remaining;
         });
 
@@ -260,7 +260,7 @@ protected $fillable = [
     public function getBatchSummary()
     {
         $batches = $this->availableBatches()->get();
-        
+
         return [
             'total_batches' => $batches->count(),
             'total_quantity' => $this->stock_quantity,
@@ -274,5 +274,73 @@ protected $fillable = [
                 'max_sale_price' => $this->highest_sale_price,
             ]
         ];
+    }
+
+    public function posTransactionItems()
+    {
+        return $this->hasMany(PosTransactionItem::class);
+    }
+
+
+
+    public function getUnitPriceAttribute()
+    {
+        // Get price from the earliest expiring batch (FIFO)
+        $batch = $this->batches()
+            ->where('quantity_remaining', '>', 0)
+            ->where('expiration_date', '>', now())
+            ->orderBy('expiration_date', 'asc')
+            ->first();
+
+        return $batch ? $batch->sale_price : 0;
+    }
+
+    // Add this method to get total sales for a product
+    public function getTotalSalesAttribute()
+    {
+        return $this->posTransactionItems()
+            ->whereHas('transaction', function ($query) {
+                $query->where('status', 'completed');
+            })
+            ->sum('total_price');
+    }
+
+    // Add this method to get total quantity sold
+    public function getTotalQuantitySoldAttribute()
+    {
+        return $this->posTransactionItems()
+            ->whereHas('transaction', function ($query) {
+                $query->where('status', 'completed');
+            })
+            ->sum('quantity');
+    }
+
+    // Add this scope for products with stock
+    public function scopeInStock($query)
+    {
+        return $query->whereHas('batches', function ($q) {
+            $q->where('quantity_remaining', '>', 0)
+                ->where('expiration_date', '>', now());
+        });
+    }
+
+    // Add this scope for low stock products
+    public function scopeLowStock($query, $threshold = 10)
+    {
+        return $query->whereHas('batches', function ($q) use ($threshold) {
+            $q->where('quantity_remaining', '<=', $threshold)
+                ->where('quantity_remaining', '>', 0)
+                ->where('expiration_date', '>', now());
+        });
+    }
+
+    // Add this scope for near expiry products
+    public function scopeNearExpiry($query, $days = 30)
+    {
+        return $query->whereHas('batches', function ($q) use ($days) {
+            $q->where('expiration_date', '<=', now()->addDays($days))
+                ->where('expiration_date', '>', now())
+                ->where('quantity_remaining', '>', 0);
+        });
     }
 }

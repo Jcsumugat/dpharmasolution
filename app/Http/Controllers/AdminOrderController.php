@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Schema;
 use App\Models\Prescription;
 use App\Models\Product;
 use App\Models\PrescriptionItem;
@@ -29,12 +30,75 @@ class AdminOrderController extends Controller
             ->latest()
             ->get();
 
-        // Products that still have stock in batches
         $products = Product::whereHas('batches', function ($q) {
             $q->where('quantity_remaining', '>', 0);
         })->get();
 
         return view('orders.orders', compact('prescriptions', 'products'));
+    }
+    
+
+    public function getSaleDetails($saleId)
+    {
+
+        try {
+            $sale = Sale::with(['customer', 'prescription'])
+                ->where('id', $saleId)
+                ->first();
+
+            if (!$sale) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Sale not found'
+                ], 404);
+            }
+
+            // Get sale items from the sale_items table
+            $items = SaleItem::with('product')
+                ->where('sale_id', $sale->id)
+                ->get()
+                ->map(function ($item) {
+                    return [
+                        'product_name' => $item->product->product_name ?? 'Unknown Product',
+                        'quantity' => $item->quantity,
+                        'unit_price' => $item->unit_price,
+                        'subtotal' => $item->subtotal
+                    ];
+                });
+
+            $saleDetails = [
+                'id' => $sale->id,
+                'order_id' => $sale->order_id ?? 'N/A',
+                'customer' => [
+                    'name' => $sale->customer->name ?? 'Guest',
+                    'email' => $sale->customer->email ?? 'No email',
+                    'phone' => $sale->customer->phone ?? 'No phone'
+                ],
+                'prescription' => [
+                    'id' => $sale->prescription_id,
+                    'file_path' => $sale->prescription->file_path ?? null,
+                    'notes' => $sale->prescription->notes ?? null
+                ],
+                'items' => $items,
+                'total_amount' => $sale->total_amount,
+                'total_items' => $sale->total_items,
+                'payment_method' => $sale->payment_method,
+                'status' => $sale->status,
+                'sale_date' => $sale->sale_date->format('M d, Y h:i A'),
+                'notes' => $sale->notes
+            ];
+
+            return response()->json([
+                'success' => true,
+                'sale' => $saleDetails
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error getting sale details: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error loading sale details: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function completeOrder(Request $request, $prescriptionId)
@@ -64,7 +128,7 @@ class AdminOrderController extends Controller
 
             $prescriptionItems = PrescriptionItem::where('prescription_id', $prescriptionId)
                 ->with(['product' => function ($query) {
-                    $query->select('id', 'product_name'); // Removed unit_price as it doesn't exist
+                    $query->select('id', 'product_name');
                 }])
                 ->get();
 
@@ -100,7 +164,6 @@ class AdminOrderController extends Controller
                     throw new \Exception("Product not found for prescription item {$prescItem->id}");
                 }
 
-                // Get sale price from the latest batch or fallback to 0
                 $latestBatch = ProductBatch::where('product_id', $product->id)
                     ->where('quantity_remaining', '>', 0)
                     ->whereNotNull('sale_price')
@@ -125,7 +188,6 @@ class AdminOrderController extends Controller
                 ]);
             }
 
-            // Stock check from product_batches
             $stockErrors = [];
             foreach ($prescriptionItems as $item) {
                 $totalBatchStock = ProductBatch::where('product_id', $item->product_id)
@@ -164,11 +226,9 @@ class AdminOrderController extends Controller
                 'status' => 'completed'
             ]);
 
-            // Deduct stock from batches FIFO
             foreach ($prescriptionItems as $prescItem) {
                 $product = $prescItem->product ?? Product::find($prescItem->product_id);
 
-                // Get sale price from the latest batch
                 $latestBatch = ProductBatch::where('product_id', $product->id)
                     ->where('quantity_remaining', '>', 0)
                     ->latest('created_at')
@@ -188,7 +248,7 @@ class AdminOrderController extends Controller
                 $qtyToDeduct = $prescItem->quantity;
                 $batches = ProductBatch::where('product_id', $prescItem->product_id)
                     ->where('quantity_remaining', '>', 0)
-                    ->orderBy('expiration_date', 'asc') // Fixed column name
+                    ->orderBy('expiration_date', 'asc')
                     ->lockForUpdate()
                     ->get();
 
@@ -215,7 +275,6 @@ class AdminOrderController extends Controller
             $order->update(['status' => 'completed', 'completed_at' => now()]);
             $prescription->update(['status' => 'completed', 'completed_at' => now()]);
 
-            // Only call notification services if they exist
             if (class_exists('App\Services\NotificationService')) {
                 NotificationService::notifyOrderCompleted($sale);
                 NotificationService::notifyHighValueSale($sale, 3000);
@@ -246,127 +305,194 @@ class AdminOrderController extends Controller
         }
     }
 
-    public function approve(Request $request)
+    public function approve(Request $request, $id)
     {
         $request->validate([
-            'id' => 'required|integer|exists:prescriptions,id',
             'message' => 'required|string',
+            'custom_message' => 'nullable|string|max:500',
         ]);
 
         try {
             DB::beginTransaction();
 
-            $prescription = Prescription::with('order')->findOrFail($request->id);
-            if ($prescription->order) {
+            $prescription = Prescription::with('order')->findOrFail($id);
+
+            // Create order if it doesn't exist
+            if (!$prescription->order) {
+                $order = new Order([
+                    'customer_id' => $prescription->customer_id,
+                    'status' => 'approved', // This matches orders table enum
+                    'order_id' => 'ORD-' . $prescription->id,
+                    'prescription_id' => $prescription->id,
+                ]);
+                $order->save();
+            } else {
                 $prescription->order->update(['status' => 'approved']);
             }
 
+            $adminMessage = $request->message;
+            if ($request->custom_message) {
+                $adminMessage .= "\n\nAdditional notes: " . $request->custom_message;
+            }
+
             $prescription->update([
-                'status' => 'approved',
-                'admin_message' => $request->message,
+                'status' => 'approved', // This matches prescriptions table enum
+                'admin_message' => $adminMessage,
                 'updated_at' => now()
             ]);
 
-            if (class_exists('App\Services\NotificationService')) {
-                NotificationService::notifyOrderApproved($prescription);
-            }
+            NotificationService::notifyOrderApproved($prescription);
 
             DB::commit();
-            return back()->with('success', 'Order approved.');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Order approved successfully.'
+            ]);
         } catch (\Exception $e) {
             DB::rollback();
-            Log::error('Error approving order: ' . $e->getMessage());
-            return back()->with('error', 'Failed to approve order. Please try again.');
+            \Log::error('Error approving order: ' . $e->getMessage(), [
+                'prescription_id' => $id,
+                'request' => $request->all(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to approve order: ' . $e->getMessage()
+            ], 500);
         }
     }
 
-    public function partialApprove(Request $request)
+    public function cancel(Request $request, $id)
     {
         $request->validate([
-            'id' => 'required|integer|exists:prescriptions,id',
             'message' => 'required|string',
+            'custom_message' => 'nullable|string|max:500',
         ]);
-
         try {
             DB::beginTransaction();
 
-            $prescription = Prescription::with('order')->findOrFail($request->id);
-            if ($prescription->order) {
-                $prescription->order->update(['status' => 'partially_approved']);
+            $prescription = Prescription::with('order')->findOrFail($id);
+
+            if (!$prescription->order) {
+                $order = new Order([
+                    'customer_id' => $prescription->customer_id,
+                    'status' => 'cancelled', // orders table uses 'cancelled'
+                    'order_id' => 'ORD-' . $prescription->id,
+                    'prescription_id' => $prescription->id,
+                ]);
+                $order->save();
+            } else {
+                $prescription->order->update(['status' => 'cancelled']);
+            }
+
+            $adminMessage = $request->message;
+            if ($request->custom_message) {
+                $adminMessage .= "\n\nAdditional notes: " . $request->custom_message;
             }
 
             $prescription->update([
-                'status' => 'partially_approved',
-                'admin_message' => $request->message,
+                'status' => 'cancelled',
+                'admin_message' => $adminMessage,
                 'updated_at' => now()
             ]);
 
+            NotificationService::notifyCustomerOrderCancelled($prescription);
             DB::commit();
-            return back()->with('info', 'Order partially approved.');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Order cancelled successfully.'
+            ]);
         } catch (\Exception $e) {
             DB::rollback();
-            Log::error('Error partially approving order: ' . $e->getMessage());
-            return back()->with('error', 'Failed to partially approve order. Please try again.');
+            \Log::error('Error cancelling order: ' . $e->getMessage(), [
+                'prescription_id' => $id,
+                'request' => $request->all(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to cancel order: ' . $e->getMessage()
+            ], 500);
         }
     }
-
-    /**
-     * Save Admin's Approved Items
-     */
-    public function saveSelection(Request $request, $orderId)
+    public function storePrescriptionItems(Request $request, $prescriptionId)
     {
-        DB::beginTransaction();
         try {
+            Log::info('Storing prescription items with batch_id', [
+                'prescription_id' => $prescriptionId,
+                'request_data' => $request->all()
+            ]);
+
+            DB::beginTransaction();
+
+            $validator = Validator::make($request->all(), [
+                'items' => 'required|array|min:1',
+                'items.*.product_id' => 'required|integer|exists:products,id',
+                'items.*.quantity' => 'required|integer|min:1'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed: ' . implode(', ', $validator->errors()->all())
+                ], 422);
+            }
+
+            $prescription = Prescription::findOrFail($prescriptionId);
+
+            // Delete existing items
+            PrescriptionItem::where('prescription_id', $prescriptionId)->delete();
+
             foreach ($request->items as $item) {
-                $orderItem = OrderItem::find($item['order_item_id']);
-                if ($orderItem) {
-                    $orderItem->approved_quantity = $item['approved_quantity'];
-                    $orderItem->status = 'approved';
-                    $orderItem->save();
+                $product = Product::findOrFail($item['product_id']);
 
-                    // Deduct stock from product_batches (FIFO)
-                    $remainingQty = $item['approved_quantity'];
-                    $batches = ProductBatch::where('product_id', $orderItem->product_id)
-                        ->where('quantity_remaining', '>', 0) // Fixed column name
-                        ->orderBy('expiration_date', 'asc') // Fixed column name
-                        ->get();
+                // Find batch using FIFO
+                $batch = ProductBatch::where('product_id', $item['product_id'])
+                    ->where('quantity_remaining', '>=', $item['quantity'])
+                    ->orderBy('expiration_date', 'asc')
+                    ->first();
 
-                    foreach ($batches as $batch) {
-                        if ($remainingQty <= 0) break;
-
-                        $deduct = min($batch->quantity_remaining, $remainingQty); // Fixed column name
-                        $batch->quantity_remaining -= $deduct; // Fixed column name
-                        $batch->save();
-
-                        $remainingQty -= $deduct;
-                    }
+                if (!$batch) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Insufficient stock for {$product->product_name}"
+                    ], 400);
                 }
+
+                PrescriptionItem::create([
+                    'prescription_id' => $prescriptionId,
+                    'product_id' => $product->id,
+                    'product_name' => $product->product_name,
+                    'quantity' => $item['quantity'],
+                    'batch_id' => $batch->id  // <-- Assign batch
+                ]);
             }
 
             DB::commit();
-            return response()->json(['success' => true, 'message' => 'Selection saved successfully.']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Products saved successfully with batches!'
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['success' => false, 'message' => 'Error saving selection.']);
+            Log::error('Error saving prescription items with batch_id: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error saving prescription items: ' . $e->getMessage()
+            ], 500);
         }
     }
 
-    /**
-     * Get Prescription Items
-     */
-    public function getPrescriptionItems($orderId)
-    {
-        $order = Order::with('items.product')->findOrFail($orderId);
-        return response()->json($order->items);
-    }
-
-    /**
-     * Get Order Summary
-     */
     public function getOrderSummary($orderId)
     {
         try {
-            // Get prescription items instead of order items since that's what's being used
             $prescription = Prescription::findOrFail($orderId);
             $prescriptionItems = PrescriptionItem::where('prescription_id', $orderId)
                 ->with('product')
@@ -388,7 +514,6 @@ class AdminOrderController extends Controller
                     continue;
                 }
 
-                // Get price from latest batch
                 $latestBatch = ProductBatch::where('product_id', $item->product_id)
                     ->where('quantity_remaining', '>', 0)
                     ->latest('created_at')
@@ -426,106 +551,91 @@ class AdminOrderController extends Controller
         }
     }
 
-public function sales()
-{
-    // Completed orders for the table with sales relationship
-    $completedOrders = Order::where('status', 'completed')
-        ->with(['items.product', 'customer', 'prescription', 'sale'])
-        ->orderByDesc('updated_at')
-        ->get();
+    public function sales()
+    {
+        $completedOrders = Order::where('status', 'completed')
+            ->with(['items.product', 'customer', 'prescription', 'sale'])
+            ->orderByDesc('updated_at')
+            ->get();
 
-    // Compute total_amount per order, sale_date, and payment_method
-    $completedOrders->each(function ($order) {
-        $total = $order->items->sum(function ($item) {
-            $latestBatch = ProductBatch::where('product_id', $item->product_id)
-                ->where('quantity_remaining', '>', 0)
-                ->latest('created_at')
-                ->first();
+        $completedOrders->each(function ($order) {
+            $total = $order->items->sum(function ($item) {
+                $latestBatch = ProductBatch::where('product_id', $item->product_id)
+                    ->where('quantity_remaining', '>', 0)
+                    ->latest('created_at')
+                    ->first();
 
-            $price = $latestBatch ? $latestBatch->sale_price : 0;
-            $qty   = $item->approved_quantity ?? $item->quantity;
+                $price = $latestBatch ? $latestBatch->sale_price : 0;
+                $qty   = $item->approved_quantity ?? $item->quantity;
 
-            return $qty * $price;
+                return $qty * $price;
+            });
+
+            $paymentMethod = $order->sale->payment_method ?? 'cash';
+
+            $order->setAttribute('total_amount', $total);
+            $order->setAttribute('sale_date', $order->updated_at ?? $order->created_at);
+            $order->setAttribute('payment_method', $paymentMethod);
         });
 
-        // Get payment_method from the related sale record
-        $paymentMethod = $order->sale->payment_method ?? 'cash';
+        $totalSales     = $completedOrders->sum('total_amount');
+        $completedCount = $completedOrders->count();
 
-        // Add dynamic attributes for Blade
-        $order->setAttribute('total_amount', $total);
-        $order->setAttribute('sale_date', $order->updated_at ?? $order->created_at);
-        $order->setAttribute('payment_method', $paymentMethod);
-    });
-
-    // === Stats ===
-    $totalSales     = $completedOrders->sum('total_amount');
-    $completedCount = $completedOrders->count();
-
-    $todayStart  = now()->startOfDay();
-    $todayOrders = $completedOrders->filter(function ($o) use ($todayStart) {
-        $dt = $o->sale_date ?? ($o->updated_at ?? $o->created_at);
-        return $dt >= $todayStart;
-    });
-
-    $todaySales = $todayOrders->sum('total_amount');
-    $todayCount = $todayOrders->count();
-
-    // Pending orders for pending stats
-    $pendingOrders = Order::where('status', 'pending')
-        ->with(['items.product', 'sale'])
-        ->get();
-
-    $pendingOrders->each(function ($order) {
-        $total = $order->items->sum(function ($item) {
-            $latestBatch = ProductBatch::where('product_id', $item->product_id)
-                ->where('quantity_remaining', '>', 0)
-                ->latest('created_at')
-                ->first();
-
-            $price = $latestBatch ? $latestBatch->sale_price : 0;
-            $qty   = $item->approved_quantity ?? $item->quantity;
-
-            return $qty * $price;
+        $todayStart  = now()->startOfDay();
+        $todayOrders = $completedOrders->filter(function ($o) use ($todayStart) {
+            $dt = $o->sale_date ?? ($o->updated_at ?? $o->created_at);
+            return $dt >= $todayStart;
         });
 
-        $order->setAttribute('total_amount', $total);
-    });
+        $todaySales = $todayOrders->sum('total_amount');
+        $todayCount = $todayOrders->count();
 
-    $pendingCount = $pendingOrders->count();
-    $pendingValue = $pendingOrders->sum('total_amount');
+        $pendingOrders = Order::where('status', 'pending')
+            ->with(['items.product', 'sale'])
+            ->get();
 
-    $averageOrder = $completedCount > 0 ? $totalSales / $completedCount : 0;
+        $pendingOrders->each(function ($order) {
+            $total = $order->items->sum(function ($item) {
+                $latestBatch = ProductBatch::where('product_id', $item->product_id)
+                    ->where('quantity_remaining', '>', 0)
+                    ->latest('created_at')
+                    ->first();
 
-    $salesStats = [
-        'total_sales'     => $totalSales,
-        'completed_count' => $completedCount,
-        'today_sales'     => $todaySales,
-        'today_count'     => $todayCount,
-        'pending_count'   => $pendingCount,
-        'pending_value'   => $pendingValue,
-        'average_order'   => $averageOrder,
-    ];
+                $price = $latestBatch ? $latestBatch->sale_price : 0;
+                $qty   = $item->approved_quantity ?? $item->quantity;
 
-    // What the Blade iterates over
-    $sales = $completedOrders;
+                return $qty * $price;
+            });
 
-    return view('sales.sales', compact('sales', 'salesStats'));
-}
+            $order->setAttribute('total_amount', $total);
+        });
 
+        $pendingCount = $pendingOrders->count();
+        $pendingValue = $pendingOrders->sum('total_amount');
 
+        $averageOrder = $completedCount > 0 ? $totalSales / $completedCount : 0;
 
-    /**
-     * Show All Orders
-     */
+        $salesStats = [
+            'total_sales'     => $totalSales,
+            'completed_count' => $completedCount,
+            'today_sales'     => $todaySales,
+            'today_count'     => $todayCount,
+            'pending_count'   => $pendingCount,
+            'pending_value'   => $pendingValue,
+            'average_order'   => $averageOrder,
+        ];
+
+        $sales = $completedOrders;
+
+        return view('sales.sales', compact('sales', 'salesStats'));
+    }
+
     public function showOrders()
     {
         $orders = Order::with('items.product')->get();
         return response()->json($orders);
     }
 
-    /**
-     * Debug Prescription (for testing)
-     */
     public function debugPrescription($orderId)
     {
         $order = Order::with('items.product')->findOrFail($orderId);
@@ -533,5 +643,193 @@ public function sales()
             'order' => $order,
             'items' => $order->items,
         ]);
+    }
+
+    public function loadPrescriptionItemsEloquent($prescriptionId)
+    {
+        try {
+            $prescription = Prescription::findOrFail($prescriptionId);
+
+            $items = PrescriptionItem::where('prescription_id', $prescriptionId)
+                ->with(['product', 'batch'])
+                ->get()
+                ->map(function ($item) {
+                    // Get price from batch if available, otherwise get latest batch price
+                    $unitPrice = 0;
+
+                    if ($item->batch) {
+                        // Use the assigned batch price
+                        $unitPrice = (float)$item->batch->sale_price;
+                    } else {
+                        // Fallback: get price from latest available batch
+                        $latestBatch = ProductBatch::where('product_id', $item->product_id)
+                            ->where('quantity_remaining', '>', 0)
+                            ->whereNotNull('sale_price')
+                            ->orderBy('expiration_date', 'asc')
+                            ->orderBy('received_date', 'asc')
+                            ->first();
+
+                        $unitPrice = $latestBatch ? (float)$latestBatch->sale_price : 0;
+                    }
+
+                    return [
+                        'product_id' => $item->product_id,
+                        'quantity' => $item->quantity,
+                        'product_name' => $item->product->product_name ?? 'Unknown Product',
+                        'product_price' => $unitPrice
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'items' => $items
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error loading prescription items: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error loading prescription items: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getPrescriptionItems($prescriptionId)
+    {
+        try {
+            $items = PrescriptionItem::where('prescription_id', $prescriptionId)
+                ->with('product')
+                ->get()
+                ->map(function ($item) {
+                    // Get the earliest expiring batch for pricing
+                    $batch = ProductBatch::where('product_id', $item->product_id)
+                        ->where('quantity_remaining', '>', 0)
+                        ->whereNotNull('expiration_date')
+                        ->orderBy('expiration_date', 'asc')
+                        ->orderBy('received_date', 'asc')
+                        ->first();
+
+                    $unitPrice = $batch ? (float)$batch->sale_price : 0;
+
+                    return [
+                        'product_id' => $item->product_id,
+                        'quantity' => $item->quantity,
+                        'product_name' => $item->product->product_name ?? 'Unknown Product',
+                        'product_price' => $unitPrice,
+                        'batch_info' => $batch ? [
+                            'batch_number' => $batch->batch_number,
+                            'expiration_date' => $batch->expiration_date,
+                            'quantity_remaining' => $batch->quantity_remaining
+                        ] : null
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'items' => $items
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error loading prescription items: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error loading prescription items: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function saveSelection(Request $request, $prescriptionId)
+    {
+        $validator = Validator::make($request->all(), [
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'required|integer|exists:products,id',
+            'items.*.quantity' => 'required|integer|min:1'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed: ' . implode(', ', $validator->errors()->all())
+            ], 422);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $prescription = Prescription::findOrFail($prescriptionId);
+            PrescriptionItem::where('prescription_id', $prescriptionId)->delete();
+
+            foreach ($request->items as $item) {
+                $product = Product::findOrFail($item['product_id']);
+
+                // Check total available stock
+                $totalAvailableStock = ProductBatch::where('product_id', $item['product_id'])
+                    ->where('quantity_remaining', '>', 0)
+                    ->sum('quantity_remaining');
+
+                if ($totalAvailableStock < $item['quantity']) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Insufficient stock for {$product->product_name}. Available: {$totalAvailableStock}, Required: {$item['quantity']}"
+                    ], 400);
+                }
+
+                // Find earliest expiring batch with stock (FIFO)
+                $earliestBatch = ProductBatch::where('product_id', $item['product_id'])
+                    ->where('quantity_remaining', '>', 0)
+                    ->whereNotNull('expiration_date')
+                    ->orderBy('expiration_date', 'asc')
+                    ->orderBy('received_date', 'asc') // Secondary sort for same expiration dates
+                    ->first();
+
+                if (!$earliestBatch) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => "No available batches found for {$product->product_name}"
+                    ], 400);
+                }
+
+                // Create prescription item with batch tracking
+                $itemData = [
+                    'prescription_id' => $prescriptionId,
+                    'product_id' => $product->id,
+                    'quantity' => $item['quantity'],
+                    'product_name' => $product->product_name
+                ];
+
+                // Add batch reference if your prescription_items table has it
+                if (Schema::hasColumn('prescription_items', 'batch_id')) {
+                    $itemData['batch_id'] = $earliestBatch->id;
+                }
+
+                if (Schema::hasColumn('prescription_items', 'batch_number')) {
+                    $itemData['batch_number'] = $earliestBatch->batch_number;
+                }
+
+                PrescriptionItem::create($itemData);
+
+                Log::info("Selected earliest expiring batch", [
+                    'product' => $product->product_name,
+                    'batch_number' => $earliestBatch->batch_number,
+                    'expiration_date' => $earliestBatch->expiration_date,
+                    'quantity_remaining' => $earliestBatch->quantity_remaining,
+                    'selected_quantity' => $item['quantity']
+                ]);
+            }
+
+            DB::commit();
+            return response()->json([
+                'success' => true,
+                'message' => 'Products saved successfully with FIFO batch selection!'
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error in saveSelection: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 }

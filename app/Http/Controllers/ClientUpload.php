@@ -17,22 +17,18 @@ class ClientUpload extends Controller
 {
     public function handleUpload(Request $request)
     {
-        // Debug: Log authentication status
         Log::info('Upload attempt - Auth status:', [
             'is_customer_logged_in' => Auth::guard('customer')->check(),
             'customer_id' => Auth::guard('customer')->id(),
         ]);
 
-        // Check if customer is authenticated
         if (!Auth::guard('customer')->check()) {
             Log::error('Customer not authenticated during upload');
             return redirect()->route('login.form')->with('error', 'Please log in to upload prescriptions.');
         }
 
-        // Get the authenticated customer
         $customer = Auth::guard('customer')->user();
 
-        // Ensure customer exists and has an ID
         if (!$customer || !isset($customer->id)) {
             Log::error('Customer object is null or missing ID', [
                 'customer' => $customer,
@@ -47,17 +43,16 @@ class ClientUpload extends Controller
             'mobile_number' => ['required', 'regex:/^09\d{9}$/'],
             'prescription_file' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
             'notes' => ['nullable', 'string', 'max:500'],
+            'order_type' => ['required', 'in:prescription,online_order'],
         ]);
 
         try {
-            // Encrypt and save uploaded file
             $file = $request->file('prescription_file');
             $filename = time() . '_' . Str::random(6) . '_customer_' . $customerId;
-            
-            // Use the encryption service
+
             $encryptionResult = FileEncryptionService::encryptAndStore(
-                $file, 
-                'prescriptions/encrypted', 
+                $file,
+                'prescriptions/encrypted',
                 $filename
             );
 
@@ -65,20 +60,17 @@ class ClientUpload extends Controller
                 throw new \Exception('File encryption failed');
             }
 
-            // Generate unique token for tracking
             $token = Str::random(32);
 
-            // Generate new unique order ID (e.g., RX00001)
             $latestId = Order::max('id') ?? 0;
-            $orderId = 'RX' . str_pad($latestId + 1, 5, '0', STR_PAD_LEFT);
+            $orderPrefix = $validated['order_type'] === 'prescription' ? 'RX' : 'OD';
+            $orderId = $orderPrefix . str_pad($latestId + 1, 5, '0', STR_PAD_LEFT);
 
-            // Generate QR code SVG for the preorder validation link
             $qrUrl = url("/preorder/validate/$token");
             $qrSvg = QrCode::format('svg')->size(250)->generate($qrUrl);
             $qrPath = 'qrcodes/' . $orderId . '.svg';
             Storage::disk('public')->put($qrPath, $qrSvg);
 
-            // Create prescription record
             $prescription = Prescription::create([
                 'mobile_number' => $validated['mobile_number'],
                 'notes' => $validated['notes'] ?? null,
@@ -89,44 +81,49 @@ class ClientUpload extends Controller
                 'is_encrypted' => true,
                 'token' => $token,
                 'status' => 'pending',
+                'order_type' => $validated['order_type'],
                 'qr_code_path' => $qrPath,
                 'user_id' => $customerId,
                 'customer_id' => $customerId,
             ]);
 
-            // Log successful creation
             Log::info('Prescription created successfully with encryption:', [
                 'prescription_id' => $prescription->id,
                 'customer_id' => $customerId,
                 'order_id' => $orderId,
+                'order_type' => $validated['order_type'],
                 'encrypted_path' => $encryptionResult['encrypted_path'],
                 'original_filename' => $encryptionResult['metadata']['original_name']
             ]);
 
             NotificationService::notifyNewOrder($prescription);
 
-            // Create linked order record
             Order::create([
                 'prescription_id' => $prescription->id,
                 'order_id' => $orderId,
                 'status' => 'Pending',
             ]);
 
+            $successMessage = $validated['order_type'] === 'prescription'
+                ? 'Thank you! Your prescription has been received and securely encrypted.'
+                : 'Thank you! Your online order has been received and securely processed.';
+
             return redirect()->route('prescription.upload.form')
-                ->with('success', 'Thank you! Your pre-order has been received. Your prescription file has been securely encrypted.')
+                ->with('success', $successMessage)
                 ->with('qr_link', $qrUrl)
                 ->with('qr_image', asset('storage/' . $qrPath));
 
         } catch (\Exception $e) {
-            Log::error('Prescription upload failed:', [
+            Log::error('Upload failed:', [
                 'error' => $e->getMessage(),
                 'customer_id' => $customerId,
+                'order_type' => $validated['order_type'] ?? 'unknown',
                 'file_name' => $file->getClientOriginalName() ?? 'unknown'
             ]);
 
             return redirect()->back()
                 ->withInput()
-                ->withErrors(['prescription_file' => 'Failed to process prescription file: ' . $e->getMessage()]);
+                ->withErrors(['prescription_file' => 'Failed to process file: ' . $e->getMessage()]);
         }
     }
 
@@ -145,7 +142,6 @@ class ClientUpload extends Controller
 
         $customerId = $customer->id;
 
-        // Get prescriptions with proper relationships
         $prescriptions = Prescription::with(['order', 'customer'])
             ->where('customer_id', $customerId)
             ->latest()
@@ -157,6 +153,42 @@ class ClientUpload extends Controller
         ]);
 
         return view('client.uploads', compact('prescriptions'));
+    }
+
+    public function showPrescriptionHistory()
+    {
+        if (!Auth::guard('customer')->check()) {
+            return redirect()->route('login.form')->with('error', 'Please log in to view your history.');
+        }
+
+        $customer = Auth::guard('customer')->user();
+        $customerId = $customer->id;
+
+        $prescriptions = Prescription::with(['order', 'customer'])
+            ->where('customer_id', $customerId)
+            ->where('order_type', 'prescription')
+            ->latest()
+            ->get();
+
+        return view('client.prescription-history', compact('prescriptions'));
+    }
+
+    public function showOnlineOrderHistory()
+    {
+        if (!Auth::guard('customer')->check()) {
+            return redirect()->route('login.form')->with('error', 'Please log in to view your history.');
+        }
+
+        $customer = Auth::guard('customer')->user();
+        $customerId = $customer->id;
+
+        $orders = Prescription::with(['order', 'customer'])
+            ->where('customer_id', $customerId)
+            ->where('order_type', 'online_order')
+            ->latest()
+            ->get();
+
+        return view('client.online-order-history', compact('orders'));
     }
 
     public function validatePreorder(string $token)
@@ -210,13 +242,8 @@ class ClientUpload extends Controller
         return view('auth.prescription-status', compact('prescription'));
     }
 
-    /**
-     * Admin-only method to view encrypted prescription file
-     * Only admins can decrypt and view prescription files
-     */
     public function viewPrescriptionFile($prescriptionId)
     {
-        // Check if user is admin
         if (!Auth::check() || !Auth::user()->hasRole('admin')) {
             Log::warning('Unauthorized prescription file access attempt', [
                 'user_id' => Auth::id(),
@@ -234,19 +261,17 @@ class ClientUpload extends Controller
         }
 
         try {
-            // Log admin access for audit trail
             Log::info('Admin accessed prescription file', [
                 'admin_id' => Auth::id(),
                 'prescription_id' => $prescriptionId,
                 'customer_id' => $prescription->customer_id,
+                'order_type' => $prescription->order_type,
                 'ip' => request()->ip()
             ]);
 
-            // Check if it's an image file
             if (str_starts_with($prescription->file_mime_type, 'image/')) {
                 return FileEncryptionService::displayDecryptedImage($prescription->file_path);
             } else {
-                // For PDFs, return download response instead
                 return FileEncryptionService::downloadDecryptedFile($prescription->file_path);
             }
         } catch (\Exception $e) {
@@ -255,17 +280,13 @@ class ClientUpload extends Controller
                 'admin_id' => Auth::id(),
                 'error' => $e->getMessage()
             ]);
-            
+
             abort(500, 'Failed to load prescription file.');
         }
     }
 
-    /**
-     * Admin-only method to download encrypted prescription file
-     */
     public function downloadPrescriptionFile($prescriptionId)
     {
-        // Check if user is admin
         if (!Auth::check() || !Auth::user()->hasRole('admin')) {
             Log::warning('Unauthorized prescription file download attempt', [
                 'user_id' => Auth::id(),
@@ -282,11 +303,11 @@ class ClientUpload extends Controller
         }
 
         try {
-            // Log admin download for audit trail
             Log::info('Admin downloaded prescription file', [
                 'admin_id' => Auth::id(),
                 'prescription_id' => $prescriptionId,
                 'customer_id' => $prescription->customer_id,
+                'order_type' => $prescription->order_type,
                 'original_filename' => $prescription->original_filename,
                 'ip' => request()->ip()
             ]);
@@ -298,14 +319,11 @@ class ClientUpload extends Controller
                 'admin_id' => Auth::id(),
                 'error' => $e->getMessage()
             ]);
-            
+
             abort(500, 'Failed to download prescription file.');
         }
     }
 
-    /**
-     * Get file metadata for admin (without decrypting the full file)
-     */
     public function getPrescriptionMetadata($prescriptionId)
     {
         if (!Auth::check() || !Auth::user()->hasRole('admin')) {
@@ -320,13 +338,14 @@ class ClientUpload extends Controller
 
         try {
             $metadata = FileEncryptionService::getFileMetadata($prescription->file_path);
-            
+
             return response()->json([
                 'success' => true,
                 'metadata' => $metadata,
                 'prescription' => [
                     'id' => $prescription->id,
                     'customer_id' => $prescription->customer_id,
+                    'order_type' => $prescription->order_type,
                     'status' => $prescription->status,
                     'created_at' => $prescription->created_at
                 ]

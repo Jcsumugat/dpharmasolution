@@ -158,62 +158,73 @@
                 Add New Batch - <span id="inventoryModalProductName"></span>
                 <div class="modal-close" onclick="inventoryCloseBatchModal()">&times;</div>
             </div>
-            <div class="modal-body">
-                <form method="POST" id="inventoryBatchForm" action="">
-                    @csrf
-                    <input type="hidden" id="inventoryCurrentProductId" name="product_id" value="">
+           <div class="modal-body">
+    <form method="POST" id="inventoryBatchForm" action="">
+        @csrf
+        <input type="hidden" id="inventoryCurrentProductId" name="product_id" value="">
 
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <input type="date" name="expiration_date" id="inventory_expiration_date"
-                                placeholder=" " required>
-                            <label for="inventory_expiration_date">Expiration Date</label>
-                        </div>
-
-                        <div class="form-group">
-                            <input type="number" step="0.01" name="unit_cost" id="inventory_unit_cost"
-                                placeholder=" " required min="0">
-                            <label for="inventory_unit_cost">Unit Cost (₱)</label>
-                        </div>
-
-                        <div class="form-group">
-                            <input type="number" step="0.01" name="sale_price" id="inventory_sale_price"
-                                placeholder=" " min="0">
-                            <label for="inventory_sale_price">Sale Price (₱)</label>
-                        </div>
-
-                        <div class="form-group">
-                            <input type="date" name="received_date" id="inventory_received_date" placeholder=" "
-                                required>
-                            <label for="inventory_received_date">Received Date</label>
-                        </div>
-
-                        <div class="form-group">
-                            <select name="supplier_id" id="inventory_supplier_id">
-                                <option value="">Use Product Default</option>
-                                @foreach ($suppliers ?? [] as $supplier)
-                                    @if (isset($supplier) && is_object($supplier))
-                                        <option value="{{ $supplier->id }}">{{ $supplier->name }}</option>
-                                    @endif
-                                @endforeach
-                            </select>
-                            <label for="inventory_supplier_id">Supplier</label>
-                        </div>
-
-                        <div class="form-group full-width">
-                            <textarea name="notes" id="inventory_notes" placeholder=" " rows="3"></textarea>
-                            <label for="inventory_notes">Notes (optional)</label>
-                        </div>
-                    </div>
-
-                    <div class="modal-buttons">
-                        <button type="button" class="btn btn-cancel"
-                            onclick="inventoryCloseBatchModal()">Cancel</button>
-                        <button type="submit" class="btn btn-primary" id="inventoryBatchSubmitBtn">Add
-                            Batch</button>
-                    </div>
-                </form>
+        <div class="form-grid">
+            <!-- First row: Quantity and Expiration Date -->
+            <div class="form-group">
+                <input type="number" name="quantity_received" id="inventory_quantity_received"
+                    placeholder=" " required min="1" step="1">
+                <label for="inventory_quantity_received">Quantity Received</label>
             </div>
+
+            <div class="form-group">
+                <input type="date" name="expiration_date" id="inventory_expiration_date"
+                    placeholder=" " required>
+                <label for="inventory_expiration_date">Expiration Date</label>
+            </div>
+
+            <!-- Second row: Unit Cost and Sale Price -->
+            <div class="form-group">
+                <input type="number" step="0.01" name="unit_cost" id="inventory_unit_cost"
+                    placeholder=" " required min="0">
+                <label for="inventory_unit_cost">Unit Cost (₱)</label>
+            </div>
+
+            <div class="form-group">
+                <input type="number" step="0.01" name="sale_price" id="inventory_sale_price"
+                    placeholder=" " min="0">
+                <label for="inventory_sale_price">Sale Price (₱)</label>
+            </div>
+
+            <!-- Third row: Received Date and Supplier -->
+            <div class="form-group">
+                <input type="date" name="received_date" id="inventory_received_date" placeholder=" "
+                    required>
+                <label for="inventory_received_date">Received Date</label>
+            </div>
+
+            <div class="form-group">
+                <select name="supplier_id" id="inventory_supplier_id">
+                    <option value="">Use Product Default</option>
+                    @foreach ($suppliers ?? [] as $supplier)
+                        @if (isset($supplier) && is_object($supplier))
+                            <option value="{{ $supplier->id }}">{{ $supplier->name }}</option>
+                        @endif
+                    @endforeach
+                </select>
+                <label for="inventory_supplier_id">Supplier</label>
+            </div>
+
+            <!-- Full width row: Notes -->
+            <div class="form-group full-width">
+                <textarea name="notes" id="inventory_notes" placeholder=" " rows="3" maxlength="1000"></textarea>
+                <label for="inventory_notes">Notes (optional)</label>
+                <small class="help-text">Maximum 1000 characters</small>
+            </div>
+        </div>
+
+        <div class="modal-buttons">
+            <button type="button" class="btn btn-cancel"
+                onclick="inventoryCloseBatchModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="inventoryBatchSubmitBtn">Add
+                Batch</button>
+        </div>
+    </form>
+</div>
         </div>
     </div>
 
@@ -246,7 +257,7 @@
                     <div class="form-group">
                         <label
                             style="position: static; background: none; padding: 0; font-size: 0.875rem; margin-bottom: 0.5rem; display: block;">Item
-                            Information</label>
+                            Information:</label>
                         <div class="batch-info-display">
                             <p><strong>Product:</strong> <span id="inventory_product_display_name"></span></p>
                             <p id="inventory_batch_display_row" style="display: none;"><strong>Batch:</strong> <span

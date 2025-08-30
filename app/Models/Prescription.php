@@ -4,6 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use App\Models\Order;
 
 class Prescription extends Model
 {
@@ -13,27 +16,28 @@ class Prescription extends Model
     'mobile_number',
     'notes',
     'file_path',
-    'original_filename',   
-    'file_mime_type',         
-    'file_size',            
-    'is_encrypted',      
-    'encrypted_at',           
+    'original_filename',
+    'file_mime_type',
+    'file_size',
+    'is_encrypted',
+    'encrypted_at',
     'token',
     'status',
     'user_id',
     'customer_id',
-    'qr_code_path', 
+    'qr_code_path',
     'admin_message',
+    'order_type',
 ];
 protected $casts = [
-        'customer_id' => 'integer', 
+        'customer_id' => 'integer',
         'user_id' => 'integer',
     ];
 
 
     public function user()
     {
-        return $this->belongsTo(Customer::class, 'user_id'); 
+        return $this->belongsTo(Customer::class, 'user_id');
     }
 
     public function customer()

@@ -28,27 +28,84 @@ class DashboardController extends Controller
         ]);
     }
 
+    public function getExpiringProducts()
+    {
+        $products = DB::table('products')
+            ->join('product_batches', 'products.id', '=', 'product_batches.product_id')
+            ->where('product_batches.expiration_date', '<=', Carbon::now()->addDays(30))
+            ->where('product_batches.expiration_date', '>=', Carbon::now())
+            ->where('product_batches.quantity_remaining', '>', 0)
+            ->select(
+                'products.id as product_id',
+                'products.product_name',
+                'products.product_code',
+                'product_batches.batch_number',
+                'product_batches.expiration_date',
+                'product_batches.quantity_remaining'
+            )
+            ->orderBy('product_batches.expiration_date', 'asc')
+            ->get();
+
+        return response()->json($products);
+    }
+
+    public function getLowStockProducts()
+    {
+        $products = DB::table('products')
+            ->leftJoin('product_batches', 'products.id', '=', 'product_batches.product_id')
+            ->select(
+                'products.id as product_id',
+                'products.product_name',
+                'products.product_code',
+                'products.reorder_level'
+            )
+            ->selectRaw('COALESCE(SUM(product_batches.quantity_remaining), 0) as current_stock')
+            ->groupBy('products.id', 'products.product_name', 'products.product_code', 'products.reorder_level')
+            ->having('current_stock', '>', 0)
+            ->havingRaw('current_stock <= CAST(products.reorder_level AS UNSIGNED)')
+            ->whereNotNull('products.reorder_level')
+            ->orderBy('current_stock', 'asc')
+            ->get();
+
+        return response()->json($products);
+    }
+
+    public function getOutOfStockProducts()
+    {
+        $products = DB::table('products')
+            ->leftJoin('product_batches', 'products.id', '=', 'product_batches.product_id')
+            ->select(
+                'products.id as product_id',
+                'products.product_name',
+                'products.product_code',
+                'products.updated_at as last_updated',
+                'products.reorder_level'
+            )
+            ->selectRaw('COALESCE(SUM(product_batches.quantity_remaining), 0) as current_stock')
+            ->groupBy('products.id', 'products.product_name', 'products.product_code', 'products.updated_at', 'products.reorder_level')
+            ->having('current_stock', '=', 0)
+            ->orderBy('products.updated_at', 'desc')
+            ->get();
+
+        return response()->json($products);
+    }
+
     private function getDashboardStats()
     {
-        // Total completed sales amount
         $totalSales = DB::table('sales')
             ->where('status', 'completed')
             ->sum('total_amount');
 
-        // Total unique products count
         $totalProducts = DB::table('products')->count();
 
-        // Capital spend - sum of all product batches' cost
         $capitalSpend = DB::table('product_batches')
             ->sum(DB::raw('quantity_received * unit_cost'));
 
-        // Total revenue from completed sales (using sale_items subtotal)
         $totalRevenue = DB::table('sale_items')
             ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
             ->where('sales.status', 'completed')
             ->sum('sale_items.subtotal');
 
-        // Total cost of goods sold - using average unit cost per product
         $totalCostOfGoodsSold = DB::table('sale_items')
             ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
             ->join(DB::raw('(SELECT product_id, AVG(unit_cost) as avg_unit_cost FROM product_batches GROUP BY product_id) as avg_costs'), 'sale_items.product_id', '=', 'avg_costs.product_id')
@@ -67,7 +124,6 @@ class DashboardController extends Controller
 
     private function getOngoingActivities()
     {
-        // Products with batches expiring within 30 days
         $expiringProducts = DB::table('products')
             ->join('product_batches', 'products.id', '=', 'product_batches.product_id')
             ->where('product_batches.expiration_date', '<=', Carbon::now()->addDays(30))
@@ -76,12 +132,10 @@ class DashboardController extends Controller
             ->distinct('products.id')
             ->count('products.id');
 
-        // Pending prescriptions
         $pendingPrescriptions = DB::table('prescriptions')
             ->where('status', 'pending')
             ->count();
 
-        // Low stock products - products where total remaining quantity is at or below reorder level
         $lowStockProducts = DB::table('products')
             ->leftJoin('product_batches', 'products.id', '=', 'product_batches.product_id')
             ->select('products.id', 'products.reorder_level')
@@ -92,7 +146,6 @@ class DashboardController extends Controller
             ->whereNotNull('products.reorder_level')
             ->count();
 
-        // Out of stock products - products with no remaining quantity in any batch
         $outOfStockProducts = DB::table('products')
             ->leftJoin('product_batches', 'products.id', '=', 'product_batches.product_id')
             ->select('products.id')
@@ -101,24 +154,20 @@ class DashboardController extends Controller
             ->having('total_stock', '=', 0)
             ->count();
 
-        // New orders (prescriptions) today
         $newOrdersToday = DB::table('prescriptions')
             ->whereDate('created_at', Carbon::today())
             ->count();
 
-        // Completed orders today
         $completedOrdersToday = DB::table('sales')
             ->whereDate('sale_date', Carbon::today())
             ->where('status', 'completed')
             ->count();
 
-        // Today's revenue
         $todayRevenue = DB::table('sales')
             ->whereDate('sale_date', Carbon::today())
             ->where('status', 'completed')
             ->sum('total_amount');
 
-        // Approved orders today
         $approvedOrdersToday = DB::table('prescriptions')
             ->whereDate('updated_at', Carbon::today())
             ->where('status', 'approved')
@@ -220,16 +269,15 @@ class DashboardController extends Controller
     {
         $criticalAlerts = [];
 
-        // Expired products with remaining quantity
         $expiredProducts = DB::table('products')
             ->join('product_batches', 'products.id', '=', 'product_batches.product_id')
             ->where('product_batches.expiration_date', '<', Carbon::now())
             ->where('product_batches.quantity_remaining', '>', 0)
             ->select(
-                'products.product_name', 
+                'products.product_name',
                 'products.product_code',
                 'product_batches.batch_number',
-                'product_batches.expiration_date', 
+                'product_batches.expiration_date',
                 'product_batches.quantity_remaining'
             )
             ->get();
@@ -243,12 +291,11 @@ class DashboardController extends Controller
             ];
         }
 
-        // Critical products out of stock (assuming you have a product_type column)
         $zeroStockCriticalProducts = DB::table('products')
             ->leftJoin('product_batches', 'products.id', '=', 'product_batches.product_id')
             ->select('products.product_name', 'products.product_code')
             ->selectRaw('COALESCE(SUM(product_batches.quantity_remaining), 0) as total_stock')
-            ->where('products.product_type', 'essential') // Assuming you have this field
+            ->where('products.product_type', 'essential')
             ->groupBy('products.id', 'products.product_name', 'products.product_code')
             ->having('total_stock', '=', 0)
             ->get();
@@ -262,7 +309,6 @@ class DashboardController extends Controller
             ];
         }
 
-        // High value pending orders over 24 hours
         $highValuePendingOrders = DB::table('prescriptions')
             ->where('status', 'pending')
             ->where('created_at', '<', Carbon::now()->subHours(24))
@@ -318,7 +364,6 @@ class DashboardController extends Controller
     public function checkInventoryAlerts()
     {
         try {
-            // Count low stock products
             $lowStockCount = DB::table('products')
                 ->leftJoin('product_batches', 'products.id', '=', 'product_batches.product_id')
                 ->select('products.id', 'products.reorder_level')
@@ -329,7 +374,6 @@ class DashboardController extends Controller
                 ->whereNotNull('products.reorder_level')
                 ->count();
 
-            // Count out of stock products
             $outOfStockCount = DB::table('products')
                 ->leftJoin('product_batches', 'products.id', '=', 'product_batches.product_id')
                 ->select('products.id')
@@ -338,7 +382,6 @@ class DashboardController extends Controller
                 ->having('total_stock', '=', 0)
                 ->count();
 
-            // Count products with batches expiring within 30 days
             $expiringCount = DB::table('products')
                 ->join('product_batches', 'products.id', '=', 'product_batches.product_id')
                 ->where('product_batches.expiration_date', '<=', Carbon::now()->addDays(30))
@@ -349,7 +392,6 @@ class DashboardController extends Controller
 
             $totalCount = $lowStockCount + $outOfStockCount + $expiringCount;
 
-            // Count critical items (out of stock + expiring within 7 days)
             $criticalExpiringCount = DB::table('products')
                 ->join('product_batches', 'products.id', '=', 'product_batches.product_id')
                 ->where('product_batches.expiration_date', '<=', Carbon::now()->addDays(7))
@@ -381,9 +423,6 @@ class DashboardController extends Controller
         }
     }
 
-    /**
-     * Get detailed stock information for a product
-     */
     public function getProductStockDetails($productId)
     {
         $stockDetails = DB::table('product_batches')
@@ -400,12 +439,8 @@ class DashboardController extends Controller
         ]);
     }
 
-    /**
-     * Get products that need immediate attention
-     */
     public function getUrgentItems()
     {
-        // Products expiring within 7 days
         $urgentExpiring = DB::table('products')
             ->join('product_batches', 'products.id', '=', 'product_batches.product_id')
             ->where('product_batches.expiration_date', '<=', Carbon::now()->addDays(7))
@@ -421,7 +456,6 @@ class DashboardController extends Controller
             ->orderBy('product_batches.expiration_date', 'asc')
             ->get();
 
-        // Products completely out of stock
         $outOfStock = DB::table('products')
             ->leftJoin('product_batches', 'products.id', '=', 'product_batches.product_id')
             ->select(
@@ -440,19 +474,13 @@ class DashboardController extends Controller
         ]);
     }
 
-    /**
-     * Alternative profit calculation method using weighted average cost
-     * This provides more accurate profit calculation when batch tracking isn't available in sales
-     */
     private function getAlternateProfitCalculation()
     {
-        // Get total revenue from completed sales
         $totalRevenue = DB::table('sale_items')
             ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
             ->where('sales.status', 'completed')
             ->sum('sale_items.subtotal');
 
-        // Calculate weighted average cost per product
         $weightedCosts = DB::table('product_batches')
             ->select('product_id')
             ->selectRaw('SUM(quantity_received * unit_cost) / SUM(quantity_received) as weighted_avg_cost')
@@ -460,7 +488,6 @@ class DashboardController extends Controller
             ->get()
             ->keyBy('product_id');
 
-        // Calculate total cost of goods sold using weighted average
         $totalCOGS = 0;
         $salesWithCosts = DB::table('sale_items')
             ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
@@ -481,17 +508,12 @@ class DashboardController extends Controller
         ];
     }
 
-    /**
-     * Get inventory turnover metrics
-     */
     public function getInventoryMetrics()
     {
-        // Average inventory value
         $avgInventoryValue = DB::table('product_batches')
             ->selectRaw('AVG(quantity_remaining * unit_cost) as avg_value')
             ->value('avg_value');
 
-        // Inventory turnover calculation
         $annualCOGS = DB::table('sale_items')
             ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
             ->join(DB::raw('(SELECT product_id, AVG(unit_cost) as avg_unit_cost FROM product_batches GROUP BY product_id) as avg_costs'), 'sale_items.product_id', '=', 'avg_costs.product_id')

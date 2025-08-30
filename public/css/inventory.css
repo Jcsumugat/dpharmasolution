@@ -79,7 +79,7 @@ body {
 .header-bar {
     background: linear-gradient(135deg, var(--color-primary) 0%, #764ba2 100%);
     border-radius: var(--radius-lg);
-    padding: 2rem;
+    padding: 1.8rem;
     margin-bottom: 2rem;
     box-shadow: var(--shadow-sm);
     border: 1px solid rgba(255, 255, 255, 0.2);
@@ -87,11 +87,10 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 1.5rem;
 }
 
 .page-title {
-    font-size: var(--font-size-4xl);
+    font-size: 2.25rem;
     font-weight: var(--font-weight-extrabold);
     color: var(--color-text-inverse);
     margin: 0;
@@ -279,7 +278,7 @@ body {
 
 .inventory-table th,
 .inventory-table td {
-    text-align: left;
+    text-align: center;
     vertical-align: middle;
     padding: 1rem;
     font-size: var(--font-size-sm);
@@ -349,11 +348,13 @@ body {
 
 /* Responsive fix for table alignment */
 @media (max-width: 900px) {
+
     .inventory-table th,
     .inventory-table td {
         padding: 0.75rem 0.5rem;
         font-size: var(--font-size-xs);
     }
+
     .table-wrapper {
         margin: 0 0.25rem;
     }
@@ -384,7 +385,7 @@ body {
 }
 
 .btn {
-    padding: 0.75rem 1rem;
+    padding: 1rem;
     border: none;
     border-radius: var(--radius);
     font-size: var(--font-size-sm);
@@ -404,6 +405,12 @@ body {
     white-space: nowrap;
 }
 
+btn btn-danger btn-sm:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+    background: linear-gradient(135deg, #e5e7eb 0%, #f3f4f6 100%);
+}
+
 .btn:hover {
     transform: translateY(-1px);
     box-shadow: var(--shadow-md);
@@ -421,6 +428,15 @@ body {
 
 .btn-primary:hover {
     background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: var(--color-text-inverse);
+}
+
+.btn-danger:hover {
+    background: linear-gradient(135deg, #d85a5a 0%, #c14646 100%);
 }
 
 .btn-sort {
@@ -557,6 +573,8 @@ body {
 
 .form-group {
     position: relative;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
 }
 
 .form-group input,
@@ -580,9 +598,6 @@ body {
 }
 
 .form-group label {
-    position: absolute;
-    top: -0.5rem;
-    left: 0.75rem;
     background: var(--color-bg-primary);
     padding: 0 0.25rem;
     font-size: var(--font-size-xs);
