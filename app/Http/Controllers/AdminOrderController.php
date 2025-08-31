@@ -30,17 +30,17 @@ class AdminOrderController extends Controller
             ->latest()
             ->get();
 
+        // Only show products with non-expired available stock
         $products = Product::whereHas('batches', function ($q) {
-            $q->where('quantity_remaining', '>', 0);
+            $q->where('quantity_remaining', '>', 0)
+              ->where('expiration_date', '>', now());
         })->get();
 
         return view('orders.orders', compact('prescriptions', 'products'));
     }
-    
 
     public function getSaleDetails($saleId)
     {
-
         try {
             $sale = Sale::with(['customer', 'prescription'])
                 ->where('id', $saleId)
@@ -164,16 +164,19 @@ class AdminOrderController extends Controller
                     throw new \Exception("Product not found for prescription item {$prescItem->id}");
                 }
 
+                // Only get non-expired batches for pricing
                 $latestBatch = ProductBatch::where('product_id', $product->id)
                     ->where('quantity_remaining', '>', 0)
+                    ->where('expiration_date', '>', now()) // Exclude expired batches
                     ->whereNotNull('sale_price')
-                    ->orderBy('created_at', 'desc')
+                    ->orderBy('expiration_date', 'asc') // FIFO: earliest expiring first
+                    ->orderBy('received_date', 'asc')
                     ->first();
 
                 $salePrice = $latestBatch ? (float)$latestBatch->sale_price : 0;
 
                 if ($salePrice <= 0) {
-                    throw new \Exception("Invalid sale price for product {$product->product_name}");
+                    throw new \Exception("No available non-expired stock with valid pricing for product {$product->product_name}");
                 }
 
                 $subtotal = $prescItem->quantity * $salePrice;
@@ -188,13 +191,15 @@ class AdminOrderController extends Controller
                 ]);
             }
 
+            // Check stock availability excluding expired batches
             $stockErrors = [];
             foreach ($prescriptionItems as $item) {
-                $totalBatchStock = ProductBatch::where('product_id', $item->product_id)
+                $totalAvailableStock = ProductBatch::where('product_id', $item->product_id)
+                    ->where('expiration_date', '>', now()) // Exclude expired batches
                     ->sum('quantity_remaining');
 
-                if ($totalBatchStock < $item->quantity) {
-                    $stockErrors[] = "Insufficient stock for {$item->product->product_name}. Available: {$totalBatchStock}, Required: {$item->quantity}";
+                if ($totalAvailableStock < $item->quantity) {
+                    $stockErrors[] = "Insufficient non-expired stock for {$item->product->product_name}. Available: {$totalAvailableStock}, Required: {$item->quantity}";
                 }
             }
 
@@ -210,7 +215,7 @@ class AdminOrderController extends Controller
                 DB::rollBack();
                 return response()->json([
                     'success' => false,
-                    'message' => 'Order total is zero. Please check product prices.'
+                    'message' => 'Order total is zero. Please check product prices or stock availability.'
                 ], 400);
             }
 
@@ -229,9 +234,12 @@ class AdminOrderController extends Controller
             foreach ($prescriptionItems as $prescItem) {
                 $product = $prescItem->product ?? Product::find($prescItem->product_id);
 
+                // Get price from earliest expiring non-expired batch
                 $latestBatch = ProductBatch::where('product_id', $product->id)
                     ->where('quantity_remaining', '>', 0)
-                    ->latest('created_at')
+                    ->where('expiration_date', '>', now()) // Exclude expired batches
+                    ->orderBy('expiration_date', 'asc')
+                    ->orderBy('received_date', 'asc')
                     ->first();
 
                 $itemPrice = $latestBatch ? (float)$latestBatch->sale_price : 0;
@@ -245,10 +253,13 @@ class AdminOrderController extends Controller
                     'subtotal' => $itemSubtotal
                 ]);
 
+                // Deduct stock using FIFO from non-expired batches only
                 $qtyToDeduct = $prescItem->quantity;
                 $batches = ProductBatch::where('product_id', $prescItem->product_id)
                     ->where('quantity_remaining', '>', 0)
-                    ->orderBy('expiration_date', 'asc')
+                    ->where('expiration_date', '>', now()) // Exclude expired batches
+                    ->orderBy('expiration_date', 'asc') // FIFO
+                    ->orderBy('received_date', 'asc')
                     ->lockForUpdate()
                     ->get();
 
@@ -267,8 +278,13 @@ class AdminOrderController extends Controller
                         'quantity' => -$deduct,
                         'reference_id' => $sale->id,
                         'reference_type' => 'sale',
-                        'notes' => "Sale for prescription #{$prescriptionId}, batch {$batch->id}"
+                        'notes' => "Sale for prescription #{$prescriptionId}, batch {$batch->id} (non-expired)"
                     ]);
+                }
+
+                // If we couldn't fulfill the entire quantity from non-expired batches
+                if ($qtyToDeduct > 0) {
+                    throw new \Exception("Unable to fulfill order for {$product->product_name} - insufficient non-expired stock");
                 }
             }
 
@@ -419,6 +435,7 @@ class AdminOrderController extends Controller
             ], 500);
         }
     }
+
     public function storePrescriptionItems(Request $request, $prescriptionId)
     {
         try {
@@ -450,34 +467,58 @@ class AdminOrderController extends Controller
             foreach ($request->items as $item) {
                 $product = Product::findOrFail($item['product_id']);
 
-                // Find batch using FIFO
+                // Find non-expired batch using FIFO
                 $batch = ProductBatch::where('product_id', $item['product_id'])
                     ->where('quantity_remaining', '>=', $item['quantity'])
+                    ->where('expiration_date', '>', now()) // Exclude expired batches
                     ->orderBy('expiration_date', 'asc')
+                    ->orderBy('received_date', 'asc')
                     ->first();
 
                 if (!$batch) {
+                    // Check if total non-expired stock can fulfill the request
+                    $totalAvailableStock = ProductBatch::where('product_id', $item['product_id'])
+                        ->where('expiration_date', '>', now())
+                        ->sum('quantity_remaining');
+
                     DB::rollBack();
                     return response()->json([
                         'success' => false,
-                        'message' => "Insufficient stock for {$product->product_name}"
+                        'message' => "Insufficient non-expired stock for {$product->product_name}. Available: {$totalAvailableStock}, Required: {$item['quantity']}"
                     ], 400);
                 }
 
-                PrescriptionItem::create([
+                $itemData = [
                     'prescription_id' => $prescriptionId,
                     'product_id' => $product->id,
-                    'product_name' => $product->product_name,
                     'quantity' => $item['quantity'],
-                    'batch_id' => $batch->id  // <-- Assign batch
+                    'product_name' => $product->product_name
+                ];
+
+                // Add batch reference if your prescription_items table has it
+                if (Schema::hasColumn('prescription_items', 'batch_id')) {
+                    $itemData['batch_id'] = $batch->id;
+                }
+
+                if (Schema::hasColumn('prescription_items', 'batch_number')) {
+                    $itemData['batch_number'] = $batch->batch_number;
+                }
+
+                PrescriptionItem::create($itemData);
+
+                Log::info("Selected earliest expiring non-expired batch", [
+                    'product' => $product->product_name,
+                    'batch_number' => $batch->batch_number,
+                    'expiration_date' => $batch->expiration_date,
+                    'quantity_remaining' => $batch->quantity_remaining,
+                    'selected_quantity' => $item['quantity']
                 ]);
             }
 
             DB::commit();
-
             return response()->json([
                 'success' => true,
-                'message' => 'Products saved successfully with batches!'
+                'message' => 'Products saved successfully with FIFO batch selection (excluding expired batches)!'
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -514,13 +555,19 @@ class AdminOrderController extends Controller
                     continue;
                 }
 
+                // Get price from earliest expiring non-expired batch
                 $latestBatch = ProductBatch::where('product_id', $item->product_id)
                     ->where('quantity_remaining', '>', 0)
-                    ->latest('created_at')
+                    ->where('expiration_date', '>', now()) // Exclude expired batches
+                    ->orderBy('expiration_date', 'asc')
+                    ->orderBy('received_date', 'asc')
                     ->first();
 
                 $unitPrice = $latestBatch ? (float)$latestBatch->sale_price : 0;
+
+                // Calculate available stock excluding expired batches
                 $stockAvailable = ProductBatch::where('product_id', $item->product_id)
+                    ->where('expiration_date', '>', now())
                     ->sum('quantity_remaining');
 
                 $itemData = [
@@ -560,13 +607,16 @@ class AdminOrderController extends Controller
 
         $completedOrders->each(function ($order) {
             $total = $order->items->sum(function ($item) {
+                // For completed sales, we can use historical pricing from sale_items
+                // But if not available, get from non-expired batches
                 $latestBatch = ProductBatch::where('product_id', $item->product_id)
                     ->where('quantity_remaining', '>', 0)
-                    ->latest('created_at')
+                    ->where('expiration_date', '>', now()) // Exclude expired batches
+                    ->orderBy('expiration_date', 'asc')
                     ->first();
 
                 $price = $latestBatch ? $latestBatch->sale_price : 0;
-                $qty   = $item->approved_quantity ?? $item->quantity;
+                $qty = $item->approved_quantity ?? $item->quantity;
 
                 return $qty * $price;
             });
@@ -578,10 +628,10 @@ class AdminOrderController extends Controller
             $order->setAttribute('payment_method', $paymentMethod);
         });
 
-        $totalSales     = $completedOrders->sum('total_amount');
+        $totalSales = $completedOrders->sum('total_amount');
         $completedCount = $completedOrders->count();
 
-        $todayStart  = now()->startOfDay();
+        $todayStart = now()->startOfDay();
         $todayOrders = $completedOrders->filter(function ($o) use ($todayStart) {
             $dt = $o->sale_date ?? ($o->updated_at ?? $o->created_at);
             return $dt >= $todayStart;
@@ -596,13 +646,15 @@ class AdminOrderController extends Controller
 
         $pendingOrders->each(function ($order) {
             $total = $order->items->sum(function ($item) {
+                // Calculate using current non-expired batch prices
                 $latestBatch = ProductBatch::where('product_id', $item->product_id)
                     ->where('quantity_remaining', '>', 0)
-                    ->latest('created_at')
+                    ->where('expiration_date', '>', now()) // Exclude expired batches
+                    ->orderBy('expiration_date', 'asc')
                     ->first();
 
                 $price = $latestBatch ? $latestBatch->sale_price : 0;
-                $qty   = $item->approved_quantity ?? $item->quantity;
+                $qty = $item->approved_quantity ?? $item->quantity;
 
                 return $qty * $price;
             });
@@ -616,13 +668,13 @@ class AdminOrderController extends Controller
         $averageOrder = $completedCount > 0 ? $totalSales / $completedCount : 0;
 
         $salesStats = [
-            'total_sales'     => $totalSales,
+            'total_sales' => $totalSales,
             'completed_count' => $completedCount,
-            'today_sales'     => $todaySales,
-            'today_count'     => $todayCount,
-            'pending_count'   => $pendingCount,
-            'pending_value'   => $pendingValue,
-            'average_order'   => $averageOrder,
+            'today_sales' => $todaySales,
+            'today_count' => $todayCount,
+            'pending_count' => $pendingCount,
+            'pending_value' => $pendingValue,
+            'average_order' => $averageOrder,
         ];
 
         $sales = $completedOrders;
@@ -654,16 +706,17 @@ class AdminOrderController extends Controller
                 ->with(['product', 'batch'])
                 ->get()
                 ->map(function ($item) {
-                    // Get price from batch if available, otherwise get latest batch price
+                    // Get price from batch if available, otherwise get latest non-expired batch price
                     $unitPrice = 0;
 
-                    if ($item->batch) {
-                        // Use the assigned batch price
+                    if ($item->batch && $item->batch->expiration_date > now()) {
+                        // Use the assigned batch price if it's not expired
                         $unitPrice = (float)$item->batch->sale_price;
                     } else {
-                        // Fallback: get price from latest available batch
+                        // Fallback: get price from latest available non-expired batch
                         $latestBatch = ProductBatch::where('product_id', $item->product_id)
                             ->where('quantity_remaining', '>', 0)
+                            ->where('expiration_date', '>', now()) // Exclude expired batches
                             ->whereNotNull('sale_price')
                             ->orderBy('expiration_date', 'asc')
                             ->orderBy('received_date', 'asc')
@@ -701,9 +754,10 @@ class AdminOrderController extends Controller
                 ->with('product')
                 ->get()
                 ->map(function ($item) {
-                    // Get the earliest expiring batch for pricing
+                    // Get the earliest expiring non-expired batch for pricing
                     $batch = ProductBatch::where('product_id', $item->product_id)
                         ->where('quantity_remaining', '>', 0)
+                        ->where('expiration_date', '>', now()) // Exclude expired batches
                         ->whereNotNull('expiration_date')
                         ->orderBy('expiration_date', 'asc')
                         ->orderBy('received_date', 'asc')

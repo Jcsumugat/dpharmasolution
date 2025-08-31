@@ -38,16 +38,13 @@ class ProductBatch extends Model
         return $this->belongsTo(Product::class);
     }
 
-    public function supplier()
-    {
-        return $this->belongsTo(Supplier::class);
-    }
+
 
     // Get stock movements related to this batch
     public function stockMovements()
     {
         return $this->hasMany(StockMovement::class, 'product_id', 'product_id')
-                    ->where('notes', 'LIKE', '%Batch: ' . $this->batch_number . '%');
+            ->where('notes', 'LIKE', '%Batch: ' . $this->batch_number . '%');
     }
 
     // Scopes
@@ -69,7 +66,7 @@ class ProductBatch extends Model
     public function scopeExpiringSoon($query, $days = 30)
     {
         return $query->where('expiration_date', '<=', now()->addDays($days))
-                    ->where('expiration_date', '>', now());
+            ->where('expiration_date', '>', now());
     }
 
     public function scopeAvailable($query)
@@ -327,9 +324,9 @@ class ProductBatch extends Model
     public function getBatchMovements()
     {
         return StockMovement::where('product_id', $this->product_id)
-                          ->where('notes', 'LIKE', '%Batch: ' . $this->batch_number . '%')
-                          ->orderBy('created_at', 'desc')
-                          ->get();
+            ->where('notes', 'LIKE', '%Batch: ' . $this->batch_number . '%')
+            ->orderBy('created_at', 'desc')
+            ->get();
     }
 
     /**
@@ -352,5 +349,48 @@ class ProductBatch extends Model
         );
 
         return $batch;
+    }
+    protected static function booted()
+    {
+        static::created(function ($batch) {
+            $batch->updateProductStockQuantity();
+        });
+
+        static::updated(function ($batch) {
+            $batch->updateProductStockQuantity();
+        });
+
+        static::deleted(function ($batch) {
+            if ($batch->product) {
+                $batch->product->updateCachedFields();
+            }
+        });
+    }
+    private function updateProductStockQuantity()
+    {
+        if ($this->product) {
+            $this->product->updateCachedFields();
+        }
+    }
+       public function batches()
+    {
+        return $this->hasMany(ProductBatch::class)->orderBy('expiration_date', 'asc');
+    }
+
+    public function supplier()
+    {
+        return $this->belongsTo(Supplier::class);
+    }
+    public function updateStockQuantity()
+    {
+        $this->update([
+            'stock_quantity' => $this->batches()->sum('quantity_remaining')
+        ]);
+    }
+
+    // Add cached fields update method (called from ProductBatch model)
+    public function updateCachedFields()
+    {
+        $this->updateStockQuantity();
     }
 }

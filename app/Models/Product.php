@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 
 class Product extends Model
 {
@@ -54,7 +55,6 @@ class Product extends Model
 
     protected $casts = [
         'reorder_level' => 'integer',
-        'stock_quantity' => 'integer',
         'notification_sent_at' => 'datetime',
     ];
 
@@ -74,6 +74,7 @@ class Product extends Model
         return $this->hasMany(ProductBatch::class);
     }
 
+    // Only non-expired batches with stock
     public function availableBatches()
     {
         return $this->hasMany(ProductBatch::class)
@@ -81,6 +82,7 @@ class Product extends Model
             ->where('expiration_date', '>', now());
     }
 
+    // Expired batches (for management purposes)
     public function expiredBatches()
     {
         return $this->hasMany(ProductBatch::class)
@@ -93,6 +95,7 @@ class Product extends Model
         return $this->hasMany(PrescriptionItem::class);
     }
 
+    // UPDATED: Only count non-expired stock
     public function getTotalStockAttribute()
     {
         if ($this->relationLoaded('batches')) {
@@ -108,6 +111,23 @@ class Product extends Model
             ->sum('quantity_remaining');
     }
 
+    // UPDATED: Get current stock quantity (from database if column exists, otherwise calculate)
+    public function getStockQuantityAttribute()
+    {
+        // If stock_quantity column exists and is set, use it
+        if (isset($this->attributes['stock_quantity'])) {
+            return (int) $this->attributes['stock_quantity'];
+        }
+
+        // Otherwise calculate from available batches
+        return $this->available_stock;
+    }
+
+    // UPDATED: Get available stock (excluding expired)
+    public function getAvailableStockAttribute()
+    {
+        return $this->availableBatches()->sum('quantity_remaining');
+    }
 
     public function getEarliestExpirationAttribute()
     {
@@ -123,6 +143,7 @@ class Product extends Model
             ->first()?->expiration_date;
     }
 
+    // UPDATED: Only calculate value from non-expired batches
     public function getTotalValueAttribute()
     {
         return $this->availableBatches()
@@ -130,16 +151,31 @@ class Product extends Model
             ->value('SUM(unit_cost * quantity_remaining)') ?: 0;
     }
 
+    // UPDATED: Get price from FIFO non-expired batch
     public function getCurrentSalePriceAttribute()
     {
-        // Get the sale price from the batch that would be sold first (FIFO)
+        // Get the sale price from the batch that would be sold first (FIFO) - excluding expired
         return $this->availableBatches()
             ->orderBy('expiration_date')
             ->orderBy('received_date')
             ->first()?->sale_price;
     }
 
+    // UPDATED: Get unit price from FIFO non-expired batch
+    public function getUnitPriceAttribute()
+    {
+        // Get price from the earliest expiring non-expired batch (FIFO)
+        $batch = $this->batches()
+            ->where('quantity_remaining', '>', 0)
+            ->where('expiration_date', '>', now())
+            ->orderBy('expiration_date', 'asc')
+            ->orderBy('received_date', 'asc')
+            ->first();
 
+        return $batch ? $batch->sale_price : 0;
+    }
+
+    // Scopes for filtering products
     public function scopeExpiringSoon($query, $days = 30)
     {
         return $query->whereHas('batches', function ($q) use ($days) {
@@ -149,10 +185,46 @@ class Product extends Model
         });
     }
 
+    // UPDATED: Only products with non-expired stock
+    public function scopeInStock($query)
+    {
+        return $query->whereHas('batches', function ($q) {
+            $q->where('quantity_remaining', '>', 0)
+                ->where('expiration_date', '>', now());
+        });
+    }
+
+    // UPDATED: Low stock based on non-expired inventory
+    public function scopeLowStock($query, $threshold = null)
+    {
+        return $query->whereHas('batches', function ($q) use ($threshold) {
+            $q->where('quantity_remaining', '>', 0)
+                ->where('expiration_date', '>', now());
+        })->where(function ($query) use ($threshold) {
+            $query->whereRaw('(
+                SELECT COALESCE(SUM(quantity_remaining), 0)
+                FROM product_batches
+                WHERE product_batches.product_id = products.id
+                AND quantity_remaining > 0
+                AND expiration_date > NOW()
+            ) <= COALESCE(?, products.reorder_level, 10)', [$threshold]);
+        });
+    }
+
+    // Products with near expiry batches
+    public function scopeNearExpiry($query, $days = 30)
+    {
+        return $query->whereHas('batches', function ($q) use ($days) {
+            $q->where('expiration_date', '<=', now()->addDays($days))
+                ->where('expiration_date', '>', now())
+                ->where('quantity_remaining', '>', 0);
+        });
+    }
+
     // Helper Methods
     public function isLowStock()
     {
-        return $this->total_stock <= $this->reorder_level;
+        return $this->available_stock <= $this->reorder_level;
     }
 
     public function hasExpiredBatches()
@@ -171,7 +243,7 @@ class Product extends Model
     }
 
     /**
-     * Get batches for a specific quantity using FIFO (First In, First Out)
+     * UPDATED: Get batches for a specific quantity using FIFO (excluding expired batches)
      */
     public function getBatchesForQuantity($requestedQuantity)
     {
@@ -182,14 +254,16 @@ class Product extends Model
 
         $allocation = [];
         $remainingQuantity = $requestedQuantity;
-        $totalAvailable = $this->stock_quantity;
+        $totalAvailable = $this->available_stock; // Uses non-expired stock only
 
         if ($totalAvailable < $requestedQuantity) {
             return [
                 'can_fulfill' => false,
                 'shortage' => $requestedQuantity - $totalAvailable,
                 'available' => $totalAvailable,
-                'batches' => []
+                'batches' => [],
+                'expired_stock_note' => $this->hasExpiredBatches() ?
+                    "Note: {$this->getExpiredQuantity()} units available in expired batches" : null
             ];
         }
 
@@ -223,7 +297,7 @@ class Product extends Model
     }
 
     /**
-     * Update all cached fields from batches (call this after batch changes)
+     * UPDATED: Update cached fields including stock_quantity (if column exists)
      */
     public function updateCachedFields()
     {
@@ -237,13 +311,33 @@ class Product extends Model
             return $batch->sale_price * $batch->quantity_remaining;
         });
 
-        $this->update([
-            'stock_quantity' => $totalQuantity,
-            'average_unit_cost' => $totalQuantity > 0 ? $totalCostValue / $totalQuantity : 0,
-            'average_sale_price' => $totalQuantity > 0 ? $totalSaleValue / $totalQuantity : 0,
-            'lowest_sale_price' => $availableBatches->min('sale_price'),
-            'highest_sale_price' => $availableBatches->max('sale_price'),
-        ]);
+        $updates = [];
+
+        // Only update stock_quantity if the column exists
+        if (Schema::hasColumn('products', 'stock_quantity')) {
+            $updates['stock_quantity'] = $totalQuantity;
+        }
+
+        // Add other calculated fields if columns exist
+        if (Schema::hasColumn('products', 'average_unit_cost')) {
+            $updates['average_unit_cost'] = $totalQuantity > 0 ? $totalCostValue / $totalQuantity : 0;
+        }
+
+        if (Schema::hasColumn('products', 'average_sale_price')) {
+            $updates['average_sale_price'] = $totalQuantity > 0 ? $totalSaleValue / $totalQuantity : 0;
+        }
+
+        if (Schema::hasColumn('products', 'lowest_sale_price')) {
+            $updates['lowest_sale_price'] = $availableBatches->min('sale_price');
+        }
+
+        if (Schema::hasColumn('products', 'highest_sale_price')) {
+            $updates['highest_sale_price'] = $availableBatches->max('sale_price');
+        }
+
+        if (!empty($updates)) {
+            $this->update($updates);
+        }
     }
 
     /**
@@ -255,23 +349,28 @@ class Product extends Model
     }
 
     /**
-     * Get batch summary for display
+     * UPDATED: Get batch summary for display (excluding expired)
      */
     public function getBatchSummary()
     {
-        $batches = $this->availableBatches()->get();
+        $availableBatches = $this->availableBatches()->get();
+        $expiredBatches = $this->expiredBatches()->get();
 
         return [
-            'total_batches' => $batches->count(),
-            'total_quantity' => $this->stock_quantity,
+            'total_available_batches' => $availableBatches->count(),
+            'total_expired_batches' => $expiredBatches->count(),
+            'total_quantity' => $this->available_stock,
+            'expired_quantity' => $expiredBatches->sum('quantity_remaining'),
             'earliest_expiry' => $this->earliest_expiration,
             'latest_expiry' => $this->latest_expiration,
-            'expiring_soon' => $batches->where('expiration_date', '<=', now()->addDays(30))->count(),
-            'average_unit_cost' => $this->average_unit_cost,
-            'average_sale_price' => $this->average_sale_price,
+            'expiring_soon' => $availableBatches->where('expiration_date', '<=', now()->addDays(30))->count(),
+            'average_unit_cost' => $availableBatches->isNotEmpty() ?
+                $availableBatches->avg('unit_cost') : 0,
+            'average_sale_price' => $availableBatches->isNotEmpty() ?
+                $availableBatches->avg('sale_price') : 0,
             'price_range' => [
-                'min_sale_price' => $this->lowest_sale_price,
-                'max_sale_price' => $this->highest_sale_price,
+                'min_sale_price' => $availableBatches->min('sale_price'),
+                'max_sale_price' => $availableBatches->max('sale_price'),
             ]
         ];
     }
@@ -279,20 +378,6 @@ class Product extends Model
     public function posTransactionItems()
     {
         return $this->hasMany(PosTransactionItem::class);
-    }
-
-
-
-    public function getUnitPriceAttribute()
-    {
-        // Get price from the earliest expiring batch (FIFO)
-        $batch = $this->batches()
-            ->where('quantity_remaining', '>', 0)
-            ->where('expiration_date', '>', now())
-            ->orderBy('expiration_date', 'asc')
-            ->first();
-
-        return $batch ? $batch->sale_price : 0;
     }
 
     // Add this method to get total sales for a product
@@ -315,32 +400,87 @@ class Product extends Model
             ->sum('quantity');
     }
 
-    // Add this scope for products with stock
-    public function scopeInStock($query)
+    /**
+     * UPDATED: Check if product can fulfill quantity from non-expired stock
+     */
+    public function canFulfillQuantity($quantity)
     {
-        return $query->whereHas('batches', function ($q) {
-            $q->where('quantity_remaining', '>', 0)
-                ->where('expiration_date', '>', now());
-        });
+        return $this->available_stock >= $quantity;
     }
 
-    // Add this scope for low stock products
-    public function scopeLowStock($query, $threshold = 10)
+    /**
+     * Get stock status with expiration information
+     */
+    public function getStockStatus()
     {
-        return $query->whereHas('batches', function ($q) use ($threshold) {
-            $q->where('quantity_remaining', '<=', $threshold)
-                ->where('quantity_remaining', '>', 0)
-                ->where('expiration_date', '>', now());
-        });
+        $availableStock = $this->available_stock;
+        $expiredStock = $this->getExpiredQuantity();
+        $totalStock = $availableStock + $expiredStock;
+
+        return [
+            'available_stock' => $availableStock,
+            'expired_stock' => $expiredStock,
+            'total_stock' => $totalStock,
+            'is_low_stock' => $this->isLowStock(),
+            'has_expired_batches' => $this->hasExpiredBatches(),
+            'stock_status' => $this->getStockStatusMessage()
+        ];
     }
 
-    // Add this scope for near expiry products
-    public function scopeNearExpiry($query, $days = 30)
+    /**
+     * Get human-readable stock status message
+     */
+    public function getStockStatusMessage()
     {
-        return $query->whereHas('batches', function ($q) use ($days) {
-            $q->where('expiration_date', '<=', now()->addDays($days))
-                ->where('expiration_date', '>', now())
-                ->where('quantity_remaining', '>', 0);
-        });
+        $availableStock = $this->available_stock;
+        $expiredStock = $this->getExpiredQuantity();
+
+        if ($availableStock <= 0 && $expiredStock > 0) {
+            return "Out of stock - {$expiredStock} units expired";
+        } elseif ($availableStock <= 0) {
+            return "Out of stock";
+        } elseif ($this->isLowStock()) {
+            $message = "Low stock - {$availableStock} units available";
+            if ($expiredStock > 0) {
+                $message .= " ({$expiredStock} expired)";
+            }
+            return $message;
+        } else {
+            $message = "In stock - {$availableStock} units available";
+            if ($expiredStock > 0) {
+                $message .= " ({$expiredStock} expired)";
+            }
+            return $message;
+        }
+    }
+
+    /**
+     * Check if product is available for sale (has non-expired stock)
+     */
+    public function isAvailableForSale()
+    {
+        return $this->available_stock > 0;
+    }
+
+    /**
+     * Get next batch to expire from available stock
+     */
+    public function getNextExpiringBatch()
+    {
+        return $this->availableBatches()
+            ->orderBy('expiration_date')
+            ->orderBy('received_date')
+            ->first();
+    }
+
+    /**
+     * Get batches expiring within specified days
+     */
+    public function getBatchesExpiringSoon($days = 30)
+    {
+        return $this->availableBatches()
+            ->where('expiration_date', '<=', now()->addDays($days))
+            ->orderBy('expiration_date')
+            ->get();
     }
 }

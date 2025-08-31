@@ -62,3 +62,4 @@
 [30-Aug-2025 23:39:56 Asia/Manila] PHP Fatal error:  Cannot declare class App\Models\ProductBatch, because the name is already in use in C:\Users\Toshiba Satellite\dpharmasolution\app\Models\ProductBatch.php on line 9
 [30-Aug-2025 23:45:37 Asia/Manila] PHP Fatal error:  Cannot declare class App\Models\ProductBatch, because the name is already in use in C:\Users\Toshiba Satellite\dpharmasolution\app\Models\ProductBatch.php on line 9
 [30-Aug-2025 23:48:40 Asia/Manila] PHP Fatal error:  Cannot declare class App\Models\ProductBatch, because the name is already in use in C:\Users\Toshiba Satellite\dpharmasolution\app\Models\ProductBatch.php on line 9
+[01-Sep-2025 01:41:04 Asia/Manila] PHP Fatal error:  Cannot redeclare App\Models\ProductBatch::supplier() in C:\Users\Toshiba Satellite\dpharmasolution\app\Models\ProductBatch.php on line 383

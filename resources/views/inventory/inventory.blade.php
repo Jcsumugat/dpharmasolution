@@ -33,8 +33,6 @@
         </div>
     @endif
 
-
-
     <div class="container fade-in" id="mainContent">
         <div class="header-bar">
             <h2 class="page-title">Inventory Management</h2>
@@ -58,17 +56,43 @@
                         <th>Product Name</th>
                         <th>Type</th>
                         <th>Sale Price</th>
-                        <th>Stock Level</th>
+                        <th>Available Stock</th>
                         <th>Batches</th>
                         <th>Earliest Expiry</th>
+                        <th>Status</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($products as $product)
                         @php
-                            $totalStock = $product->batches->sum('quantity_remaining');
-                            $isLowStock = $product->reorder_level && $totalStock <= $product->reorder_level;
+                            // Calculate available stock (non-expired batches only)
+                            $availableStock = $product->batches
+                                ->where('quantity_remaining', '>', 0)
+                                ->where('expiration_date', '>', now())
+                                ->sum('quantity_remaining');
+
+                            // Calculate expired stock
+                            $expiredStock = $product->batches
+                                ->where('quantity_remaining', '>', 0)
+                                ->where('expiration_date', '<=', now())
+                                ->sum('quantity_remaining');
+
+                            // Count available batches (non-expired)
+                            $availableBatches = $product->batches
+                                ->where('quantity_remaining', '>', 0)
+                                ->where('expiration_date', '>', now())
+                                ->count();
+
+                            // Check if low stock based on available stock
+                            $isLowStock = $product->reorder_level && $availableStock <= $product->reorder_level;
+
+                            // Get earliest expiring NON-EXPIRED batch
+                            $earliestAvailableBatch = $product->batches
+                                ->where('quantity_remaining', '>', 0)
+                                ->where('expiration_date', '>', now())
+                                ->sortBy('expiration_date')
+                                ->first();
                         @endphp
                         <tr class="{{ $isLowStock ? 'low-stock' : '' }}">
                             <td><strong>{{ $product->product_code }}</strong></td>
@@ -76,45 +100,67 @@
                             <td>
                                 <span class="badge badge-secondary">{{ $product->product_type }}</span>
                             </td>
-                            <td><strong>₱{{ number_format($product->current_sale_price ?? ($product->sale_price ?? 0), 2) }}</strong>
+                            <td>
+                                @if ($earliestAvailableBatch)
+                                    <strong>₱{{ number_format($earliestAvailableBatch->sale_price ?? 0, 2) }}</strong>
+                                @else
+                                    <span class="text-muted">No available stock</span>
+                                @endif
                             </td>
                             <td>
-                                <span class="{{ $isLowStock ? 'text-danger' : '' }}">
-                                    <strong>{{ number_format($totalStock) }}</strong>
-                                </span>
-                                @if ($product->reorder_level)
-                                    <br><small class="text-muted">Min: {{ $product->reorder_level }}</small>
-                                @endif
+                                <div>
+                                    <span
+                                        class="{{ $isLowStock ? 'text-danger' : ($availableStock <= 0 ? 'text-danger' : '') }}">
+                                        <strong>{{ number_format($availableStock) }}</strong>
+                                    </span>
+                                    @if ($expiredStock > 0)
+                                        <br><small class="text-danger">{{ number_format($expiredStock) }}
+                                            expired</small>
+                                    @endif
+                                    @if ($product->reorder_level)
+                                        <br><small class="text-muted">Min: {{ $product->reorder_level }}</small>
+                                    @endif
+                                </div>
                             </td>
                             <td>
                                 <button class="btn-link" onclick="inventoryViewBatches({{ $product->id }})"
                                     style="color: rgb(26, 25, 25);">
-                                    {{ $product->batches->count() }}
-                                    {{ $product->batches->count() === 1 ? 'batch' : 'batches' }}
+                                    {{ $availableBatches }}
+                                    {{ $availableBatches === 1 ? 'available' : 'available' }}
+                                    @if ($product->batches->count() > $availableBatches)
+                                        <br><small
+                                            class="text-muted">{{ $product->batches->count() - $availableBatches }}
+                                            expired</small>
+                                    @endif
                                 </button>
                             </td>
                             <td>
-                                @php
-                                    $earliestBatch = $product->batches
-                                        ->where('quantity_remaining', '>', 0)
-                                        ->sortBy('expiration_date')
-                                        ->first();
-                                @endphp
-                                @if ($earliestBatch)
+                                @if ($earliestAvailableBatch)
                                     @php
                                         $daysUntilExpiry = intval(
-                                            now()->diffInDays($earliestBatch->expiration_date, false),
+                                            now()->diffInDays($earliestAvailableBatch->expiration_date, false),
                                         );
                                     @endphp
                                     <span
                                         class="{{ $daysUntilExpiry <= 30 ? 'text-warning' : ($daysUntilExpiry <= 7 ? 'text-danger' : '') }}">
-                                        {{ \Carbon\Carbon::parse($earliestBatch->expiration_date)->format('M d, Y') }}
+                                        {{ \Carbon\Carbon::parse($earliestAvailableBatch->expiration_date)->format('M d, Y') }}
                                         @if ($daysUntilExpiry <= 30)
-                                            <br><small>({{ $daysUntilExpiry > 0 ? "{$daysUntilExpiry} days to Expire" : 'Expired' }})</small>
+                                            <br><small>({{ $daysUntilExpiry }} days left)</small>
                                         @endif
                                     </span>
                                 @else
-                                    <span class="text-muted">No stock</span>
+                                    <span class="text-danger">No available stock</span>
+                                @endif
+                            </td>
+                            <td>
+                                @if ($availableStock <= 0 && $expiredStock > 0)
+                                    <span class="badge badge-danger">Expired Stock Only</span>
+                                @elseif($isLowStock)
+                                    <span class="badge badge-warning">Low Stock</span>
+                                @elseif($availableStock <= 0)
+                                    <span class="badge badge-danger">Out of Stock</span>
+                                @else
+                                    <span class="badge badge-success">In Stock</span>
                                 @endif
                             </td>
                             <td>
@@ -123,18 +169,12 @@
                                         onclick="inventoryOpenBatchModal({{ $product->id }}, '{{ addslashes($product->product_name) }}')">
                                         Add Batch
                                     </button>
-                                    @if ($totalStock > 0)
-                                        <button type="button" class="btn btn-danger btn-sm"
-                                            onclick="inventoryOpenProductStockOut({{ $product->id }}, '{{ addslashes($product->product_name) }}', {{ $totalStock }})">
-                                            Stock Out
-                                        </button>
-                                    @endif
                                 </div>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" style="text-align:center; padding: 3rem;">
+                            <td colspan="9" style="text-align:center; padding: 3rem;">
                                 <div class="text-muted">
                                     <svg width="48" height="48" fill="currentColor" viewBox="0 0 16 16"
                                         style="margin-bottom: 1rem;">
@@ -152,82 +192,84 @@
         </div>
     </div>
 
+    <!-- Add Batch Modal -->
     <div class="modal-bg" id="inventoryBatchModal" style="display: none;">
         <div class="modal" style="max-width: 600px;">
             <div class="modal-header">
                 Add New Batch - <span id="inventoryModalProductName"></span>
                 <div class="modal-close" onclick="inventoryCloseBatchModal()">&times;</div>
             </div>
-           <div class="modal-body">
-    <form method="POST" id="inventoryBatchForm" action="">
-        @csrf
-        <input type="hidden" id="inventoryCurrentProductId" name="product_id" value="">
+            <div class="modal-body">
+                <form method="POST" id="inventoryBatchForm" action="">
+                    @csrf
+                    <input type="hidden" id="inventoryCurrentProductId" name="product_id" value="">
 
-        <div class="form-grid">
-            <!-- First row: Quantity and Expiration Date -->
-            <div class="form-group">
-                <input type="number" name="quantity_received" id="inventory_quantity_received"
-                    placeholder=" " required min="1" step="1">
-                <label for="inventory_quantity_received">Quantity Received</label>
+                    <div class="form-grid">
+                        <!-- First row: Quantity and Expiration Date -->
+                        <div class="form-group">
+                            <input type="number" name="quantity_received" id="inventory_quantity_received"
+                                placeholder=" " required min="1" step="1">
+                            <label for="inventory_quantity_received">Quantity Received</label>
+                        </div>
+
+                        <div class="form-group">
+                            <input type="date" name="expiration_date" id="inventory_expiration_date" placeholder=" "
+                                required>
+                            <label for="inventory_expiration_date">Expiration Date</label>
+                        </div>
+
+                        <!-- Second row: Unit Cost and Sale Price -->
+                        <div class="form-group">
+                            <input type="number" step="0.01" name="unit_cost" id="inventory_unit_cost"
+                                placeholder=" " required min="0">
+                            <label for="inventory_unit_cost">Unit Cost (₱)</label>
+                        </div>
+
+                        <div class="form-group">
+                            <input type="number" step="0.01" name="sale_price" id="inventory_sale_price"
+                                placeholder=" " min="0">
+                            <label for="inventory_sale_price">Sale Price (₱)</label>
+                        </div>
+
+                        <!-- Third row: Received Date and Supplier -->
+                        <div class="form-group">
+                            <input type="date" name="received_date" id="inventory_received_date" placeholder=" "
+                                required>
+                            <label for="inventory_received_date">Received Date</label>
+                        </div>
+
+                        <div class="form-group">
+                            <select name="supplier_id" id="inventory_supplier_id">
+                                <option value="">Use Product Default</option>
+                                @foreach ($suppliers ?? [] as $supplier)
+                                    @if (isset($supplier) && is_object($supplier))
+                                        <option value="{{ $supplier->id }}">{{ $supplier->name }}</option>
+                                    @endif
+                                @endforeach
+                            </select>
+                            <label for="inventory_supplier_id">Supplier</label>
+                        </div>
+
+                        <!-- Full width row: Notes -->
+                        <div class="form-group full-width">
+                            <textarea name="notes" id="inventory_notes" placeholder=" " rows="3" maxlength="1000"></textarea>
+                            <label for="inventory_notes">Notes (optional)</label>
+                            <small class="help-text">Maximum 1000 characters</small>
+                        </div>
+                    </div>
+
+                    <div class="modal-buttons">
+                        <button type="button" class="btn btn-cancel"
+                            onclick="inventoryCloseBatchModal()">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="inventoryBatchSubmitBtn">Add
+                            Batch</button>
+                    </div>
+                </form>
             </div>
-
-            <div class="form-group">
-                <input type="date" name="expiration_date" id="inventory_expiration_date"
-                    placeholder=" " required>
-                <label for="inventory_expiration_date">Expiration Date</label>
-            </div>
-
-            <!-- Second row: Unit Cost and Sale Price -->
-            <div class="form-group">
-                <input type="number" step="0.01" name="unit_cost" id="inventory_unit_cost"
-                    placeholder=" " required min="0">
-                <label for="inventory_unit_cost">Unit Cost (₱)</label>
-            </div>
-
-            <div class="form-group">
-                <input type="number" step="0.01" name="sale_price" id="inventory_sale_price"
-                    placeholder=" " min="0">
-                <label for="inventory_sale_price">Sale Price (₱)</label>
-            </div>
-
-            <!-- Third row: Received Date and Supplier -->
-            <div class="form-group">
-                <input type="date" name="received_date" id="inventory_received_date" placeholder=" "
-                    required>
-                <label for="inventory_received_date">Received Date</label>
-            </div>
-
-            <div class="form-group">
-                <select name="supplier_id" id="inventory_supplier_id">
-                    <option value="">Use Product Default</option>
-                    @foreach ($suppliers ?? [] as $supplier)
-                        @if (isset($supplier) && is_object($supplier))
-                            <option value="{{ $supplier->id }}">{{ $supplier->name }}</option>
-                        @endif
-                    @endforeach
-                </select>
-                <label for="inventory_supplier_id">Supplier</label>
-            </div>
-
-            <!-- Full width row: Notes -->
-            <div class="form-group full-width">
-                <textarea name="notes" id="inventory_notes" placeholder=" " rows="3" maxlength="1000"></textarea>
-                <label for="inventory_notes">Notes (optional)</label>
-                <small class="help-text">Maximum 1000 characters</small>
-            </div>
-        </div>
-
-        <div class="modal-buttons">
-            <button type="button" class="btn btn-cancel"
-                onclick="inventoryCloseBatchModal()">Cancel</button>
-            <button type="submit" class="btn btn-primary" id="inventoryBatchSubmitBtn">Add
-                Batch</button>
-        </div>
-    </form>
-</div>
         </div>
     </div>
 
+    <!-- View Batches Modal -->
     <div class="modal-bg" id="inventoryBatchesModal" style="display:none;">
         <div class="modal" style="max-width: 1200px; max-height: 90vh; overflow-y: auto;">
             <div class="modal-header" id="inventoryBatchesModalTitle">
@@ -242,6 +284,7 @@
         </div>
     </div>
 
+    <!-- Stock Out Modal -->
     <div class="modal-bg" id="inventoryStockOutModal" style="display:none;">
         <div class="modal" style="max-width: 500px;">
             <div class="modal-header">
@@ -330,29 +373,6 @@
             initializeFormValidation();
         });
 
-        function inventoryToggleDropdown() {
-            const dropdown = document.getElementById('inventoryDropdown');
-            if (dropdown) {
-                dropdown.classList.toggle('open');
-            }
-        }
-
-        function inventoryApplySort(column) {
-            const sortInput = document.getElementById('inventorySortInput');
-            const directionInput = document.getElementById('inventoryDirectionInput');
-            const sortForm = document.getElementById('inventorySortForm');
-
-            if (sortInput && directionInput && sortForm) {
-                if (sortInput.value === column) {
-                    directionInput.value = directionInput.value === 'asc' ? 'desc' : 'asc';
-                } else {
-                    sortInput.value = column;
-                    directionInput.value = 'asc';
-                }
-                sortForm.submit();
-            }
-        }
-
         function inventoryOpenBatchModal(productId, productName = '') {
             inventoryCurrentProductId = productId;
             inventoryCurrentProductName = productName;
@@ -367,6 +387,7 @@
                 return;
             }
 
+            // Set the correct form action for POST request
             form.action = `/dashboard/inventory/${productId}/batches`;
 
             if (productIdInput) {
@@ -415,31 +436,99 @@
             inventoryCurrentProductName = null;
         }
 
-        function inventoryViewBatches(productId) {
+        function inventoryViewBatches(productId, productName = '') {
+            console.log('Opening batches for product:', productId, productName); // Debug log
+
             inventoryCurrentProductId = productId;
+            inventoryCurrentProductName = productName;
+
             const modal = document.getElementById('inventoryBatchesModal');
             const content = document.getElementById('inventoryBatchesContent');
 
-            if (modal && content) {
-                modal.style.display = 'flex';
-                content.innerHTML = '<div class="loading-spinner">Loading batches...</div>';
-
-                fetch(`/dashboard/inventory/${productId}/batches`)
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('Network response was not ok');
-                        }
-                        return response.text();
-                    })
-                    .then(html => {
-                        content.innerHTML = html;
-                    })
-                    .catch(error => {
-                        content.innerHTML =
-                            '<div style="text-align: center; padding: 40px; color: #dc2626;">Error loading batches: ' +
-                            error.message + '</div>';
-                    });
+            if (!modal || !content) {
+                console.error('Modal or content element not found');
+                alert('Error: Modal elements not found. Please refresh the page.');
+                return;
             }
+
+            // Update modal title if available
+            const modalTitle = document.getElementById('inventoryBatchesModalTitle');
+            if (modalTitle && productName) {
+                modalTitle.textContent = `Batches for ${productName}`;
+            }
+
+            modal.style.display = 'flex';
+            content.innerHTML =
+                '<div class="loading-spinner" style="text-align: center; padding: 40px;"><i class="fas fa-spinner fa-spin"></i> Loading batches...</div>';
+
+            // Include CSRF token for authenticated requests
+            const csrfToken = document.querySelector('meta[name="csrf-token"]');
+            const headers = {
+                'Accept': 'text/html',
+                'X-Requested-With': 'XMLHttpRequest'
+            };
+
+            if (csrfToken) {
+                headers['X-CSRF-TOKEN'] = csrfToken.getAttribute('content');
+            }
+
+            console.log('Fetching from:', `/dashboard/inventory/${productId}/batches`); // Debug log
+
+            fetch(`/dashboard/inventory/${productId}/batches`, {
+                    method: 'GET',
+                    headers: headers,
+                    credentials: 'same-origin' // Include session cookies
+                })
+                .then(response => {
+                    console.log('Response status:', response.status); // Debug log
+                    console.log('Response headers:', response.headers); // Debug log
+
+                    if (!response.ok) {
+                        if (response.status === 404) {
+                            throw new Error('Product not found. Please refresh the page and try again.');
+                        } else if (response.status === 403) {
+                            throw new Error('Access denied. Please check your permissions.');
+                        } else if (response.status === 500) {
+                            throw new Error('Server error. Please try again later.');
+                        } else {
+                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        }
+                    }
+                    return response.text();
+                })
+                .then(html => {
+                    console.log('HTML received, length:', html.length); // Debug log
+
+                    if (html.trim() === '') {
+                        throw new Error('Empty response received from server.');
+                    }
+
+                    content.innerHTML = html;
+
+                    // Initialize any JavaScript needed for the batch content
+                    initializeBatchActions();
+                })
+                .catch(error => {
+                    console.error('Error loading batches:', error); // Debug log
+
+                    let errorMessage = 'Error loading batches: ' + error.message;
+
+                    // Provide more helpful error messages
+                    if (error.message.includes('Failed to fetch')) {
+                        errorMessage += '<br><small>Check your internet connection or try refreshing the page.</small>';
+                    }
+
+                    content.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #dc2626;">
+                <i class="fas fa-exclamation-triangle" style="font-size: 2em; margin-bottom: 10px;"></i>
+                <div>${errorMessage}</div>
+                <button onclick="inventoryViewBatches(${productId}, '${productName.replace(/'/g, "\\'")}')"
+                        class="btn btn-sm btn-primary" style="margin-top: 15px;">
+                    <i class="fas fa-refresh"></i> Try Again
+                </button>
+            </div>
+        `;
+                });
         }
 
         function inventoryCloseBatchesModal() {
@@ -448,53 +537,7 @@
                 modal.style.display = 'none';
             }
             inventoryCurrentProductId = null;
-        }
-
-        function inventoryOpenStockOutModal(batchId, batchNumber, availableStock, productName) {
-            inventoryCurrentBatchId = batchId;
-            inventoryMaxQuantity = availableStock;
-
-            const elements = {
-                'inventory_stock_out_batch_id': batchId,
-                'inventory_stock_out_product_id': inventoryCurrentProductId,
-                'inventory_product_display_name': productName,
-                'inventory_batch_display_number': batchNumber,
-                'inventory_batch_display_stock': availableStock.toLocaleString(),
-                'inventory_max_quantity': availableStock.toLocaleString()
-            };
-
-            Object.entries(elements).forEach(([id, value]) => {
-                const element = document.getElementById(id);
-                if (element) {
-                    if (element.tagName === 'INPUT') {
-                        element.value = value;
-                    } else {
-                        element.textContent = value;
-                    }
-                }
-            });
-
-            const batchDisplayRow = document.getElementById('inventory_batch_display_row');
-            if (batchDisplayRow) {
-                batchDisplayRow.style.display = 'block';
-            }
-
-            const quantityInput = document.getElementById('inventory_stock_out_quantity');
-            if (quantityInput) {
-                quantityInput.max = availableStock;
-            }
-
-            const form = document.getElementById('inventoryStockOutForm');
-            if (form) {
-                form.reset();
-                document.getElementById('inventory_stock_out_batch_id').value = batchId;
-                document.getElementById('inventory_stock_out_product_id').value = inventoryCurrentProductId;
-            }
-
-            const modal = document.getElementById('inventoryStockOutModal');
-            if (modal) {
-                modal.style.display = 'flex';
-            }
+            inventoryCurrentProductName = null;
         }
 
         function inventoryOpenProductStockOut(productId, productName, availableStock) {
@@ -543,6 +586,53 @@
             }
         }
 
+        function inventoryOpenStockOutModal(batchId, batchNumber, remainingQuantity, productName) {
+            inventoryCurrentBatchId = batchId;
+            inventoryMaxQuantity = remainingQuantity;
+
+            const elements = {
+                'inventory_stock_out_batch_id': batchId,
+                'inventory_stock_out_product_id': inventoryCurrentProductId || '',
+                'inventory_product_display_name': productName,
+                'inventory_batch_display_number': batchNumber,
+                'inventory_batch_display_stock': remainingQuantity.toLocaleString(),
+                'inventory_max_quantity': remainingQuantity.toLocaleString()
+            };
+
+            Object.entries(elements).forEach(([id, value]) => {
+                const element = document.getElementById(id);
+                if (element) {
+                    if (element.tagName === 'INPUT') {
+                        element.value = value;
+                    } else {
+                        element.textContent = value;
+                    }
+                }
+            });
+
+            const batchDisplayRow = document.getElementById('inventory_batch_display_row');
+            if (batchDisplayRow) {
+                batchDisplayRow.style.display = 'table-row';
+            }
+
+            const quantityInput = document.getElementById('inventory_stock_out_quantity');
+            if (quantityInput) {
+                quantityInput.max = remainingQuantity;
+            }
+
+            const form = document.getElementById('inventoryStockOutForm');
+            if (form) {
+                form.reset();
+                document.getElementById('inventory_stock_out_batch_id').value = batchId;
+                document.getElementById('inventory_stock_out_product_id').value = inventoryCurrentProductId || '';
+            }
+
+            const modal = document.getElementById('inventoryStockOutModal');
+            if (modal) {
+                modal.style.display = 'flex';
+            }
+        }
+
         function inventoryCloseStockOutModal() {
             const modal = document.getElementById('inventoryStockOutModal');
             if (modal) {
@@ -551,6 +641,66 @@
             inventoryCurrentBatchId = null;
             inventoryMaxQuantity = 0;
         }
+
+        // Initialize batch-specific actions after loading batch content
+        function initializeBatchActions() {
+            console.log('Initializing batch actions...');
+
+            // Add event listeners for batch-specific buttons
+            const stockOutButtons = document.querySelectorAll('[onclick*="inventoryOpenStockOutModal"]');
+            const updatePriceButtons = document.querySelectorAll('[onclick*="openPricingModal"]');
+
+            console.log('Found stock out buttons:', stockOutButtons.length);
+            console.log('Found update price buttons:', updatePriceButtons.length);
+
+            // Any additional initialization for batch modal content can go here
+        }
+
+        // Utility function for form validation
+        function initializeFormValidation() {
+            console.log('Initializing form validation...');
+
+            // Add any form validation logic here
+            const forms = document.querySelectorAll('form[id*="inventory"]');
+            forms.forEach(form => {
+                form.addEventListener('submit', function(e) {
+                    // Add any global form validation here
+                    console.log('Form submitted:', form.id);
+                });
+            });
+        }
+
+        // Handle modal clicks outside content area
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('inventory-modal') &&
+                e.target.style.display === 'flex') {
+
+                // Close modal if clicking outside content
+                if (e.target.id === 'inventoryBatchModal') {
+                    inventoryCloseBatchModal();
+                } else if (e.target.id === 'inventoryBatchesModal') {
+                    inventoryCloseBatchesModal();
+                } else if (e.target.id === 'inventoryStockOutModal') {
+                    inventoryCloseStockOutModal();
+                }
+            }
+        });
+
+        // Handle escape key to close modals
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const openModals = document.querySelectorAll('.inventory-modal[style*="flex"]');
+                openModals.forEach(modal => {
+                    modal.style.display = 'none';
+                });
+
+                // Clear current state
+                inventoryCurrentProductId = null;
+                inventoryCurrentProductName = null;
+                inventoryCurrentBatchId = null;
+                inventoryMaxQuantity = 0;
+            }
+        });
 
         function inventoryHandleStockOut(event) {
             event.preventDefault();
@@ -683,11 +833,6 @@
             }
 
             window.addEventListener('click', function(event) {
-                const dropdown = document.getElementById('inventoryDropdown');
-                if (dropdown && !dropdown.contains(event.target)) {
-                    dropdown.classList.remove('open');
-                }
-
                 const batchModal = document.getElementById('inventoryBatchModal');
                 if (batchModal && event.target === batchModal) {
                     inventoryCloseBatchModal();

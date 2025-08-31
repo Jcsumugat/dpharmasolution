@@ -52,7 +52,7 @@ class DashboardController extends Controller
     public function getLowStockProducts()
     {
         $products = DB::table('products')
-            ->leftJoin('product_batches', 'products.id', '=', 'product_batches.product_id')
+            ->join('product_batches', 'products.id', '=', 'product_batches.product_id') // Use INNER JOIN instead of LEFT JOIN
             ->select(
                 'products.id as product_id',
                 'products.product_name',
@@ -73,7 +73,7 @@ class DashboardController extends Controller
     public function getOutOfStockProducts()
     {
         $products = DB::table('products')
-            ->leftJoin('product_batches', 'products.id', '=', 'product_batches.product_id')
+            ->join('product_batches', 'products.id', '=', 'product_batches.product_id') // Use INNER JOIN - only products with batches
             ->select(
                 'products.id as product_id',
                 'products.product_name',
@@ -83,13 +83,12 @@ class DashboardController extends Controller
             )
             ->selectRaw('COALESCE(SUM(product_batches.quantity_remaining), 0) as current_stock')
             ->groupBy('products.id', 'products.product_name', 'products.product_code', 'products.updated_at', 'products.reorder_level')
-            ->having('current_stock', '=', 0)
+            ->having('current_stock', '=', 0) // Products that had stock but now have 0
             ->orderBy('products.updated_at', 'desc')
             ->get();
 
         return response()->json($products);
     }
-
     private function getDashboardStats()
     {
         $totalSales = DB::table('sales')
@@ -136,8 +135,9 @@ class DashboardController extends Controller
             ->where('status', 'pending')
             ->count();
 
+        // Fixed: Only count products that have had batches
         $lowStockProducts = DB::table('products')
-            ->leftJoin('product_batches', 'products.id', '=', 'product_batches.product_id')
+            ->join('product_batches', 'products.id', '=', 'product_batches.product_id') // INNER JOIN
             ->select('products.id', 'products.reorder_level')
             ->selectRaw('COALESCE(SUM(product_batches.quantity_remaining), 0) as total_stock')
             ->groupBy('products.id', 'products.reorder_level')
@@ -146,8 +146,9 @@ class DashboardController extends Controller
             ->whereNotNull('products.reorder_level')
             ->count();
 
+        // Fixed: Only count products that have had batches but are now out of stock
         $outOfStockProducts = DB::table('products')
-            ->leftJoin('product_batches', 'products.id', '=', 'product_batches.product_id')
+            ->join('product_batches', 'products.id', '=', 'product_batches.product_id') // INNER JOIN
             ->select('products.id')
             ->selectRaw('COALESCE(SUM(product_batches.quantity_remaining), 0) as total_stock')
             ->groupBy('products.id')
@@ -184,6 +185,7 @@ class DashboardController extends Controller
             'approved_orders_today' => $approvedOrdersToday ?: 0,
         ];
     }
+
 
     private function getSalesChartData()
     {
@@ -291,8 +293,9 @@ class DashboardController extends Controller
             ];
         }
 
+        // Fixed: Only check products that have had batches
         $zeroStockCriticalProducts = DB::table('products')
-            ->leftJoin('product_batches', 'products.id', '=', 'product_batches.product_id')
+            ->join('product_batches', 'products.id', '=', 'product_batches.product_id') // INNER JOIN
             ->select('products.product_name', 'products.product_code')
             ->selectRaw('COALESCE(SUM(product_batches.quantity_remaining), 0) as total_stock')
             ->where('products.product_type', 'essential')
@@ -364,8 +367,9 @@ class DashboardController extends Controller
     public function checkInventoryAlerts()
     {
         try {
+            // Fixed: Only count products that have had batches
             $lowStockCount = DB::table('products')
-                ->leftJoin('product_batches', 'products.id', '=', 'product_batches.product_id')
+                ->join('product_batches', 'products.id', '=', 'product_batches.product_id') // INNER JOIN
                 ->select('products.id', 'products.reorder_level')
                 ->selectRaw('COALESCE(SUM(product_batches.quantity_remaining), 0) as total_stock')
                 ->groupBy('products.id', 'products.reorder_level')
@@ -374,8 +378,9 @@ class DashboardController extends Controller
                 ->whereNotNull('products.reorder_level')
                 ->count();
 
+            // Fixed: Only count products that have had batches but are now out of stock
             $outOfStockCount = DB::table('products')
-                ->leftJoin('product_batches', 'products.id', '=', 'product_batches.product_id')
+                ->join('product_batches', 'products.id', '=', 'product_batches.product_id') // INNER JOIN
                 ->select('products.id')
                 ->selectRaw('COALESCE(SUM(product_batches.quantity_remaining), 0) as total_stock')
                 ->groupBy('products.id')
@@ -423,6 +428,7 @@ class DashboardController extends Controller
         }
     }
 
+
     public function getProductStockDetails($productId)
     {
         $stockDetails = DB::table('product_batches')
@@ -456,8 +462,9 @@ class DashboardController extends Controller
             ->orderBy('product_batches.expiration_date', 'asc')
             ->get();
 
+        // Fixed: Only show products that have had batches but are now out of stock
         $outOfStock = DB::table('products')
-            ->leftJoin('product_batches', 'products.id', '=', 'product_batches.product_id')
+            ->join('product_batches', 'products.id', '=', 'product_batches.product_id') // INNER JOIN
             ->select(
                 'products.product_name',
                 'products.product_code',

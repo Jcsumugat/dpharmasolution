@@ -146,7 +146,7 @@
         <div class="modal-footer">
             <button class="btn btn-cancel" onclick="closeActivityModal()">Cancel</button>
             <button class="btn btn-primary" id="goToProductsBtn" onclick="goToProducts()">
-                Go to Products Page
+                Go to Inventory Page
             </button>
         </div>
     </div>
@@ -491,7 +491,7 @@
     }
 
     function goToProducts() {
-        let url = '{{ route("products.index") }}';
+        let url = '{{ route("inventory.index") }}';
 
         if (currentActivityType === 'expiring') {
             url += '?filter=expiring';

@@ -46,7 +46,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     });
 
     Route::get('/inventory-alerts-check', [DashboardController::class, 'checkInventoryAlerts'])->name('inventory.alerts.check');
-    Route::get('/product-stock-details/{productId}', [DashboardController::class, 'getProductStockDetails'])->name('product.stock.details');
+    Route::get('/inventory-stock-details/{productId}', [DashboardController::class, 'getProductStockDetails'])->name('product.stock.details');
 });
 
 
@@ -94,13 +94,15 @@ Route::prefix('dashboard/batches')->middleware(['auth', 'admin'])->name('batches
 });
 
 Route::middleware(['auth', 'admin'])->group(function () {
-    Route::get('/dashboard/inventory', [InventoryController::class, 'index'])->name('inventory.index');
-    Route::post('/dashboard/inventory/stock-in', [InventoryController::class, 'stockIn'])->name('inventory.stock-in');
-    Route::post('/dashboard/inventory/stock-out', [InventoryController::class, 'stockOut'])->name('inventory.stock-out');
-    Route::get('/dashboard/inventory/stock-out-reasons', [InventoryController::class, 'getStockOutReasons'])->name('inventory.stock-out-reasons');
-    Route::post('/dashboard/products/{product}/batches', [InventoryController::class, 'addBatch'])->name('products.add-batch');
-    Route::get('/dashboard/inventory/{product}/batches', [ProductController::class, 'showBatches'])->name('products.batches');
-    Route::post('/dashboard/products/batches/{batch}/action', [ProductController::class, 'batchAction'])->name('products.batch-action');
+// Inventory routes
+Route::get('/dashboard/inventory', [InventoryController::class, 'index'])->name('inventory.index');
+Route::get('/dashboard/inventory/{product}/batches', [InventoryController::class, 'viewBatches'])->name('inventory.viewBatches');
+Route::post('/dashboard/inventory/{product}/batches', [InventoryController::class, 'addBatch'])->name('inventory.addBatch');
+Route::post('/dashboard/inventory/stock-out', [InventoryController::class, 'stockOut'])->name('inventory.stockOut');
+Route::get('/dashboard/inventory/stock-status/{product}', [InventoryController::class, 'getProductStockStatus'])->name('inventory.stockStatus');
+Route::get('/dashboard/inventory/expired-batches', [InventoryController::class, 'getExpiredBatches'])->name('inventory.expiredBatches');
+Route::post('/inventory/batch/{batch}/add-stock', [InventoryController::class, 'addStockToBatch'])
+    ->name('inventory.addStockToBatch');
 });
 
 Route::middleware(['auth', 'admin'])->group(function () {

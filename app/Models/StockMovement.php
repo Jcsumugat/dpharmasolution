@@ -16,7 +16,7 @@ class StockMovement extends Model
         'reference_type',
         'reference_id',
         'notes',
-        'batch_id',
+        // 'batch_id', // Temporarily removed until column is added
     ];
 
     // Movement types
@@ -27,6 +27,9 @@ class StockMovement extends Model
     const TYPE_DAMAGE = 'damage';
     const TYPE_RETURN = 'return';
     const TYPE_TRANSFER = 'transfer';
+    const TYPE_LOSS = 'loss';
+    const TYPE_SAMPLE = 'sample';
+    const TYPE_OTHER = 'other';
 
     // Reference types
     const REFERENCE_PURCHASE = 'purchase';
@@ -48,7 +51,9 @@ class StockMovement extends Model
 
     public function batch()
     {
-        return $this->belongsTo(ProductBatch::class);
+        // Temporarily commented out until batch_id column exists
+        // return $this->belongsTo(ProductBatch::class);
+        return null;
     }
 
     // Scopes
@@ -80,15 +85,21 @@ class StockMovement extends Model
     // Static helper methods
     public static function createMovement($productId, $type, $quantity, $referenceType = null, $referenceId = null, $notes = null, $batchId = null)
     {
-        return self::create([
+        $data = [
             'product_id' => $productId,
             'type' => $type,
             'quantity' => $quantity,
             'reference_type' => $referenceType ?: self::REFERENCE_MANUAL,
             'reference_id' => $referenceId,
             'notes' => $notes,
-            'batch_id' => $batchId,
-        ]);
+        ];
+
+        // Only add batch_id if the column exists (check fillable array)
+        if (in_array('batch_id', (new self())->getFillable()) && $batchId) {
+            $data['batch_id'] = $batchId;
+        }
+
+        return self::create($data);
     }
 
     public static function createSaleMovement($productId, $quantity, $saleId = null, $notes = null, $batchId = null)
@@ -156,15 +167,41 @@ class StockMovement extends Model
         );
     }
 
-    public static function createReturnMovement($productId, $quantity, $returnId = null, $notes = null, $batchId = null)
+    public static function createLossMovement($productId, $quantity, $notes = null, $batchId = null)
     {
         return self::createMovement(
             $productId,
-            self::TYPE_RETURN,
+            self::TYPE_LOSS,
             -abs($quantity), // Ensure negative for stock out
             self::REFERENCE_MANUAL,
-            $returnId,
-            $notes ?: 'Product returned',
+            null,
+            $notes ?: 'Product lost/stolen',
+            $batchId
+        );
+    }
+
+    public static function createSampleMovement($productId, $quantity, $notes = null, $batchId = null)
+    {
+        return self::createMovement(
+            $productId,
+            self::TYPE_SAMPLE,
+            -abs($quantity), // Ensure negative for stock out
+            self::REFERENCE_MANUAL,
+            null,
+            $notes ?: 'Product used for sample/testing',
+            $batchId
+        );
+    }
+
+    public static function createOtherMovement($productId, $quantity, $notes = null, $batchId = null)
+    {
+        return self::createMovement(
+            $productId,
+            self::TYPE_OTHER,
+            $quantity, // Can be positive or negative based on use case
+            self::REFERENCE_MANUAL,
+            null,
+            $notes ?: 'Other stock movement',
             $batchId
         );
     }
@@ -187,8 +224,8 @@ class StockMovement extends Model
 
     public function getFormattedQuantity()
     {
-        return $this->isStockIn() 
-            ? '+' . number_format($this->quantity) 
+        return $this->isStockIn()
+            ? '+' . number_format($this->quantity)
             : number_format($this->quantity);
     }
 
@@ -202,6 +239,9 @@ class StockMovement extends Model
             self::TYPE_DAMAGE => 'Damage',
             self::TYPE_RETURN => 'Return',
             self::TYPE_TRANSFER => 'Transfer',
+            self::TYPE_LOSS => 'Loss',
+            self::TYPE_SAMPLE => 'Sample',
+            self::TYPE_OTHER => 'Other',
         ];
 
         return $types[$this->type] ?? ucfirst($this->type);
@@ -231,6 +271,9 @@ class StockMovement extends Model
             self::TYPE_DAMAGE => 'Damage',
             self::TYPE_RETURN => 'Return',
             self::TYPE_TRANSFER => 'Transfer',
+            self::TYPE_LOSS => 'Loss',
+            self::TYPE_SAMPLE => 'Sample',
+            self::TYPE_OTHER => 'Other',
         ];
     }
 
@@ -244,6 +287,9 @@ class StockMovement extends Model
             self::TYPE_DAMAGE => 'Damage',
             self::TYPE_RETURN => 'Return',
             self::TYPE_TRANSFER => 'Transfer',
+            self::TYPE_LOSS => 'Loss',
+            self::TYPE_SAMPLE => 'Sample',
+            self::TYPE_OTHER => 'Other',
         ];
     }
 
@@ -270,7 +316,7 @@ class StockMovement extends Model
     public static function getStockSummaryForProduct($productId, $startDate = null, $endDate = null)
     {
         $query = self::where('product_id', $productId);
-        
+
         if ($startDate && $endDate) {
             $query->whereBetween('created_at', [$startDate, $endDate]);
         }
@@ -294,7 +340,7 @@ class StockMovement extends Model
 
     public static function getRecentMovements($limit = 50, $productId = null)
     {
-        $query = self::with(['product', 'batch'])
+        $query = self::with(['product']) // Removed 'batch' until column exists
                     ->orderBy('created_at', 'desc')
                     ->limit($limit);
 
@@ -307,7 +353,7 @@ class StockMovement extends Model
 
     public static function getMovementsByDateRange($startDate, $endDate, $productId = null)
     {
-        $query = self::with(['product', 'batch'])
+        $query = self::with(['product']) // Removed 'batch' until column exists
                     ->whereBetween('created_at', [$startDate, $endDate])
                     ->orderBy('created_at', 'desc');
 
@@ -328,7 +374,7 @@ class StockMovement extends Model
             'reference_type' => 'nullable|string|max:50',
             'reference_id' => 'nullable|integer',
             'notes' => 'nullable|string|max:1000',
-            'batch_id' => 'nullable|exists:product_batches,id',
+            // 'batch_id' => 'nullable|exists:product_batches,id', // Commented out until column exists
         ];
 
         return $rules;
@@ -339,7 +385,7 @@ class StockMovement extends Model
     {
         $action = $this->isStockIn() ? 'added to' : 'removed from';
         $quantity = $this->getAbsoluteQuantity();
-        
+
         return "{$quantity} units {$action} {$this->product->product_name} ({$this->getTypeDisplayName()})";
     }
 
@@ -356,8 +402,8 @@ class StockMovement extends Model
             'reference_type' => $this->reference_type,
             'reference_id' => $this->reference_id,
             'notes' => $this->notes,
-            'batch_id' => $this->batch_id,
-            'batch_number' => $this->batch->batch_number ?? null,
+            // 'batch_id' => $this->batch_id, // Commented out until column exists
+            // 'batch_number' => $this->batch->batch_number ?? null, // Commented out until column exists
             'created_at' => $this->created_at,
             'description' => $this->getAuditDescription()
         ];

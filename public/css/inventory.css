@@ -316,13 +316,6 @@ body {
     position: relative;
 }
 
-.inventory-table tr.low-stock td {
-    background: linear-gradient(135deg, #fef3c7 0%, #f8fafc 100%);
-}
-
-.inventory-table tr.low-stock:hover td {
-    background: linear-gradient(135deg, #fde68a 0%, #f8fafc 100%);
-}
 
 .low-stock {
     background: linear-gradient(135deg, #fef3c7 0%, #f8fafc 100%);
@@ -385,7 +378,7 @@ body {
 }
 
 .btn {
-    padding: 1rem;
+    padding: 0.8rem;
     border: none;
     border-radius: var(--radius);
     font-size: var(--font-size-sm);

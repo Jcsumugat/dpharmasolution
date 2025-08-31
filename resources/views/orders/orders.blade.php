@@ -18,7 +18,7 @@
             <div class="order-type-filters">
                 <button class="filter-btn active" data-filter="all">All Orders</button>
                 <button class="filter-btn" data-filter="prescription">Prescriptions</button>
-                <button class="filter-btn" data-filter="online_order">Medicine Orders</button>
+                <button class="filter-btn" data-filter="online_order">Non Prescriptions</button>
             </div>
         </div>
 
@@ -254,7 +254,7 @@
                         <ul id="availableProducts">
                             @foreach ($products as $product)
                                 @php
-                                    $totalStock = $product->batches ? $product->batches->sum('quantity_remaining') : 0;
+                                    $totalStock = $product->batches ? $product->stock_quantity : 0;
                                     $latestBatch = $product->batches
                                         ? $product->batches->sortByDesc('id')->first()
                                         : null;
