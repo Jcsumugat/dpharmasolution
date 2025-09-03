@@ -17,6 +17,7 @@ use App\Services\NotificationService;
 use App\Models\SaleItem;
 use App\Models\StockMovement;
 use App\Models\ProductBatch;
+use App\Models\PrescriptionMessage;
 use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
 
@@ -33,7 +34,7 @@ class AdminOrderController extends Controller
         // Only show products with non-expired available stock
         $products = Product::whereHas('batches', function ($q) {
             $q->where('quantity_remaining', '>', 0)
-              ->where('expiration_date', '>', now());
+                ->where('expiration_date', '>', now());
         })->get();
 
         return view('orders.orders', compact('prescriptions', 'products'));
@@ -286,6 +287,9 @@ class AdminOrderController extends Controller
                 if ($qtyToDeduct > 0) {
                     throw new \Exception("Unable to fulfill order for {$product->product_name} - insufficient non-expired stock");
                 }
+
+                // Update the product's stock_quantity after deducting from batches
+                $product->decrement('stock_quantity', $prescItem->quantity);
             }
 
             $order->update(['status' => 'completed', 'completed_at' => now()]);
@@ -357,8 +361,6 @@ class AdminOrderController extends Controller
                 'updated_at' => now()
             ]);
 
-            NotificationService::notifyOrderApproved($prescription);
-
             DB::commit();
 
             return response()->json([
@@ -414,7 +416,6 @@ class AdminOrderController extends Controller
                 'updated_at' => now()
             ]);
 
-            NotificationService::notifyCustomerOrderCancelled($prescription);
             DB::commit();
 
             return response()->json([
@@ -885,5 +886,65 @@ class AdminOrderController extends Controller
                 'message' => $e->getMessage()
             ], 500);
         }
+    }
+    public function getMessages(Prescription $prescription)
+    {
+        $messages = $prescription->messages()->with('sender')->get();
+
+        // Mark admin messages as read when customer views
+        $prescription->messages()
+            ->where('sender_type', 'admin')
+            ->where('is_read', false)
+            ->update(['is_read' => true]);
+
+        return response()->json([
+            'success' => true,
+            'messages' => $messages->map(function ($message) {
+                return [
+                    'id' => $message->id,
+                    'message' => $message->message,
+                    'sender_type' => $message->sender_type,
+                    'sender_name' => $message->sender_type === 'admin' ? 'Pharmacy Admin' : 'Customer',
+                    'created_at' => $message->created_at->format('M d, Y H:i'),
+                    'is_read' => $message->is_read
+                ];
+            })
+        ]);
+    }
+
+    public function sendMessage(Request $request, Prescription $prescription)
+    {
+        $request->validate([
+            'message' => 'required|string|max:1000'
+        ]);
+
+        $message = PrescriptionMessage::create([
+            'prescription_id' => $prescription->id,
+            'sender_type' => 'admin',
+            'sender_id' => auth()->id(),
+            'message' => $request->message,
+            'is_read' => false
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => [
+                'id' => $message->id,
+                'message' => $message->message,
+                'sender_type' => 'admin',
+                'sender_name' => 'Pharmacy Admin',
+                'created_at' => $message->created_at->format('M d, Y H:i')
+            ]
+        ]);
+    }
+
+    public function markMessagesRead(Prescription $prescription)
+    {
+        $prescription->messages()
+            ->where('sender_type', 'customer')
+            ->where('is_read', false)
+            ->update(['is_read' => true]);
+
+        return response()->json(['success' => true]);
     }
 }

@@ -471,3 +471,451 @@ body {
     visibility: hidden;
     width: 0;
 }
+
+.encrypted-file-info {
+    background: #f0f8ff;
+    border: 1px solid #4a90e2;
+    border-radius: 4px;
+    padding: 8px;
+    margin: 4px 0;
+    font-size: 0.9em;
+}
+
+.security-badge {
+    background: #28a745;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: bold;
+}
+
+.file-size {
+    color: #666;
+    font-size: 0.85em;
+}
+
+.admin-message {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 4px;
+    padding: 10px;
+    margin-top: 8px;
+}
+
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    font-weight: bold;
+}
+
+.status-badge.pending {
+    background: #ffc107;
+    color: #000;
+}
+
+.status-badge.approved {
+    background: #28a745;
+    color: white;
+}
+
+.status-badge.rejected {
+    background: #dc3545;
+    color: white;
+}
+
+.status-badge.processing {
+    background: #17a2b8;
+    color: white;
+}
+
+.order-type-selector {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.order-type-option {
+    flex: 1;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    padding: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.order-type-option:hover {
+    border-color: #4a90e2;
+}
+
+.order-type-option.selected {
+    border-color: #4a90e2;
+    background: #f0f8ff;
+}
+
+.order-type-option input[type="radio"] {
+    display: none;
+}
+
+.order-type-title {
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.order-type-description {
+    font-size: 0.9em;
+    color: #666;
+}
+
+.form-section {
+    margin-bottom: 20px;
+}
+
+.section-title {
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 2px solid #4a90e2;
+}
+
+.order-type-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75em;
+    font-weight: bold;
+    margin-left: 8px;
+}
+
+.order-type-badge.prescription {
+    background: #007bff;
+    color: white;
+}
+
+.order-type-badge.online_order {
+    background: #28a745;
+    color: white;
+}
+
+.file-info-dynamic {
+    margin-top: 10px;
+    padding: 8px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    font-size: 0.9em;
+    display: none;
+}
+/* Chat Button Styles - Add this to your uploads.css */
+.order-actions {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid #e0e0e0;
+}
+
+.chat-btn {
+    background: #4CAF50;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background 0.3s;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.chat-btn:hover {
+    background: #45a049;
+}
+
+.unread-badge {
+    background: #ff4444;
+    color: white;
+    font-size: 0.7em;
+    padding: 2px 6px;
+    border-radius: 10px;
+    margin-left: 5px;
+    font-weight: bold;
+}
+
+/* Customer Chat Modal Styles */
+.customer-chat-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+.customer-chat-modal.active {
+    display: flex !important;
+}
+
+.customer-chat-container {
+    width: 90%;
+    max-width: 500px;
+    height: 70vh;
+    max-height: 600px;
+    min-height: 400px;
+    background: white;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.customer-chat-header {
+    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+    color: white;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 12px 12px 0 0;
+    flex-shrink: 0;
+}
+
+.customer-chat-title {
+    font-size: 1.1em;
+    font-weight: 600;
+}
+
+.customer-chat-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.2s;
+}
+
+.customer-chat-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.customer-chat-messages {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    background: #f8fafc;
+    min-height: 0; /* Important for proper flex scrolling */
+}
+
+.customer-message {
+    display: flex;
+    gap: 10px;
+    max-width: 75%;
+    animation: fadeInUp 0.3s ease-out;
+}
+
+.customer-message.admin {
+    align-self: flex-start;
+}
+
+.customer-message.customer {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+}
+
+.customer-message-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: white;
+    font-size: 0.8em;
+    flex-shrink: 0;
+}
+
+.customer-message.admin .customer-message-avatar {
+    background: #3b82f6;
+}
+
+.customer-message.customer .customer-message-avatar {
+    background: #4CAF50;
+}
+
+.customer-message-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.customer-message-bubble {
+    padding: 10px 14px;
+    border-radius: 18px;
+    word-wrap: break-word;
+    word-break: break-word;
+}
+
+.customer-message.admin .customer-message-bubble {
+    background: #e2e8f0;
+    color: #334155;
+    border-bottom-left-radius: 6px;
+}
+
+.customer-message.customer .customer-message-bubble {
+    background: #4CAF50;
+    color: white;
+    border-bottom-right-radius: 6px;
+}
+
+.customer-message-time {
+    font-size: 0.75em;
+    opacity: 0.7;
+    margin-top: 4px;
+}
+
+.customer-message.admin .customer-message-time {
+    color: #64748b;
+}
+
+.customer-message.customer .customer-message-time {
+    color: #64748b;
+    text-align: right;
+}
+
+.customer-chat-input-container {
+    padding: 15px 20px;
+    background: white;
+    border-top: 1px solid #e2e8f0;
+    border-radius: 0 0 12px 12px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+    flex-shrink: 0;
+}
+
+.customer-chat-input {
+    flex: 1;
+    resize: none;
+    border: 2px solid #e2e8f0;
+    border-radius: 20px;
+    padding: 10px 15px;
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.4;
+    min-height: 40px;
+    max-height: 100px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.customer-chat-input:focus {
+    border-color: #4CAF50;
+}
+
+.customer-chat-send {
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s;
+    flex-shrink: 0;
+}
+
+.customer-chat-send:hover {
+    background: #45a049;
+}
+
+.customer-chat-send:disabled {
+    background: #94a3b8;
+    cursor: not-allowed;
+}
+
+.customer-no-messages {
+    text-align: center;
+    color: #64748b;
+    font-style: italic;
+    padding: 40px 20px;
+}
+
+/* Animation */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Scrollbar styling */
+.customer-chat-messages::-webkit-scrollbar {
+    width: 6px;
+}
+
+.customer-chat-messages::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+
+.customer-chat-messages::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+
+.customer-chat-messages::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .customer-chat-container {
+        width: 95%;
+        height: 80vh;
+    }
+
+    .customer-chat-header {
+        padding: 12px 15px;
+    }
+
+    .customer-chat-title {
+        font-size: 1em;
+    }
+
+    .customer-chat-messages {
+        padding: 15px;
+        gap: 12px;
+    }
+
+    .customer-message {
+        max-width: 85%;
+    }
+
+    .customer-chat-input-container {
+        padding: 12px 15px;
+    }
+}

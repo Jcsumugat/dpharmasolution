@@ -3,127 +3,9 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Order | MJ's Pharmacy</title>
     <link rel="stylesheet" href="{{ asset('css/customer/uploads.css') }}">
-    <style>
-        .encrypted-file-info {
-            background: #f0f8ff;
-            border: 1px solid #4a90e2;
-            border-radius: 4px;
-            padding: 8px;
-            margin: 4px 0;
-            font-size: 0.9em;
-        }
-        .security-badge {
-            background: #28a745;
-            color: white;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 0.8em;
-            font-weight: bold;
-        }
-        .file-size {
-            color: #666;
-            font-size: 0.85em;
-        }
-        .admin-message {
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            border-radius: 4px;
-            padding: 10px;
-            margin-top: 8px;
-        }
-        .status-badge {
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.85em;
-            font-weight: bold;
-        }
-        .status-badge.pending {
-            background: #ffc107;
-            color: #000;
-        }
-        .status-badge.approved {
-            background: #28a745;
-            color: white;
-        }
-        .status-badge.rejected {
-            background: #dc3545;
-            color: white;
-        }
-        .status-badge.processing {
-            background: #17a2b8;
-            color: white;
-        }
-        .order-type-selector {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        .order-type-option {
-            flex: 1;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            padding: 15px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-align: center;
-        }
-        .order-type-option:hover {
-            border-color: #4a90e2;
-        }
-        .order-type-option.selected {
-            border-color: #4a90e2;
-            background: #f0f8ff;
-        }
-        .order-type-option input[type="radio"] {
-            display: none;
-        }
-        .order-type-title {
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 5px;
-        }
-        .order-type-description {
-            font-size: 0.9em;
-            color: #666;
-        }
-        .form-section {
-            margin-bottom: 20px;
-        }
-        .section-title {
-            font-size: 1.1em;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 10px;
-            padding-bottom: 5px;
-            border-bottom: 2px solid #4a90e2;
-        }
-        .order-type-badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 0.75em;
-            font-weight: bold;
-            margin-left: 8px;
-        }
-        .order-type-badge.prescription {
-            background: #007bff;
-            color: white;
-        }
-        .order-type-badge.online_order {
-            background: #28a745;
-            color: white;
-        }
-        .file-info-dynamic {
-            margin-top: 10px;
-            padding: 8px;
-            background: #f8f9fa;
-            border-radius: 4px;
-            font-size: 0.9em;
-            display: none;
-        }
-    </style>
 </head>
 
 <body>
@@ -252,6 +134,16 @@
                             {{ $prescription->admin_message }}
                         </div>
                         @endif
+
+                        <!-- Chat Button Section -->
+                        <div class="order-actions" style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #e0e0e0;">
+                            <button class="chat-btn" data-prescription-id="{{ $prescription->id }}" data-order-id="{{ $prescription->order->order_id ?? 'N/A' }}">
+                                💬 Chat with Pharmacy
+                                @if($prescription->unreadMessagesForCustomer()->count() > 0)
+                                    <span class="unread-badge">{{ $prescription->unreadMessagesForCustomer()->count() }}</span>
+                                @endif
+                            </button>
+                        </div>
                     </div>
                 </div>
                 @empty
@@ -260,6 +152,29 @@
             </div>
         </div>
 
+    </div>
+
+    <!-- Customer Chat Modal -->
+    <div id="customerChatModal" class="customer-chat-modal">
+        <div class="customer-chat-container">
+            <div class="customer-chat-header">
+                <div class="customer-chat-title">
+                    <span id="customerChatOrderId">Chat with Pharmacy</span>
+                </div>
+                <button class="customer-chat-close" id="closeCustomerChatModal">&times;</button>
+            </div>
+            <div class="customer-chat-messages" id="customerChatMessages">
+                <div class="customer-no-messages">No messages yet. Start the conversation!</div>
+            </div>
+            <div class="customer-chat-input-container">
+                <textarea class="customer-chat-input" id="customerChatInput" placeholder="Type your message..." rows="1"></textarea>
+                <button class="customer-chat-send" id="customerSendMessage">
+                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -344,6 +259,201 @@
 
             e.target.value = value;
         });
+
+        // Customer Chat Functionality
+        let currentCustomerChatPrescriptionId = null;
+
+        // Customer chat elements
+        const customerChatModal = document.getElementById('customerChatModal');
+        const customerChatMessages = document.getElementById('customerChatMessages');
+        const customerChatInput = document.getElementById('customerChatInput');
+        const customerSendButton = document.getElementById('customerSendMessage');
+        const customerChatOrderId = document.getElementById('customerChatOrderId');
+
+        // CSRF token function
+        function getCSRFToken() {
+            return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        }
+
+        // Open customer chat modal
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('chat-btn')) {
+                const prescriptionId = e.target.dataset.prescriptionId;
+                const orderId = e.target.dataset.orderId;
+
+                currentCustomerChatPrescriptionId = prescriptionId;
+
+                if (customerChatOrderId) {
+                    customerChatOrderId.textContent = `Chat - Order ${orderId}`;
+                }
+
+                if (customerChatModal) {
+                    customerChatModal.classList.add('active');
+                    loadCustomerMessages(prescriptionId);
+                    markCustomerMessagesAsRead(prescriptionId);
+                }
+            }
+        });
+
+        // Close customer chat modal
+        document.getElementById('closeCustomerChatModal')?.addEventListener('click', () => {
+            if (customerChatModal) {
+                customerChatModal.classList.remove('active');
+            }
+            currentCustomerChatPrescriptionId = null;
+        });
+
+        // Close customer chat when clicking outside
+        customerChatModal?.addEventListener('click', (e) => {
+            if (e.target === customerChatModal) {
+                customerChatModal.classList.remove('active');
+                currentCustomerChatPrescriptionId = null;
+            }
+        });
+
+        // Load customer messages
+        async function loadCustomerMessages(prescriptionId) {
+            if (!customerChatMessages) return;
+
+            customerChatMessages.innerHTML = '<div class="customer-no-messages">Loading messages...</div>';
+
+            try {
+                const response = await fetch(`/my-orders/${prescriptionId}/messages`, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': getCSRFToken()
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    displayCustomerMessages(data.messages);
+                }
+            } catch (error) {
+                console.error('Error loading messages:', error);
+                customerChatMessages.innerHTML = '<div class="customer-no-messages">Error loading messages</div>';
+            }
+        }
+
+        // Display customer messages
+        function displayCustomerMessages(messages) {
+            if (!customerChatMessages) return;
+
+            if (messages.length === 0) {
+                customerChatMessages.innerHTML = '<div class="customer-no-messages">No messages yet. Start the conversation!</div>';
+                return;
+            }
+
+            customerChatMessages.innerHTML = '';
+
+            messages.forEach(message => {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `customer-message ${message.sender_type}`;
+
+                messageDiv.innerHTML = `
+                    <div class="customer-message-avatar">${message.sender_type === 'admin' ? 'P' : 'C'}</div>
+                    <div class="customer-message-content">
+                        <div class="customer-message-bubble">${message.message}</div>
+                        <div class="customer-message-time">${message.created_at}</div>
+                    </div>
+                `;
+
+                customerChatMessages.appendChild(messageDiv);
+            });
+
+            // Scroll to bottom
+            customerChatMessages.scrollTop = customerChatMessages.scrollHeight;
+        }
+
+        // Send customer message
+        async function sendCustomerMessage() {
+            if (!currentCustomerChatPrescriptionId || !customerChatInput) return;
+
+            const message = customerChatInput.value.trim();
+            if (!message) return;
+
+            const originalText = customerSendButton ? customerSendButton.innerHTML : '';
+            if (customerSendButton) {
+                customerSendButton.disabled = true;
+                customerSendButton.innerHTML = '...';
+            }
+
+            try {
+                const response = await fetch(`/my-orders/${currentCustomerChatPrescriptionId}/messages`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': getCSRFToken(),
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ message: message })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    customerChatInput.value = '';
+
+                    // Add message to display
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = 'customer-message customer';
+                    messageDiv.innerHTML = `
+                        <div class="customer-message-avatar">C</div>
+                        <div class="customer-message-content">
+                            <div class="customer-message-bubble">${data.message.message}</div>
+                            <div class="customer-message-time">${data.message.created_at}</div>
+                        </div>
+                    `;
+
+                    if (customerChatMessages.querySelector('.customer-no-messages')) {
+                        customerChatMessages.innerHTML = '';
+                    }
+
+                    customerChatMessages.appendChild(messageDiv);
+                    customerChatMessages.scrollTop = customerChatMessages.scrollHeight;
+                }
+            } catch (error) {
+                console.error('Error sending message:', error);
+                alert('Failed to send message');
+            } finally {
+                if (customerSendButton) {
+                    customerSendButton.disabled = false;
+                    customerSendButton.innerHTML = originalText;
+                }
+            }
+        }
+
+        // Customer send message events
+        customerSendButton?.addEventListener('click', sendCustomerMessage);
+
+        customerChatInput?.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendCustomerMessage();
+            }
+        });
+
+        // Auto-resize customer textarea
+        customerChatInput?.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+        });
+
+        // Mark customer messages as read
+        async function markCustomerMessagesAsRead(prescriptionId) {
+            try {
+                await fetch(`/my-orders/${prescriptionId}/messages/mark-read`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': getCSRFToken(),
+                        'Accept': 'application/json'
+                    }
+                });
+            } catch (error) {
+                console.error('Error marking messages as read:', error);
+            }
+        }
     </script>
 
     @stack('scripts')

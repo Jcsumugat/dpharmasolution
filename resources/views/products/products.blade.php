@@ -42,14 +42,12 @@
                     <tr>
                         <th>Product Code</th>
                         <th>Product Name</th>
-                        <th>Brand Name</th>
-                        <th>Product Type</th>
+                        <th>Type</th>
+                        <th>Form</th>
                         <th>Dosage</th>
-                        <th>Classification</th>
                         <th>Total Stock</th>
                         <th>Batches</th>
                         <th>Earliest Expiry</th>
-                        <th>Latest Expiry</th>
                         <th>Supplier</th>
                         <th style="width: 80px;">Actions</th>
                     </tr>
@@ -69,10 +67,9 @@
                                         Expired</span>
                                 @endif
                             </td>
-                            <td>{{ $product->brand_name ?? '-' }}</td>
                             <td>{{ $product->product_type }}</td>
+                            <td>{{ $product->form_type }}</td>
                             <td>{{ $product->dosage_unit }}</td>
-                            <td>{{ $product->classification_name ?? '-' }}</td>
                             <td>
                                 <span class="{{ $isLowStock ? 'text-red-600 font-bold' : '' }}">
                                     {{ number_format($totalStock) }}
@@ -81,11 +78,7 @@
                                     <small class="text-gray-500">(Min: {{ $product->reorder_level }})</small>
                                 @endif
                             </td>
-                            <td>
-                                <span class="btn btn-link" style="color: black">
-                                    {{ $product->batches->count() ?? 0 }} Batches
-                                </span>
-                            </td>
+                            <td>{{ $product->batches->count() ?? 0 }}</td>
                             <td>
                                 @php
                                     $earliestBatch = $product->batches
@@ -105,28 +98,14 @@
                                     <span class="text-gray-400">No stock</span>
                                 @endif
                             </td>
-                            <td>
-                                @php
-                                    $latestBatch = $product->batches
-                                        ->where('quantity_remaining', '>', 0)
-                                        ->sortByDesc('expiration_date')
-                                        ->first();
-                                @endphp
-                                @if ($latestBatch)
-                                    {{ \Carbon\Carbon::parse($latestBatch->expiration_date)->format('Y-m-d') }}
-                                @else
-                                    <span class="text-gray-400">-</span>
-                                @endif
-                            </td>
                             <td>{{ $product->supplier->name ?? '-' }}</td>
                             <td>
                                 <div class="dropdown-container">
                                     <button class="dropdown-toggle" onclick="toggleDropdown(event)">&#8943;</button>
                                     <div class="dropdown-menu">
-                                        <button class="dropdown-item" onclick="showBatches({{ $product->id }})">View
-                                            Batches</button>
-                                        <button class="dropdown-item" onclick="editProduct({{ $product->id }})">Edit
-                                            Product</button>
+                                        <button class="dropdown-item" onclick="showProductInfo({{ $product->id }})">Product Information</button>
+                                        <button class="dropdown-item" onclick="showBatches({{ $product->id }})">View Batches</button>
+                                        <button class="dropdown-item" onclick="editProduct({{ $product->id }})">Edit Product</button>
                                         <form action="{{ route('products.destroy', $product->id) }}" method="POST"
                                             onsubmit="return confirm('Are you sure you want to delete this product and all its batches?');">
                                             @csrf
@@ -139,7 +118,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="12" class="text-center text-gray-500 py-4">No products found</td>
+                            <td colspan="10" class="text-center text-gray-500 py-4">No products found</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -412,6 +391,17 @@
         </div>
     </div>
 
+    <!-- Product Information Modal -->
+    <div class="modal-bg" id="productInfoModal">
+        <div class="modal fade-in product-info-modal">
+            <div class="modal-close" onclick="closeProductInfoModal()">&times;</div>
+            <div class="modal-header" id="productInfoTitle">Product Information</div>
+            <div class="product-info-grid" id="productInfoContent">
+                <!-- Content will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
     <!-- Batches View Modal -->
     <div class="modal-bg" id="batchesModal">
         <div class="modal fade-in" style="max-width: 1200px; max-height: 90vh; overflow-y: auto;">
@@ -454,63 +444,6 @@
                     <input type="text" name="reason" id="pricing_reason" placeholder=" ">
                     <label for="pricing_reason">Reason for Change</label>
                 </div>
-                <div class="modal-buttons">
-                    <button type="button" class="btn btn-cancel1" onclick="closePricingModal()">Cancel</button>
-                    <button type="submit" class="btn btn-create1">Update Pricing</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Batches View Modal -->
-    <div class="modal-bg" id="batchesModal" style="display:none;">
-        <div class="modal fade-in" style="max-width: 1200px; max-height: 90vh; overflow-y: auto;">
-            <div class="modal-close" onclick="closeBatchesModal()">&times;</div>
-            <div class="modal-header" id="batchesModalTitle">Product Batches</div>
-            <div id="batchesContent">
-                <!-- Content will be loaded via AJAX -->
-            </div>
-        </div>
-    </div>
-
-
-    <!-- Batch Pricing Update Modal -->
-    <div class="modal-bg" id="pricingModal" style="display:none;">
-        <div class="modal fade-in" style="max-width: 500px;">
-            <div class="modal-close" onclick="closePricingModal()">&times;</div>
-            <div class="modal-header">Update Batch Pricing</div>
-
-            <form id="pricingForm" onsubmit="handlePricingUpdate(event)">
-                @csrf
-                <input type="hidden" id="pricing_batch_id" name="batch_id">
-
-                <div class="form-group">
-                    <label>Batch Information</label>
-                    <div class="batch-info-display">
-                        <p><strong>Batch:</strong> <span id="pricing_batch_number"></span></p>
-                        <p><strong>Current Unit Cost:</strong> ₱<span id="pricing_current_cost"></span></p>
-                        <p><strong>Current Sale Price:</strong> ₱<span id="pricing_current_price"></span></p>
-                        <p><strong>Current Margin:</strong> <span id="pricing_current_margin"></span>%</p>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <input type="number" step="0.01" name="unit_cost" id="pricing_unit_cost" placeholder=" "
-                        min="0">
-                    <label for="pricing_unit_cost">New Unit Cost</label>
-                </div>
-
-                <div class="form-group">
-                    <input type="number" step="0.01" name="sale_price" id="pricing_sale_price" placeholder=" "
-                        min="0">
-                    <label for="pricing_sale_price">New Sale Price</label>
-                </div>
-
-                <div class="form-group">
-                    <input type="text" name="reason" id="pricing_reason" placeholder=" ">
-                    <label for="pricing_reason">Reason for Change</label>
-                </div>
-
                 <div class="modal-buttons">
                     <button type="button" class="btn btn-cancel1" onclick="closePricingModal()">Cancel</button>
                     <button type="submit" class="btn btn-create1">Update Pricing</button>
@@ -621,12 +554,23 @@
             }
         }
 
-        window.onclick = () => {
-            document.querySelectorAll(".dropdown-menu").forEach(menu => {
-                menu.style.display = "none";
-            });
-            document.querySelectorAll(".dropdown-container").forEach(container => {
-                container.classList.remove("active");
+        window.onclick = (event) => {
+            // Close dropdowns when clicking outside
+            if (!event.target.matches('.dropdown-toggle')) {
+                document.querySelectorAll(".dropdown-menu").forEach(menu => {
+                    menu.style.display = "none";
+                });
+                document.querySelectorAll(".dropdown-container").forEach(container => {
+                    container.classList.remove("active");
+                });
+            }
+
+            // Close modals when clicking on the modal background (not the modal content)
+            const modals = document.querySelectorAll('.modal-bg');
+            modals.forEach(modal => {
+                if (event.target === modal) {
+                    modal.style.display = 'none';
+                }
             });
         };
 
@@ -635,6 +579,7 @@
         const modalTitle = document.getElementById("modalTitle");
         const submitBtn = document.getElementById("submitBtn");
         const batchesModal = document.getElementById("batchesModal");
+        const productInfoModal = document.getElementById("productInfoModal");
 
         function openModal() {
             modal.style.display = "flex";
@@ -680,6 +625,124 @@
             document.getElementById("storage_requirements").value = product.storage_requirements || '';
         }
 
+        function showProductInfo(productId) {
+            const product = window.productData[productId];
+            if (!product) {
+                alert('Product information not found');
+                return;
+            }
+
+            const modal = document.getElementById('productInfoModal');
+            const title = document.getElementById('productInfoTitle');
+            const content = document.getElementById('productInfoContent');
+
+            title.textContent = `${product.product_name} - Product Information`;
+
+            // Get classification name from the select options
+            const classificationSelect = document.getElementById('classification');
+            let classificationText = 'Not specified';
+            if (product.classification) {
+                const option = classificationSelect.querySelector(`option[value="${product.classification}"]`);
+                if (option) {
+                    classificationText = option.textContent;
+                }
+            }
+
+            content.innerHTML = `
+                <div class="info-section">
+                    <h3>Basic Information</h3>
+                    <div class="info-item">
+                        <span class="info-label">Product Code:</span>
+                        <span class="info-value">${product.product_code || '-'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Product Name:</span>
+                        <span class="info-value">${product.product_name || '-'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Brand Name:</span>
+                        <span class="info-value">${product.brand_name || '-'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Manufacturer:</span>
+                        <span class="info-value">${product.manufacturer || '-'}</span>
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <h3>Classification</h3>
+                    <div class="info-item">
+                        <span class="info-label">Product Type:</span>
+                        <span class="info-value">${product.product_type || '-'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Category:</span>
+                        <span class="info-value">${product.category ? product.category.name : '-'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Classification:</span>
+                        <span class="info-value">${classificationText}</span>
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <h3>Dosage & Form</h3>
+                    <div class="info-item">
+                        <span class="info-label">Form Type:</span>
+                        <span class="info-value">${product.form_type || '-'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Dosage:</span>
+                        <span class="info-value">${product.dosage_unit || '-'}</span>
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <h3>Storage & Supply</h3>
+                    <div class="info-item">
+                        <span class="info-label">Storage Requirements:</span>
+                        <span class="info-value">${product.storage_requirements || '-'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Reorder Level:</span>
+                        <span class="info-value">${product.reorder_level ? product.reorder_level + ' units' : '-'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Supplier:</span>
+                        <span class="info-value">${product.supplier ? product.supplier.name : '-'}</span>
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <h3>System Information</h3>
+                    <div class="info-item">
+                        <span class="info-label">Created:</span>
+                        <span class="info-value">${formatDate(product.created_at)}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Last Updated:</span>
+                        <span class="info-value">${formatDate(product.updated_at)}</span>
+                    </div>
+                </div>
+            `;
+
+            modal.style.display = 'flex';
+        }
+
+        function closeProductInfoModal() {
+            document.getElementById('productInfoModal').style.display = 'none';
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return '-';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        }
+
         function showBatches(productId) {
             currentProductId = productId;
             batchesModal.style.display = "flex";
@@ -698,6 +761,15 @@
         function closeBatchesModal() {
             batchesModal.style.display = "none";
             currentProductId = null;
+            // Don't clear product info content when closing batches modal
+        }
+
+        // Add specific modal close handlers to prevent content clearing conflicts
+        function closeModalSafely(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.style.display = "none";
+            }
         }
 
         function openStockOutModal(batchId, batchNumber, availableStock, productName, unitCost, salePrice) {

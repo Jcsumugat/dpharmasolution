@@ -62,7 +62,6 @@
                         <th>Payment Method</th>
                         <th>Status</th>
                         <th>Date</th>
-                        <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -111,10 +110,6 @@
                             <td class="sale-date">
                                 {{ $saleDate->format('M d, Y') }}<br>
                                 <small>{{ $saleDate->format('h:i A') }}</small>
-                            </td>
-                            <td>
-                                <button class="btn btn-primary view-details-btn"
-                                    data-sale-id="{{ $sale->id }}">View Details</button>
                             </td>
                         </tr>
                     @endforeach

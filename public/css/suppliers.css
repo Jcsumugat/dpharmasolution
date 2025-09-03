@@ -1,3 +1,51 @@
+/* --- Consistent Typography and Professional UI --- */
+:root {
+    --font-family-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-size-xs: 0.75rem;
+    --font-size-sm: 0.875rem;
+    --font-size-base: 1rem;
+    --font-size-lg: 1.125rem;
+    --font-size-xl: 1.25rem;
+    --font-size-2xl: 1.5rem;
+    --font-size-3xl: 1.875rem;
+    --font-size-4xl: 2.25rem;
+
+    --font-weight-light: 300;
+    --font-weight-regular: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+    --font-weight-extrabold: 800;
+
+    --line-height-tight: 1.25;
+    --line-height-normal: 1.5;
+    --line-height-relaxed: 1.75;
+
+    --letter-spacing-tight: -0.025em;
+    --letter-spacing-normal: 0;
+    --letter-spacing-wide: 0.025em;
+    --letter-spacing-wider: 0.05em;
+
+    --color-primary: #667eea;
+    --color-primary-dark: #5a67d8;
+    --color-success: #10b981;
+    --color-warning: #f59e0b;
+    --color-danger: #ef4444;
+    --color-info: #3b82f6;
+
+    --color-text-primary: #1e293b;
+    --color-text-secondary: #64748b;
+    --color-text-tertiary: #94a3b8;
+    --color-text-inverse: #ffffff;
+
+    --color-bg-primary: #ffffff;
+    --color-bg-secondary: #f8fafc;
+    --color-bg-tertiary: #f1f5f9;
+
+    --color-border-light: #e2e8f0;
+    --color-border-medium: #cbd5e1;
+    --color-border-dark: #94a3b8;
+}
 /* --- Layout & Typography --- */
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -88,14 +136,17 @@ body {
 
 /* --- Table --- */
 .table-wrapper {
-    background: #fff;
-    border-radius: 20px;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-    border: 1px solid #e2e8f0;
-    overflow: hidden;
-    max-height: 70vh;
-    overflow-y: auto;
+    overflow-x: auto;
+    overflow-y: visible !important;
+    max-height: 80vh;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border-light);
+    position: relative;
+    z-index: 1;
 }
+
 
 .no-suppliers {
     text-align: center;
@@ -108,72 +159,121 @@ body {
 .inventory-table {
     width: 100%;
     border-collapse: collapse;
-    background: transparent;
+    background: var(--color-bg-primary);
     margin: 0;
-    font-size: 0.95rem;
+    font-size: var(--font-size-sm);
+    position: relative;
 }
 
 .inventory-table thead {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: #fff;
+    color: var(--color-text-inverse);
     position: sticky;
     top: 0;
     z-index: 10;
 }
 
+.inventory-table tbody {
+    position: relative;
+    z-index: 5;
+}
+
 .inventory-table th {
-    padding: 1.5rem 1rem;
+    padding: 1.25rem 1rem;
     text-align: left;
-    font-weight: 700;
+    font-weight: var(--font-weight-semibold);
     text-transform: uppercase;
-    font-size: 0.875rem;
-    letter-spacing: 0.5px;
+    font-size: var(--font-size-xs);
+    letter-spacing: var(--letter-spacing-wider);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
     white-space: nowrap;
-    border-bottom: 2px solid rgba(255,255,255,0.1);
+    text-align: center;
 }
 
 .inventory-table td {
-    padding: 1.25rem 1rem;
-    border-bottom: 1px solid #f1f5f9;
+    padding: 1rem;
+    border-bottom: 1px solid var(--color-border-light);
     vertical-align: middle;
-    font-size: 0.95rem;
-    transition: background 0.3s;
+    font-size: var(--font-size-sm);
+    line-height: var(--line-height-normal);
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+/* CRITICAL: Actions column must allow overflow */
+.inventory-table td:last-child {
+    overflow: visible !important;
+    position: static;
 }
 
 .inventory-table tbody tr {
-    background: #fff;
-    transition: background 0.3s, box-shadow 0.3s;
+    transition: background-color 0.3s ease;
     position: relative;
-    z-index: 1;
-}
-
-.inventory-table tbody tr:nth-child(even) {
-    background: #f8fafc;
 }
 
 .inventory-table tbody tr:hover {
-    background: #eef2ff;
-    box-shadow: 0 4px 12px rgba(102,126,234,0.08);
-    z-index: 10;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    z-index: 6;
 }
 
-.inventory-table td:first-child { font-weight: 700; color: #3b82f6; }
-.inventory-table td:nth-child(2) { font-weight: 600; color: #059669; }
-.inventory-table td:nth-child(3) { color: #64748b; font-weight: 500; }
-.inventory-table td:nth-child(4) { color: #7c3aed; font-weight: 500; }
-.inventory-table td:nth-child(5) {
-    color: #64748b;
-    max-width: 200px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+.inventory-table tbody tr:nth-child(even) {
+    background-color: var(--color-bg-secondary);
 }
-.inventory-table td:nth-child(6) { text-align: center; width: 80px; }
 
+.inventory-table tbody tr:nth-child(even):hover {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+/* Table Cell Specific Styles */
+.inventory-table td:first-child {
+    font-weight: var(--font-weight-bold);
+    color: var(--color-primary);
+    font-family: 'Courier New', monospace;
+    font-size: var(--font-size-sm);
+}
+
+.inventory-table td:nth-child(2) {
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-success);
+}
+
+.inventory-table td:nth-child(3) {
+    color: var(--color-text-secondary);
+    font-style: italic;
+}
+
+.inventory-table td:nth-child(4) {
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+    font-size: var(--font-size-xs);
+    letter-spacing: var(--letter-spacing-wider);
+    color: #7c3aed;
+}
+
+.inventory-table td:nth-child(6) {
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-primary);
+}
+
+.inventory-table td:nth-child(7) {
+    font-weight: var(--font-weight-bold);
+    color: var(--color-success);
+    font-size: var(--font-size-base);
+}
+
+.inventory-table td:nth-child(8) {
+    color: var(--color-danger);
+    font-weight: var(--font-weight-semibold);
+}
 /* --- Dropdown --- */
-.dropdown {
+.dropdown-container {
     position: relative;
     display: inline-block;
+    z-index: 100;
+}
+
+.dropdown-container.active {
+    z-index: 9999 !important;
 }
 
 .dropdown-toggle {
@@ -187,69 +287,56 @@ body {
     height: 40px;
     display: flex;
     align-items: center;
+    text-align: center;
     justify-content: center;
-    color: #64748b;
-    transition: background 0.2s, color 0.2s;
-    z-index: 2;
+    transition: all 0.3s ease;
+    color: var(--color-text-secondary);
+    position: relative;
+    z-index: 101;
 }
 
-.dropdown-toggle:hover,
-.dropdown-toggle:focus-visible {
-    background: #f3f4f6;
-    color: #1e293b;
-    outline: 2px solid #667eea;
-    outline-offset: 2px;
+.dropdown-toggle:hover {
+    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+    color: var(--color-text-primary);
 }
 
 .dropdown-menu {
     display: none;
-    position: absolute;
-    right: 0;
-    top: 110%;
+    position: fixed !important;
+    background: var(--color-bg-primary);
     min-width: 160px;
-    background: #fff;
-    border: 1px solid #e2e8f0;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
     border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.15);
-    z-index: 1000;
-    padding: 0.5rem 0;
-    animation: dropdownSlideIn 0.2s;
-}
-
-@keyframes dropdownSlideIn {
-    from { opacity: 0; transform: translateY(-10px);}
-    to { opacity: 1; transform: translateY(0);}
-}
-
-.dropdown-menu.show {
-    display: block;
+    border: 1px solid var(--color-border-light);
+    z-index: 10000 !important;
+    transform: translateX(-50%);
 }
 
 .dropdown-item {
     display: block;
     width: 100%;
     padding: 0.75rem 1rem;
-    color: #1e293b;
-    background: none;
+    color: var(--color-text-primary);
+    text-decoration: none;
     border: none;
+    background: none;
     text-align: left;
     cursor: pointer;
-    font-size: 0.95rem;
-    font-weight: 500;
-    transition: background 0.2s, color 0.2s;
+    transition: background-color 0.3s ease;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    position: relative;
 }
 
-.dropdown-item:hover,
-.dropdown-item:focus {
-    background: #f8fafc;
-    color: #3b82f6;
+.dropdown-item:hover {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    color: #1e293b;
 }
 
 .dropdown-item.delete-btn:hover {
-    background: #fee2e2;
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
     color: #dc2626;
 }
-
 /* --- Buttons --- */
 .btn {
     display: inline-flex;

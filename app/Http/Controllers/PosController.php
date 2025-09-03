@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Product;
+use App\Models\StockMovement;
 use App\Models\PosTransaction;
 use App\Models\PosTransactionItem;
 use Illuminate\Support\Facades\DB;
@@ -19,18 +20,18 @@ class PosController extends Controller
 
         // Get products with available batches
         $products = Product::whereHas('batches', function ($query) {
-                $query->where('quantity_remaining', '>', 0)
-                      ->where('expiration_date', '>', now());
-            })
+            $query->where('quantity_remaining', '>', 0)
+                ->where('expiration_date', '>', now());
+        })
             ->with(['batches' => function ($query) {
                 $query->where('quantity_remaining', '>', 0)
-                      ->where('expiration_date', '>', now())
-                      ->orderBy('expiration_date', 'asc');
+                    ->where('expiration_date', '>', now())
+                    ->orderBy('expiration_date', 'asc');
             }])
             ->when($search, function ($query, $search) {
                 return $query->where(function ($q) use ($search) {
                     $q->where('product_name', 'LIKE', "%{$search}%")
-                      ->orWhere('brand_name', 'LIKE', "%{$search}%");
+                        ->orWhere('brand_name', 'LIKE', "%{$search}%");
                 });
             })
             ->when($category, function ($query, $category) {
@@ -53,18 +54,18 @@ class PosController extends Controller
         $category = $request->get('category');
 
         $products = Product::whereHas('batches', function ($query) {
-                $query->where('quantity_remaining', '>', 0)
-                      ->where('expiration_date', '>', now());
-            })
+            $query->where('quantity_remaining', '>', 0)
+                ->where('expiration_date', '>', now());
+        })
             ->with(['batches' => function ($query) {
                 $query->where('quantity_remaining', '>', 0)
-                      ->where('expiration_date', '>', now())
-                      ->orderBy('expiration_date', 'asc');
+                    ->where('expiration_date', '>', now())
+                    ->orderBy('expiration_date', 'asc');
             }])
             ->when($search, function ($query, $search) {
                 return $query->where(function ($q) use ($search) {
                     $q->where('product_name', 'LIKE', "%{$search}%")
-                      ->orWhere('brand_name', 'LIKE', "%{$search}%");
+                        ->orWhere('brand_name', 'LIKE', "%{$search}%");
                 });
             })
             ->when($category, function ($query, $category) {
@@ -93,8 +94,8 @@ class PosController extends Controller
     {
         $product = Product::with(['batches' => function ($query) {
             $query->where('quantity_remaining', '>', 0)
-                  ->where('expiration_date', '>', now())
-                  ->orderBy('expiration_date', 'asc');
+                ->where('expiration_date', '>', now())
+                ->orderBy('expiration_date', 'asc');
         }])->findOrFail($id);
 
         if ($product->batches->isEmpty()) {
@@ -139,8 +140,8 @@ class PosController extends Controller
             foreach ($request->items as $item) {
                 $product = Product::with(['batches' => function ($query) {
                     $query->where('quantity_remaining', '>', 0)
-                          ->where('expiration_date', '>', now())
-                          ->orderBy('expiration_date', 'asc');
+                        ->where('expiration_date', '>', now())
+                        ->orderBy('expiration_date', 'asc');
                 }])->findOrFail($item['product_id']);
 
                 if ($product->batches->isEmpty()) {
@@ -220,6 +221,19 @@ class PosController extends Controller
                         $batch->update(['quantity_remaining' => 0]);
                     }
                 }
+
+                // Update the product's stock_quantity after deducting from batches
+                $itemData['product']->decrement('stock_quantity', $itemData['quantity']);
+
+                // Optional: Create stock movement record for tracking
+                StockMovement::create([
+                    'product_id' => $itemData['product']->id,
+                    'type' => 'sale',
+                    'quantity' => -$itemData['quantity'],
+                    'reference_id' => $transaction->id,
+                    'reference_type' => 'pos_transaction',
+                    'notes' => "POS sale - Transaction #{$transaction->id}"
+                ]);
             }
 
             DB::commit();
@@ -230,7 +244,6 @@ class PosController extends Controller
                 'transaction' => $transaction->load('items'),
                 'change_amount' => $changeAmount
             ]);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -239,7 +252,6 @@ class PosController extends Controller
             ], 400);
         }
     }
-
     public function cancelTransaction()
     {
         // Clear any session data if needed

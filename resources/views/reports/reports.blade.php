@@ -33,6 +33,16 @@
                         <option value="products">Product Report</option>
                     </select>
 
+                    <!-- New Sales Source Filter -->
+                    <div id="sales_source_container" style="display: block;">
+                        <label for="sales_source">Sales Source</label>
+                        <select id="sales_source" name="sales_source" style="padding: 10px; width: 100%; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
+                            <option value="all">All Sales (Online + Walk-in)</option>
+                            <option value="online">Online Orders Only</option>
+                            <option value="walkin">Walk-in Sales Only</option>
+                        </select>
+                    </div>
+
                     <button type="submit" class="btn-generate">
                         <span class="btn-text">Generate Report</span>
                         <span class="btn-loading" style="display: none;">Generating...</span>
@@ -48,9 +58,10 @@
                     <h1>MJ's Pharmacy</h1>
                     <h2 id="print-report-title">Sales Report</h2>
                     <p><strong>Date Range:</strong> <span id="print-date-range"></span></p>
+                    <p><strong>Sales Source:</strong> <span id="print-sales-source"></span></p>
                     <p><strong>Generated On:</strong> {{ \Carbon\Carbon::now()->format('F j, Y g:i A') }}</p>
                 </div>
-                
+
                 <!-- Action Buttons -->
                 <div class="btn-container" id="actionButtons" style="display: none;">
                     <button type="button" class="btn-print" id="printBtn" onclick="printReport()">
@@ -66,6 +77,7 @@
 
                 <h2>Sales Report — MJ's Pharmacy</h2>
                 <p><strong>Date Range:</strong> <span id="reportRange">Please select date range and generate report</span></p>
+                <p><strong>Sales Source:</strong> <span id="reportSource">All Sales</span></p>
                 <p><strong>Generated On:</strong> {{ \Carbon\Carbon::now()->format('F j, Y g:i A') }}</p>
 
                 <div id="reportContent">
@@ -74,7 +86,7 @@
                         Please select your date range and click "Generate Report" to view the sales data.
                     </div>
                 </div>
-                
+
                 <!-- Print Footer (hidden by default, shown only during print) -->
                 <div class="print-footer" style="display: none;">
                     <p>This report was generated automatically by MJ's Pharmacy Management System</p>
@@ -104,6 +116,7 @@
         let currentReportData = null;
         let currentReportType = null;
         let currentDateRange = null;
+        let currentSalesSource = null;
 
         // Set CSRF token for AJAX requests
         document.addEventListener('DOMContentLoaded', function() {
@@ -119,6 +132,16 @@
             thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
             document.getElementById('start_date').value = thirtyDaysAgo.toISOString().split('T')[0];
             document.getElementById('end_date').value = today;
+
+            // Show/hide sales source filter based on report type
+            document.getElementById('report_type').addEventListener('change', function() {
+                const salesSourceContainer = document.getElementById('sales_source_container');
+                if (this.value === 'sales') {
+                    salesSourceContainer.style.display = 'block';
+                } else {
+                    salesSourceContainer.style.display = 'none';
+                }
+            });
         });
 
         function showLogoutModal() {
@@ -152,6 +175,7 @@
             const startDate = document.getElementById("start_date").value;
             const endDate = document.getElementById("end_date").value;
             const reportType = document.getElementById("report_type").value;
+            const salesSource = document.getElementById("sales_source").value;
 
             if (!startDate || !endDate) {
                 alert("Please select both start and end dates.");
@@ -184,9 +208,14 @@
             });
             document.getElementById("reportRange").innerText = rangeText;
 
+            // Update sales source display
+            const sourceText = getSalesSourceText(salesSource);
+            document.getElementById("reportSource").innerText = sourceText;
+
             // Store current report parameters
             currentReportType = reportType;
             currentDateRange = rangeText;
+            currentSalesSource = salesSource;
 
             // Make AJAX request to generate report
             fetch('/admin/reports/generate', {
@@ -198,14 +227,15 @@
                     body: JSON.stringify({
                         start_date: startDate,
                         end_date: endDate,
-                        report_type: reportType
+                        report_type: reportType,
+                        sales_source: salesSource
                     })
                 })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
                         currentReportData = data.data;
-                        displayReport(data.data, reportType);
+                        displayReport(data.data, reportType, salesSource);
                         showActionButtons();
                     } else {
                         showError(data.message || 'Error generating report');
@@ -225,6 +255,15 @@
                 });
         }
 
+        function getSalesSourceText(source) {
+            switch(source) {
+                case 'online': return 'Online Orders Only';
+                case 'walkin': return 'Walk-in Sales Only';
+                case 'all':
+                default: return 'All Sales (Online + Walk-in)';
+            }
+        }
+
         function showActionButtons() {
             document.getElementById('actionButtons').style.display = 'block';
         }
@@ -240,9 +279,10 @@
             }
 
             // Update print header content
-            document.getElementById('print-report-title').textContent = 
+            document.getElementById('print-report-title').textContent =
                 currentReportType.charAt(0).toUpperCase() + currentReportType.slice(1) + ' Report';
             document.getElementById('print-date-range').textContent = currentDateRange;
+            document.getElementById('print-sales-source').textContent = getSalesSourceText(currentSalesSource);
 
             // Show print-specific elements
             const printElements = document.querySelectorAll('.print-header, .print-footer');
@@ -270,6 +310,7 @@
 
             const startDate = document.getElementById("start_date").value;
             const endDate = document.getElementById("end_date").value;
+            const salesSource = document.getElementById("sales_source").value;
 
             // Create form and submit for PDF export
             const form = document.createElement('form');
@@ -288,7 +329,8 @@
             const fields = {
                 start_date: startDate,
                 end_date: endDate,
-                report_type: currentReportType
+                report_type: currentReportType,
+                sales_source: salesSource
             };
 
             for (const [key, value] of Object.entries(fields)) {
@@ -312,6 +354,7 @@
 
             const startDate = document.getElementById("start_date").value;
             const endDate = document.getElementById("end_date").value;
+            const salesSource = document.getElementById("sales_source").value;
 
             // Create form and submit for Excel export
             const form = document.createElement('form');
@@ -330,7 +373,8 @@
             const fields = {
                 start_date: startDate,
                 end_date: endDate,
-                report_type: currentReportType
+                report_type: currentReportType,
+                sales_source: salesSource
             };
 
             for (const [key, value] of Object.entries(fields)) {
@@ -346,7 +390,7 @@
             document.body.removeChild(form);
         }
 
-        function displayReport(data, reportType) {
+        function displayReport(data, reportType, salesSource = 'all') {
             const reportContent = document.getElementById('reportContent');
 
             if (reportType === 'sales') {
@@ -355,6 +399,7 @@
                     <div class="summary-card">
                         <h4>Total Sales</h4>
                         <p class="value">₱${data.summary.total_sales || '0.00'}</p>
+                        ${salesSource !== 'all' ? `<small>${getSalesSourceText(salesSource)}</small>` : ''}
                     </div>
                     <div class="summary-card">
                         <h4>Total Items Sold</h4>
@@ -369,6 +414,24 @@
                         <p class="value">₱${data.summary.average_sale || '0.00'}</p>
                     </div>
                 </div>
+
+                ${data.breakdown && salesSource === 'all' ? `
+                <div class="sales-breakdown">
+                    <h3>Sales Breakdown by Source</h3>
+                    <div class="breakdown-grid">
+                        <div class="breakdown-card">
+                            <h4>Online Orders</h4>
+                            <p class="breakdown-amount">₱${data.breakdown.online_sales || '0.00'}</p>
+                            <small>${data.breakdown.online_transactions || 0} transactions</small>
+                        </div>
+                        <div class="breakdown-card">
+                            <h4>Walk-in Sales</h4>
+                            <p class="breakdown-amount">₱${data.breakdown.walkin_sales || '0.00'}</p>
+                            <small>${data.breakdown.walkin_transactions || 0} transactions</small>
+                        </div>
+                    </div>
+                </div>
+                ` : ''}
 
                 ${data.low_stock && data.low_stock.length > 0 ? `
                 <div class="low-stock-alert">
@@ -390,6 +453,7 @@
                             <th>Quantity Sold</th>
                             <th>Unit Price</th>
                             <th>Total Amount</th>
+                            <th>Source</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -399,11 +463,16 @@
                                 <td>${sale.quantity_sold}</td>
                                 <td>₱${sale.unit_price}</td>
                                 <td>₱${sale.total_amount}</td>
+                                <td>
+                                    <span class="source-badge ${sale.source}">
+                                        ${sale.source === 'online' ? 'Online' : 'Walk-in'}
+                                    </span>
+                                </td>
                             </tr>
                         `).join('')}
                     </tbody>
                 </table>
-                ` : '<p>No sales data found for the selected period.</p>'}
+                ` : '<p>No sales data found for the selected period and source.</p>'}
             `;
             } else if (reportType === 'inventory') {
                 reportContent.innerHTML = `
@@ -492,7 +561,7 @@
                         `).join('')}
                     </tbody>
                 </table>
-                
+
                 ${data.categories && data.categories.length > 0 ? `
                 <h3>Category Performance</h3>
                 <table class="report-table">

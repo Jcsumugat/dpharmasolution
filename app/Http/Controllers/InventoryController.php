@@ -485,44 +485,215 @@ class InventoryController extends Controller
                 ->with('error', 'Error removing stock: ' . $e->getMessage());
         }
     }
+    /**
+     * Add stock to an existing batch
+     */
     public function addStockToBatch(Request $request, ProductBatch $batch)
-{
-    $request->validate([
-        'additional_quantity' => 'required|integer|min:1',
-        'unit_cost' => 'required|numeric|min:0',
-        'received_date' => 'required|date|before_or_equal:today',
-        'notes' => 'nullable|string|max:1000',
-    ]);
+    {
+        try {
+            $request->validate([
+                'additional_quantity' => 'required|integer|min:1',
+                'unit_cost' => 'required|numeric|min:0.01',
+                'received_date' => 'required|date|before_or_equal:today',
+                'notes' => 'nullable|string|max:1000',
+            ]);
 
-    // Verify unit cost matches
-    if ($request->unit_cost != $batch->unit_cost) {
-        return back()->withErrors(['unit_cost' => 'Unit cost must match the existing batch unit cost.']);
+            DB::beginTransaction();
+
+            // Calculate new weighted average cost
+            $currentTotalValue = $batch->quantity_received * $batch->unit_cost;
+            $additionalTotalValue = $request->additional_quantity * $request->unit_cost;
+            $newTotalQuantity = $batch->quantity_received + $request->additional_quantity;
+            $newWeightedAvgCost = ($currentTotalValue + $additionalTotalValue) / $newTotalQuantity;
+
+            // Update batch quantities and cost
+            $batch->update([
+                'quantity_received' => $newTotalQuantity,
+                'quantity_remaining' => $batch->quantity_remaining + $request->additional_quantity,
+                'unit_cost' => round($newWeightedAvgCost, 2),
+                'received_date' => $request->received_date,
+                'notes' => $request->notes
+            ]);
+
+            // Update product total stock
+            $batch->product->increment('stock_quantity', $request->additional_quantity);
+
+            // Create stock movement record
+            StockMovement::create([
+                'product_id' => $batch->product_id,
+                'batch_id' => $batch->id,
+                'type' => 'stock_addition',
+                'quantity' => $request->additional_quantity,
+                'notes' => "Added {$request->additional_quantity} units to batch #{$batch->batch_number}" .
+                    ($request->notes ? " - {$request->notes}" : ''),
+                'reference_type' => StockMovement::REFERENCE_MANUAL ?? 'manual',
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            DB::commit();
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Successfully added {$request->additional_quantity} units to batch #{$batch->batch_number}",
+                    'data' => [
+                        'batch_id' => $batch->id,
+                        'new_quantity_received' => $batch->fresh()->quantity_received,
+                        'new_quantity_remaining' => $batch->fresh()->quantity_remaining,
+                        'new_unit_cost' => round($newWeightedAvgCost, 2),
+                        'product_stock_quantity' => $batch->product->fresh()->stock_quantity
+                    ],
+                    'reload' => true
+                ]);
+            }
+
+            return redirect()->back()->with('success', "Successfully added {$request->additional_quantity} units to batch #{$batch->batch_number}");
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+
+            Log::error('Validation failed for add stock to batch', [
+                'batch_id' => $batch->id ?? 'unknown',
+                'batch_number' => $batch->batch_number ?? 'unknown',
+                'product_id' => $batch->product_id ?? 'unknown',
+                'errors' => $e->errors(),
+                'request_data' => $request->all()
+            ]);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation error: ' . $e->validator->errors()->first(),
+                    'errors' => $e->errors()
+                ], 422);
+            }
+
+            return redirect()->back()->withErrors($e->errors())->withInput();
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Error adding stock to batch', [
+                'batch_id' => $batch->id ?? 'unknown',
+                'batch_number' => $batch->batch_number ?? 'unknown',
+                'product_id' => $batch->product_id ?? 'unknown',
+                'product_name' => $batch->product->name ?? 'unknown',
+                'request_data' => $request->all(),
+                'error_message' => $e->getMessage(),
+                'error_file' => $e->getFile(),
+                'error_line' => $e->getLine(),
+                'stack_trace' => $e->getTraceAsString()
+            ]);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Server error occurred while adding stock. Please try again.'
+                ], 500);
+            }
+
+            return redirect()->back()->with('error', 'Error adding stock: ' . $e->getMessage())->withInput();
+        }
     }
 
-    DB::beginTransaction();
-    try {
-        // Update batch quantities
-        $batch->increment('quantity_received', $request->additional_quantity);
-        $batch->increment('quantity_remaining', $request->additional_quantity);
+    /**
+     * Update batch pricing
+     */
+    public function updateBatchPrice(Request $request, ProductBatch $batch)
+    {
+        try {
+            $request->validate([
+                'unit_cost' => 'required|numeric|min:0.01',
+                'sale_price' => 'required|numeric|min:0.01',
+                'notes' => 'nullable|string|max:1000',
+            ]);
 
-        // Update product total stock
-        $batch->product->increment('stock_quantity', $request->additional_quantity);
+            DB::beginTransaction();
 
-        // Create stock movement record
-        StockMovement::create([
-            'product_id' => $batch->product_id,
-            'batch_id' => $batch->id,
-            'type' => 'stock_addition',
-            'quantity' => $request->additional_quantity,
-            'notes' => $request->notes,
-        ]);
+            $oldSalePrice = $batch->sale_price;
+            $oldUnitCost = $batch->unit_cost;
 
-        DB::commit();
+            // Update batch pricing
+            $batch->update([
+                'unit_cost' => $request->unit_cost,
+                'sale_price' => $request->sale_price,
+            ]);
 
-        return back()->with('success', "Successfully added {$request->additional_quantity} units to batch #{$batch->batch_number}");
-    } catch (\Exception $e) {
-        DB::rollBack();
-        return back()->with('error', 'Error adding stock: ' . $e->getMessage());
+            // Create stock movement record for price update
+            StockMovement::create([
+                'product_id' => $batch->product_id,
+                'batch_id' => $batch->id,
+                'type' => 'price_update',
+                'quantity' => 0, // No quantity change for price updates
+                'notes' => "Price updated for batch #{$batch->batch_number}. " .
+                    "Unit cost: ₱{$oldUnitCost} → ₱{$request->unit_cost}, " .
+                    "Sale price: ₱{$oldSalePrice} → ₱{$request->sale_price}" .
+                    ($request->notes ? " - {$request->notes}" : ''),
+                'reference_type' => StockMovement::REFERENCE_MANUAL ?? 'manual',
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            DB::commit();
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Successfully updated pricing for batch #{$batch->batch_number}",
+                    'data' => [
+                        'batch_id' => $batch->id,
+                        'new_unit_cost' => $batch->fresh()->unit_cost,
+                        'new_sale_price' => $batch->fresh()->sale_price,
+                        'margin' => $batch->fresh()->unit_cost > 0 ?
+                            (($batch->fresh()->sale_price - $batch->fresh()->unit_cost) / $batch->fresh()->unit_cost) * 100 : 0
+                    ],
+                    'reload' => true
+                ]);
+            }
+
+            return redirect()->back()->with('success', "Successfully updated pricing for batch #{$batch->batch_number}");
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+
+            Log::error('Validation failed for batch price update', [
+                'batch_id' => $batch->id ?? 'unknown',
+                'batch_number' => $batch->batch_number ?? 'unknown',
+                'product_id' => $batch->product_id ?? 'unknown',
+                'errors' => $e->errors(),
+                'request_data' => $request->all()
+            ]);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation error: ' . $e->validator->errors()->first(),
+                    'errors' => $e->errors()
+                ], 422);
+            }
+
+            return redirect()->back()->withErrors($e->errors())->withInput();
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Error updating batch price', [
+                'batch_id' => $batch->id ?? 'unknown',
+                'batch_number' => $batch->batch_number ?? 'unknown',
+                'product_id' => $batch->product_id ?? 'unknown',
+                'product_name' => $batch->product->name ?? 'unknown',
+                'request_data' => $request->all(),
+                'error_message' => $e->getMessage(),
+                'error_file' => $e->getFile(),
+                'error_line' => $e->getLine(),
+                'stack_trace' => $e->getTraceAsString()
+            ]);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Server error occurred while updating price. Please try again.'
+                ], 500);
+            }
+
+            return redirect()->back()->with('error', 'Error updating price: ' . $e->getMessage())->withInput();
+        }
     }
-}
 }

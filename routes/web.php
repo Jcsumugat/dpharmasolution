@@ -94,15 +94,17 @@ Route::prefix('dashboard/batches')->middleware(['auth', 'admin'])->name('batches
 });
 
 Route::middleware(['auth', 'admin'])->group(function () {
-// Inventory routes
-Route::get('/dashboard/inventory', [InventoryController::class, 'index'])->name('inventory.index');
-Route::get('/dashboard/inventory/{product}/batches', [InventoryController::class, 'viewBatches'])->name('inventory.viewBatches');
-Route::post('/dashboard/inventory/{product}/batches', [InventoryController::class, 'addBatch'])->name('inventory.addBatch');
-Route::post('/dashboard/inventory/stock-out', [InventoryController::class, 'stockOut'])->name('inventory.stockOut');
-Route::get('/dashboard/inventory/stock-status/{product}', [InventoryController::class, 'getProductStockStatus'])->name('inventory.stockStatus');
-Route::get('/dashboard/inventory/expired-batches', [InventoryController::class, 'getExpiredBatches'])->name('inventory.expiredBatches');
-Route::post('/inventory/batch/{batch}/add-stock', [InventoryController::class, 'addStockToBatch'])
-    ->name('inventory.addStockToBatch');
+    // Inventory routes
+    Route::get('/dashboard/inventory', [InventoryController::class, 'index'])->name('inventory.index');
+    Route::get('/dashboard/inventory/{product}/batches', [InventoryController::class, 'viewBatches'])->name('inventory.viewBatches');
+    Route::post('/dashboard/inventory/{product}/batches', [InventoryController::class, 'addBatch'])->name('inventory.addBatch');
+    Route::post('/dashboard/inventory/stock-out', [InventoryController::class, 'stockOut'])->name('inventory.stockOut');
+    Route::get('/dashboard/inventory/stock-status/{product}', [InventoryController::class, 'getProductStockStatus'])->name('inventory.stockStatus');
+    Route::get('/dashboard/inventory/expired-batches', [InventoryController::class, 'getExpiredBatches'])->name('inventory.expiredBatches');
+    Route::post('/inventory/batch/{batch}/add-stock', [InventoryController::class, 'addStockToBatch'])
+        ->name('inventory.addStockToBatch');
+    Route::put('/dashboard/inventory/batches/{batch}/update-price', [InventoryController::class, 'updateBatchPrice'])
+        ->name('inventory.batches.update-price');
 });
 
 Route::middleware(['auth', 'admin'])->group(function () {
@@ -145,7 +147,10 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('/orders/{id}/complete', [AdminOrderController::class, 'completeOrder'])->name('orders.complete');
     Route::get('/debug/prescription/{id}', [AdminOrderController::class, 'debugPrescription']);
     Route::get('/admin/sales', [AdminOrderController::class, 'sales'])->name('sales.index');
-   Route::get('/admin/sales/{id}/details', [AdminOrderController::class, 'getSaleDetails']);
+    Route::get('/admin/sales/{id}/details', [AdminOrderController::class, 'getSaleDetails']);
+    Route::get('/admin/orders/{prescription}/messages', [AdminOrderController::class, 'getMessages'])->name('admin.prescription.messages');
+    Route::post('/admin/orders/{prescription}/messages', [AdminOrderController::class, 'sendMessage'])->name('admin.prescription.send-message');
+    Route::post('/admin/orders/{prescription}/messages/mark-read', [AdminOrderController::class, 'markMessagesRead'])->name('admin.prescription.mark-read');
 });
 
 Route::middleware(['auth', 'admin'])->group(function () {
@@ -198,6 +203,9 @@ Route::middleware('auth:customer')->group(function () {
     Route::get('/preorder/status/{token}', [ClientUpload::class, 'viewStatus']);
     Route::get('/preorder/validate/{token}', [ClientUpload::class, 'validatePreorder'])->name('preorder.validate');
     Route::get('/prescription/qr/{id}', [ClientUpload::class, 'showQrCode'])->name('prescription.qr');
+    Route::get('/my-orders/{prescription}/messages', [ClientUpload::class, 'getCustomerMessages'])->name('customer.prescription.messages');
+    Route::post('/my-orders/{prescription}/messages', [ClientUpload::class, 'sendCustomerMessage'])->name('customer.prescription.send-message');
+    Route::post('/my-orders/{prescription}/messages/mark-read', [ClientUpload::class, 'markCustomerMessagesAsRead'])->name('customer.prescription.mark-read');
 });
 
 Route::get('/feedback', function () {

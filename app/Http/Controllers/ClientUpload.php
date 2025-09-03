@@ -10,6 +10,7 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use App\Models\PrescriptionMessage;
 use App\Services\NotificationService;
 use App\Services\FileEncryptionService;
 
@@ -112,7 +113,6 @@ class ClientUpload extends Controller
                 ->with('success', $successMessage)
                 ->with('qr_link', $qrUrl)
                 ->with('qr_image', asset('storage/' . $qrPath));
-
         } catch (\Exception $e) {
             Log::error('Upload failed:', [
                 'error' => $e->getMessage(),
@@ -153,6 +153,104 @@ class ClientUpload extends Controller
         ]);
 
         return view('client.uploads', compact('prescriptions'));
+    }
+    /**
+     * Get messages for a customer's prescription order
+     */
+    public function getCustomerMessages(Prescription $prescription)
+    {
+        // Verify the customer owns this prescription
+        if ($prescription->customer_id !== Auth::guard('customer')->id()) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $messages = $prescription->messages()->orderBy('created_at')->get();
+
+        // Mark admin messages as read when customer views them
+        $prescription->messages()
+            ->where('sender_type', 'admin')
+            ->where('is_read', false)
+            ->update(['is_read' => true]);
+
+        return response()->json([
+            'success' => true,
+            'messages' => $messages->map(function ($message) {
+                return [
+                    'id' => $message->id,
+                    'message' => $message->message,
+                    'sender_type' => $message->sender_type,
+                    'sender_name' => $message->sender_type === 'admin' ? 'Pharmacy Staff' : 'You',
+                    'created_at' => $message->created_at->format('M d, Y H:i'),
+                    'is_read' => $message->is_read
+                ];
+            })
+        ]);
+    }
+
+    /**
+     * Send a message from customer to pharmacy
+     */
+    public function sendCustomerMessage(Request $request, Prescription $prescription)
+    {
+        // Verify the customer owns this prescription
+        if ($prescription->customer_id !== Auth::guard('customer')->id()) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $request->validate([
+            'message' => 'required|string|max:1000'
+        ]);
+
+        try {
+            $message = PrescriptionMessage::create([
+                'prescription_id' => $prescription->id,
+                'sender_type' => 'customer',
+                'sender_id' => Auth::guard('customer')->id(),
+                'message' => trim($request->message),
+                'is_read' => false
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => [
+                    'id' => $message->id,
+                    'message' => $message->message,
+                    'sender_type' => 'customer',
+                    'sender_name' => 'You',
+                    'created_at' => $message->created_at->format('M d, Y H:i')
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error sending customer message: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to send message. Please try again.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Mark customer messages as read by admin
+     */
+    public function markCustomerMessagesAsRead(Prescription $prescription)
+    {
+        // Verify the customer owns this prescription
+        if ($prescription->customer_id !== Auth::guard('customer')->id()) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        try {
+            // Mark admin messages as read (customer has read them)
+            $prescription->messages()
+                ->where('sender_type', 'admin')
+                ->where('is_read', false)
+                ->update(['is_read' => true]);
+
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            Log::error('Error marking customer messages as read: ' . $e->getMessage());
+            return response()->json(['success' => false], 500);
+        }
     }
 
     public function showPrescriptionHistory()

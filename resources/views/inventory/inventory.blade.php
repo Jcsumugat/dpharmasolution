@@ -55,7 +55,6 @@
                         <th>Product Code</th>
                         <th>Product Name</th>
                         <th>Type</th>
-                        <th>Sale Price</th>
                         <th>Available Stock</th>
                         <th>Batches</th>
                         <th>Earliest Expiry</th>
@@ -99,13 +98,6 @@
                             <td>{{ $product->product_name }}</td>
                             <td>
                                 <span class="badge badge-secondary">{{ $product->product_type }}</span>
-                            </td>
-                            <td>
-                                @if ($earliestAvailableBatch)
-                                    <strong>₱{{ number_format($earliestAvailableBatch->sale_price ?? 0, 2) }}</strong>
-                                @else
-                                    <span class="text-muted">No available stock</span>
-                                @endif
                             </td>
                             <td>
                                 <div>
@@ -387,7 +379,6 @@
                 return;
             }
 
-            // Set the correct form action for POST request
             form.action = `/dashboard/inventory/${productId}/batches`;
 
             if (productIdInput) {
@@ -437,7 +428,7 @@
         }
 
         function inventoryViewBatches(productId, productName = '') {
-            console.log('Opening batches for product:', productId, productName); // Debug log
+            console.log('Opening batches for product:', productId, productName);
 
             inventoryCurrentProductId = productId;
             inventoryCurrentProductName = productName;
@@ -451,7 +442,6 @@
                 return;
             }
 
-            // Update modal title if available
             const modalTitle = document.getElementById('inventoryBatchesModalTitle');
             if (modalTitle && productName) {
                 modalTitle.textContent = `Batches for ${productName}`;
@@ -461,7 +451,6 @@
             content.innerHTML =
                 '<div class="loading-spinner" style="text-align: center; padding: 40px;"><i class="fas fa-spinner fa-spin"></i> Loading batches...</div>';
 
-            // Include CSRF token for authenticated requests
             const csrfToken = document.querySelector('meta[name="csrf-token"]');
             const headers = {
                 'Accept': 'text/html',
@@ -472,16 +461,15 @@
                 headers['X-CSRF-TOKEN'] = csrfToken.getAttribute('content');
             }
 
-            console.log('Fetching from:', `/dashboard/inventory/${productId}/batches`); // Debug log
+            console.log('Fetching from:', `/dashboard/inventory/${productId}/batches`);
 
             fetch(`/dashboard/inventory/${productId}/batches`, {
                     method: 'GET',
                     headers: headers,
-                    credentials: 'same-origin' // Include session cookies
+                    credentials: 'same-origin'
                 })
                 .then(response => {
-                    console.log('Response status:', response.status); // Debug log
-                    console.log('Response headers:', response.headers); // Debug log
+                    console.log('Response status:', response.status);
 
                     if (!response.ok) {
                         if (response.status === 404) {
@@ -497,7 +485,7 @@
                     return response.text();
                 })
                 .then(html => {
-                    console.log('HTML received, length:', html.length); // Debug log
+                    console.log('HTML received, length:', html.length);
 
                     if (html.trim() === '') {
                         throw new Error('Empty response received from server.');
@@ -505,15 +493,15 @@
 
                     content.innerHTML = html;
 
-                    // Initialize any JavaScript needed for the batch content
+                    // Initialize batch actions AND batch modal functions after loading content
                     initializeBatchActions();
+                    initializeBatchModalFunctions();
                 })
                 .catch(error => {
-                    console.error('Error loading batches:', error); // Debug log
+                    console.error('Error loading batches:', error);
 
                     let errorMessage = 'Error loading batches: ' + error.message;
 
-                    // Provide more helpful error messages
                     if (error.message.includes('Failed to fetch')) {
                         errorMessage += '<br><small>Check your internet connection or try refreshing the page.</small>';
                     }
@@ -642,40 +630,353 @@
             inventoryMaxQuantity = 0;
         }
 
+        // Batch modal functions that work with the loaded batch content
+        function openAddStockToBatchModal(batchId, batchNumber, expirationDate, unitCost) {
+            console.log('Opening add stock modal:', {
+                batchId,
+                batchNumber,
+                expirationDate,
+                unitCost
+            });
+
+            const modal = document.getElementById('addStockToBatchModal');
+            if (!modal) {
+                console.error('Add stock modal not found');
+                showNotification('Modal not found. Please refresh the page.', 'error');
+                return;
+            }
+
+            // Use class-based modal display to avoid conflicts
+            modal.classList.add('show');
+
+            // Set form data
+            const batchIdInput = document.getElementById('batch_id');
+            const batchInfoInput = document.getElementById('batch_info');
+            const unitCostInput = document.getElementById('modal_unit_cost');
+            const receivedDateInput = document.querySelector('#addStockToBatchForm [name="received_date"]');
+
+            if (batchIdInput) batchIdInput.value = batchId;
+            if (batchInfoInput) {
+                const formattedDate = new Date(expirationDate).toLocaleDateString();
+                batchInfoInput.value = `Batch #${batchNumber} - Expires: ${formattedDate}`;
+            }
+            if (unitCostInput) {
+                unitCostInput.value = parseFloat(unitCost).toFixed(2);
+                unitCostInput.readOnly = true; // Make unit cost read-only when adding to existing batch
+            }
+            if (receivedDateInput) {
+                receivedDateInput.value = new Date().toISOString().split('T')[0];
+            }
+
+            // Set form action URL - FIXED ROUTE
+            const form = document.getElementById('addStockToBatchForm');
+            if (form) {
+                form.action = `/inventory/batch/${batchId}/add-stock`;
+            }
+
+            // Focus on first input
+            setTimeout(() => {
+                const firstInput = document.querySelector('#addStockToBatchForm [name="additional_quantity"]');
+                if (firstInput) firstInput.focus();
+            }, 100);
+
+            console.log('Add stock modal opened successfully');
+        }
+
+        function closeAddStockToBatchModal() {
+            const modal = document.getElementById('addStockToBatchModal');
+            if (modal) {
+                modal.classList.remove('show');
+
+                const form = document.getElementById('addStockToBatchForm');
+                if (form) {
+                    setTimeout(() => {
+                        form.reset();
+                        const batchIdInput = document.getElementById('batch_id');
+                        const batchInfoInput = document.getElementById('batch_info');
+                        if (batchIdInput) batchIdInput.value = '';
+                        if (batchInfoInput) batchInfoInput.value = '';
+                    }, 200);
+                }
+            }
+        }
+
+        function openPricingModal(batchId, batchNumber, unitCost, salePrice) {
+            console.log('Opening pricing modal:', {
+                batchId,
+                batchNumber,
+                unitCost,
+                salePrice
+            });
+
+            const modal = document.getElementById('editPriceModal');
+            if (!modal) {
+                console.error('Edit price modal not found');
+                showNotification('Modal not found. Please refresh the page.', 'error');
+                return;
+            }
+
+            // Use class-based modal display to avoid conflicts
+            modal.classList.add('show');
+
+            // Set form data
+            const batchIdInput = document.getElementById('price_batch_id');
+            const batchInfoInput = document.getElementById('price_batch_info');
+            const unitCostInput = document.getElementById('price_unit_cost');
+            const salePriceInput = document.getElementById('price_sale_price');
+
+            if (batchIdInput) batchIdInput.value = batchId;
+            if (batchInfoInput) batchInfoInput.value = `Batch #${batchNumber}`;
+            if (unitCostInput) {
+                unitCostInput.value = parseFloat(unitCost).toFixed(2);
+                unitCostInput.readOnly = true; // Unit cost is fixed for existing batches
+            }
+            if (salePriceInput) salePriceInput.value = parseFloat(salePrice).toFixed(2);
+
+            // Set form action URL - CORRECT ROUTE
+            const form = document.getElementById('editPriceForm');
+            if (form) {
+                form.action = `/dashboard/inventory/batches/${batchId}/update-price`;
+            }
+
+            // Focus on first input
+            setTimeout(() => {
+                if (unitCostInput) unitCostInput.focus();
+            }, 100);
+
+            console.log('Pricing modal opened successfully');
+        }
+
+        function closePricingModal() {
+            const modal = document.getElementById('editPriceModal');
+            if (modal) {
+                modal.classList.remove('show');
+
+                const form = document.getElementById('editPriceForm');
+                if (form) {
+                    setTimeout(() => {
+                        form.reset();
+                        const batchIdInput = document.getElementById('price_batch_id');
+                        const batchInfoInput = document.getElementById('price_batch_info');
+                        if (batchIdInput) batchIdInput.value = '';
+                        if (batchInfoInput) batchInfoInput.value = '';
+                    }, 200);
+                }
+            }
+        }
+
+        // Initialize batch modal functions when batch content is loaded
+        function initializeBatchModalFunctions() {
+            console.log('Initializing batch modal functions...');
+
+            // Add Stock Form Handler
+            const addStockForm = document.getElementById('addStockToBatchForm');
+            if (addStockForm && !addStockForm.hasAttribute('data-handler-attached')) {
+                addStockForm.setAttribute('data-handler-attached', 'true');
+                addStockForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const formData = new FormData(this);
+                    if (validateAddStockForm(formData)) {
+                        handleFormSubmission(this, 'Add Stock', 'Stock added successfully!');
+                    }
+                });
+                console.log('Add stock form handler attached');
+            }
+
+            // Edit Price Form Handler
+            const editPriceForm = document.getElementById('editPriceForm');
+            if (editPriceForm && !editPriceForm.hasAttribute('data-handler-attached')) {
+                editPriceForm.setAttribute('data-handler-attached', 'true');
+                editPriceForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const formData = new FormData(this);
+                    if (validatePriceForm(formData)) {
+                        handleFormSubmission(this, 'Update Price', 'Price updated successfully!');
+                    }
+                });
+                console.log('Edit price form handler attached');
+            }
+
+            // Modal click outside handlers
+            const addStockModal = document.getElementById('addStockToBatchModal');
+            const editPriceModal = document.getElementById('editPriceModal');
+
+            if (addStockModal && !addStockModal.hasAttribute('data-click-handler')) {
+                addStockModal.setAttribute('data-click-handler', 'true');
+                addStockModal.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        closeAddStockToBatchModal();
+                    }
+                });
+            }
+
+            if (editPriceModal && !editPriceModal.hasAttribute('data-click-handler')) {
+                editPriceModal.setAttribute('data-click-handler', 'true');
+                editPriceModal.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        closePricingModal();
+                    }
+                });
+            }
+
+            console.log('Batch modal functions initialized successfully');
+        }
+
+        function validateAddStockForm(formData) {
+            if (!formData.get('additional_quantity') || formData.get('additional_quantity') <= 0) {
+                showNotification('Please enter a valid quantity', 'error');
+                return false;
+            }
+            if (!formData.get('unit_cost') || formData.get('unit_cost') <= 0) {
+                showNotification('Please enter a valid unit cost', 'error');
+                return false;
+            }
+            if (!formData.get('received_date')) {
+                showNotification('Please select a received date', 'error');
+                return false;
+            }
+            return true;
+        }
+
+        function validatePriceForm(formData) {
+            if (!formData.get('unit_cost') || formData.get('unit_cost') <= 0) {
+                showNotification('Please enter a valid unit cost', 'error');
+                return false;
+            }
+            if (!formData.get('sale_price') || formData.get('sale_price') <= 0) {
+                showNotification('Please enter a valid sale price', 'error');
+                return false;
+            }
+            return true;
+        }
+
+        function handleFormSubmission(form, buttonText, successMessage) {
+            const submitButton = form.querySelector('button[type="submit"]');
+            const formData = new FormData(form);
+
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.textContent = 'Processing...';
+            }
+
+            const csrfToken = document.querySelector('meta[name="csrf-token"]');
+            if (!csrfToken) {
+                showNotification('Security token not found. Please refresh the page.', 'error');
+                resetSubmitButton(submitButton, buttonText);
+                return;
+            }
+
+            fetch(form.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': csrfToken.getAttribute('content')
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        showNotification(successMessage, 'success');
+                        if (form.id === 'addStockToBatchForm') {
+                            closeAddStockToBatchModal();
+                        } else if (form.id === 'editPriceForm') {
+                            closePricingModal();
+                        }
+
+                        // Refresh the batch modal content
+                        if (inventoryCurrentProductId && document.getElementById('inventoryBatchesModal').style
+                            .display === 'flex') {
+                            setTimeout(() => {
+                                inventoryViewBatches(inventoryCurrentProductId, inventoryCurrentProductName);
+                            }, 1000);
+                        }
+
+                        if (data.reload) {
+                            setTimeout(() => window.location.reload(), 1000);
+                        }
+                    } else {
+                        showNotification(data.message || 'An error occurred', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Form submission error:', error);
+                    showNotification('Server error. Please try again.', 'error');
+                })
+                .finally(() => {
+                    resetSubmitButton(submitButton, buttonText);
+                });
+        }
+
+        function resetSubmitButton(button, text) {
+            if (button) {
+                button.disabled = false;
+                button.textContent = text;
+            }
+        }
+
+        function showNotification(message, type = 'info') {
+            try {
+                const existingNotifications = document.querySelectorAll('.notification');
+                existingNotifications.forEach(n => n.remove());
+
+                const notification = document.createElement('div');
+                notification.className = `notification notification-${type}`;
+                notification.innerHTML = `
+            <div class="notification-content">
+                <span class="notification-message">${message}</span>
+                <button class="notification-close">&times;</button>
+            </div>
+        `;
+
+                document.body.appendChild(notification);
+                setTimeout(() => notification.classList.add('show'), 100);
+
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                    setTimeout(() => {
+                        if (notification.parentNode) {
+                            notification.parentNode.removeChild(notification);
+                        }
+                    }, 300);
+                }, 5000);
+
+                const closeBtn = notification.querySelector('.notification-close');
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', () => {
+                        notification.classList.remove('show');
+                        setTimeout(() => {
+                            if (notification.parentNode) {
+                                notification.parentNode.removeChild(notification);
+                            }
+                        }, 300);
+                    });
+                }
+            } catch (error) {
+                console.error('Error showing notification:', error);
+                alert(message);
+            }
+        }
+
         // Initialize batch-specific actions after loading batch content
         function initializeBatchActions() {
             console.log('Initializing batch actions...');
 
-            // Add event listeners for batch-specific buttons
             const stockOutButtons = document.querySelectorAll('[onclick*="inventoryOpenStockOutModal"]');
             const updatePriceButtons = document.querySelectorAll('[onclick*="openPricingModal"]');
 
             console.log('Found stock out buttons:', stockOutButtons.length);
             console.log('Found update price buttons:', updatePriceButtons.length);
-
-            // Any additional initialization for batch modal content can go here
-        }
-
-        // Utility function for form validation
-        function initializeFormValidation() {
-            console.log('Initializing form validation...');
-
-            // Add any form validation logic here
-            const forms = document.querySelectorAll('form[id*="inventory"]');
-            forms.forEach(form => {
-                form.addEventListener('submit', function(e) {
-                    // Add any global form validation here
-                    console.log('Form submitted:', form.id);
-                });
-            });
         }
 
         // Handle modal clicks outside content area
         document.addEventListener('click', function(e) {
-            if (e.target.classList.contains('inventory-modal') &&
-                e.target.style.display === 'flex') {
-
-                // Close modal if clicking outside content
+            if (e.target.classList.contains('inventory-modal') && e.target.style.display === 'flex') {
                 if (e.target.id === 'inventoryBatchModal') {
                     inventoryCloseBatchModal();
                 } else if (e.target.id === 'inventoryBatchesModal') {
@@ -684,15 +985,36 @@
                     inventoryCloseStockOutModal();
                 }
             }
+
+            // Handle batch modal clicks
+            if (e.target.classList.contains('modal-bg') && e.target.classList.contains('show')) {
+                if (e.target.id === 'addStockToBatchModal') {
+                    closeAddStockToBatchModal();
+                } else if (e.target.id === 'editPriceModal') {
+                    closePricingModal();
+                }
+            }
         });
 
         // Handle escape key to close modals
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
+                // Close inventory modals
                 const openModals = document.querySelectorAll('.inventory-modal[style*="flex"]');
                 openModals.forEach(modal => {
                     modal.style.display = 'none';
                 });
+
+                // Close batch modals
+                const addStockModal = document.getElementById('addStockToBatchModal');
+                const editPriceModal = document.getElementById('editPriceModal');
+
+                if (addStockModal && addStockModal.classList.contains('show')) {
+                    closeAddStockToBatchModal();
+                }
+                if (editPriceModal && editPriceModal.classList.contains('show')) {
+                    closePricingModal();
+                }
 
                 // Clear current state
                 inventoryCurrentProductId = null;
@@ -723,7 +1045,7 @@
                     method: 'POST',
                     body: formData,
                     headers: {
-                        'X-CSRF-TOKEN': csrfToken.content,
+                        'X-CSRF-TOKEN': csrfToken.getAttribute('content'),
                         'Accept': 'application/json'
                     }
                 })
@@ -795,7 +1117,7 @@
                             method: 'POST',
                             body: formData,
                             headers: {
-                                'X-CSRF-TOKEN': csrfToken.content,
+                                'X-CSRF-TOKEN': csrfToken.getAttribute('content'),
                                 'Accept': 'application/json'
                             }
                         })
@@ -831,49 +1153,18 @@
                     }
                 });
             }
-
-            window.addEventListener('click', function(event) {
-                const batchModal = document.getElementById('inventoryBatchModal');
-                if (batchModal && event.target === batchModal) {
-                    inventoryCloseBatchModal();
-                }
-
-                const batchesModal = document.getElementById('inventoryBatchesModal');
-                if (batchesModal && event.target === batchesModal) {
-                    inventoryCloseBatchesModal();
-                }
-
-                const stockOutModal = document.getElementById('inventoryStockOutModal');
-                if (stockOutModal && event.target === stockOutModal) {
-                    inventoryCloseStockOutModal();
-                }
-            });
-
-            document.addEventListener('keydown', function(event) {
-                if (event.key === 'Escape') {
-                    const visibleModal = document.querySelector('.modal-bg[style*="flex"]');
-                    if (visibleModal) {
-                        const modalId = visibleModal.id;
-                        switch (modalId) {
-                            case 'inventoryBatchModal':
-                                inventoryCloseBatchModal();
-                                break;
-                            case 'inventoryBatchesModal':
-                                inventoryCloseBatchesModal();
-                                break;
-                            case 'inventoryStockOutModal':
-                                inventoryCloseStockOutModal();
-                                break;
-                        }
-                    }
-                }
-            });
         }
 
+        // Make functions globally available
         window.inventoryOpenStockOutModal = inventoryOpenStockOutModal;
         window.inventoryViewBatches = inventoryViewBatches;
         window.inventoryShowFlashMessage = inventoryShowFlashMessage;
         window.inventoryOpenBatchModal = inventoryOpenBatchModal;
+        window.openAddStockToBatchModal = openAddStockToBatchModal;
+        window.closeAddStockToBatchModal = closeAddStockToBatchModal;
+        window.openPricingModal = openPricingModal;
+        window.closePricingModal = closePricingModal;
+        window.showNotification = showNotification;
     </script>
 </body>
 

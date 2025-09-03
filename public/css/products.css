@@ -214,6 +214,7 @@ body {
     letter-spacing: var(--letter-spacing-wider);
     border-bottom: 2px solid rgba(255, 255, 255, 0.1);
     white-space: nowrap;
+    text-align: center;
 }
 
 .inventory-table td {
@@ -223,7 +224,7 @@ body {
     font-size: var(--font-size-sm);
     line-height: var(--line-height-normal);
     transition: all 0.3s ease;
-    position: relative;
+    text-align: center;
 }
 
 /* CRITICAL: Actions column must allow overflow */
@@ -798,4 +799,104 @@ button:focus-visible,
 
 .modal-bg {
     display: none;
+}
+/* Product Information Modal Specific Styles */
+.product-info-modal {
+    max-width: 900px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.product-info-grid {
+    padding: 0 20px 20px 20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.info-section {
+    background: #f8fafc;
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    transition: all 0.2s ease;
+}
+
+.info-section:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    border-color: #cbd5e1;
+}
+
+.info-section h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.75px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.info-item:last-child {
+    margin-bottom: 0;
+    border-bottom: none;
+}
+
+.info-label {
+    font-weight: 500;
+    color: #64748b;
+    font-size: 14px;
+    min-width: 120px;
+    flex-shrink: 0;
+}
+
+.info-value {
+    color: #1e293b;
+    font-weight: 500;
+    font-size: 14px;
+    text-align: right;
+    word-break: break-word;
+}
+
+/* Responsive adjustments for product info modal */
+@media (max-width: 768px) {
+    .product-info-modal {
+        max-width: 95%;
+        margin: 10px;
+    }
+
+    .product-info-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+        padding: 0 15px 15px 15px;
+    }
+
+    .info-section {
+        padding: 15px;
+    }
+
+    .info-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+
+    .info-label {
+        min-width: auto;
+    }
+
+    .info-value {
+        text-align: left;
+        font-weight: 400;
+    }
 }

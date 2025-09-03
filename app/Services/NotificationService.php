@@ -25,12 +25,6 @@ class NotificationService
                 'is_read' => $isRead
             ]);
 
-            Log::info('Notification created', [
-                'id' => $notification->id,
-                'user_id' => $userId,
-                'title' => $title
-            ]);
-
             return $notification;
         } catch (\Exception $e) {
             Log::error('Failed to create notification: ' . $e->getMessage());
@@ -54,14 +48,6 @@ class NotificationService
                 'is_read' => $isRead
             ]);
 
-            Log::info('Customer notification created', [
-                'id' => $notification->id,
-                'customer_id' => $customerId,
-                'prescription_id' => $prescriptionId,
-                'title' => $title,
-                'type' => $type
-            ]);
-
             return $notification;
         } catch (\Exception $e) {
             Log::error('Failed to create customer notification: ' . $e->getMessage());
@@ -75,7 +61,6 @@ class NotificationService
     public static function createNotificationForAllAdmins($title, $message, $isRead = false)
     {
         try {
-
             $adminUserIds = [1];
             $notifications = [];
             foreach ($adminUserIds as $userId) {
@@ -101,7 +86,6 @@ class NotificationService
     {
         try {
             if (!$prescription->customer_id) {
-                Log::warning('Cannot notify customer - no customer_id found for prescription: ' . $prescription->id);
                 return null;
             }
 
@@ -132,12 +116,11 @@ class NotificationService
     {
         try {
             if (!$prescription->customer_id) {
-                Log::warning('Cannot notify customer - no customer_id found for prescription: ' . $prescription->id);
                 return null;
             }
 
             $message = "Good news! Your prescription order #P{$prescription->id} has been approved by our pharmacist. ";
-            
+
             if ($prescription->admin_message) {
                 $message .= "Message from pharmacist: " . $prescription->admin_message;
             } else {
@@ -169,12 +152,11 @@ class NotificationService
     {
         try {
             if (!$prescription->customer_id) {
-                Log::warning('Cannot notify customer - no customer_id found for prescription: ' . $prescription->id);
                 return null;
             }
 
             $message = "Your prescription order #P{$prescription->id} has been partially approved. Some medications are ready while others require additional review. ";
-            
+
             if ($prescription->admin_message) {
                 $message .= "Message from pharmacist: " . $prescription->admin_message;
             }
@@ -204,17 +186,16 @@ class NotificationService
     {
         try {
             if (!$prescription->customer_id) {
-                Log::warning('Cannot notify customer - no customer_id found for prescription: ' . $prescription->id);
                 return null;
             }
 
             $message = "Your prescription order #P{$prescription->id} is ready for pickup! ";
-            
+
             if ($sale) {
                 $message .= "Total amount: ₱" . number_format($sale->total_amount, 2) . ". ";
                 $message .= "Payment method: " . ucfirst($sale->payment_method) . ". ";
             }
-            
+
             $message .= "Please bring a valid ID when picking up your medications.";
 
             return self::createCustomerNotification(
@@ -244,16 +225,15 @@ class NotificationService
     {
         try {
             if (!$prescription->customer_id) {
-                Log::warning('Cannot notify customer - no customer_id found for prescription: ' . $prescription->id);
                 return null;
             }
 
             $message = "Unfortunately, your prescription order #P{$prescription->id} has been cancelled. ";
-            
+
             if ($prescription->admin_message) {
                 $message .= "Reason: " . $prescription->admin_message . " ";
             }
-            
+
             $message .= "Please contact us if you have any questions or would like to submit a new prescription.";
 
             return self::createCustomerNotification(
@@ -280,7 +260,7 @@ class NotificationService
     public static function notifyNewOrder($prescription)
     {
         try {
-            $customerInfo = $prescription->customer 
+            $customerInfo = $prescription->customer
                 ? $prescription->customer->email_address
                 : ($prescription->mobile_number ?? 'Unknown customer');
 
@@ -302,7 +282,7 @@ class NotificationService
     public static function notifyOrderApproved($prescription)
     {
         try {
-            $customerInfo = $prescription->customer 
+            $customerInfo = $prescription->customer
                 ? $prescription->customer->email_address
                 : ($prescription->mobile_number ?? 'Unknown customer');
 
@@ -324,8 +304,8 @@ class NotificationService
     public static function notifyOrderCompleted($sale)
     {
         try {
-            $customerInfo = $sale->customer 
-                ? $sale->customer->email_address 
+            $customerInfo = $sale->customer
+                ? $sale->customer->email_address
                 : 'Walk-in customer';
 
             self::createNotificationForAllAdmins(
@@ -352,8 +332,8 @@ class NotificationService
     {
         try {
             if ($sale->total_amount >= $threshold) {
-                $customerInfo = $sale->customer 
-                    ? $sale->customer->full_name 
+                $customerInfo = $sale->customer
+                    ? $sale->customer->full_name
                     : 'Walk-in customer';
 
                 self::createNotificationForAllAdmins(
@@ -372,7 +352,7 @@ class NotificationService
             $todaySales = Sale::whereDate('sale_date', today())
                 ->where('status', 'completed')
                 ->sum('total_amount');
-            
+
             $todayOrderCount = Sale::whereDate('sale_date', today())
                 ->where('status', 'completed')
                 ->count();
@@ -396,14 +376,12 @@ class NotificationService
         try {
             $deleted = Notification::where('created_at', '<', now()->subDays($daysOld))->delete();
             $customerDeleted = CustomerNotification::where('created_at', '<', now()->subDays($daysOld))->delete();
-            
+
             $total = $deleted + $customerDeleted;
-            Log::info("Cleaned up {$total} old notifications ({$deleted} admin, {$customerDeleted} customer)");
             return $total;
         } catch (\Exception $e) {
             Log::error('Error cleaning up old notifications: ' . $e->getMessage());
             return 0;
         }
     }
-
 }

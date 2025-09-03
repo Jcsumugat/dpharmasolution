@@ -11,9 +11,9 @@
 
 <body>
     @include('admin.admin-header')
-        <header class="header-bar">
-             <h2 class="page-title">Walk Ins</h2>
-        </header>
+    <header class="header-bar">
+        <h2 class="page-title">Walk Ins</h2>
+    </header>
 
     <main class="pos-main">
 
@@ -45,7 +45,7 @@
                                     <p class="category">{{ $product->category->name ?? 'Uncategorized' }}</p>
                                     <p class="price">
                                         ₱{{ number_format($product->batches->first()->sale_price ?? 0, 2) }}</p>
-                                    <p class="stock">Stock: {{ $product->batches->sum('quantity_remaining') }}</p>
+                                    <p class="stock">Stock: {{ $product->stock_quantity ?? 0 }}</p>
                                     @if ($product->batches->first() && $product->batches->first()->expiration_date <= now()->addDays(30))
                                         <p class="expiry-warning">Expires:
                                             {{ $product->batches->first()->expiration_date->format('M d, Y') }}</p>
@@ -613,16 +613,16 @@
                     </thead>
                     <tbody>
                         ${transaction.items.map(item => `
-                                                        <tr>
-                                                            <td>
-                                                                <div class="item-name">${item.product_name}</div>
-                                                                <div class="item-brand">${item.brand_name}</div>
-                                                            </td>
-                                                            <td>${item.quantity}</td>
-                                                            <td>₱${parseFloat(item.unit_price).toFixed(2)}</td>
-                                                            <td>₱${parseFloat(item.total_price).toFixed(2)}</td>
-                                                        </tr>
-                                                    `).join('')}
+                                                            <tr>
+                                                                <td>
+                                                                    <div class="item-name">${item.product_name}</div>
+                                                                    <div class="item-brand">${item.brand_name}</div>
+                                                                </td>
+                                                                <td>${item.quantity}</td>
+                                                                <td>₱${parseFloat(item.unit_price).toFixed(2)}</td>
+                                                                <td>₱${parseFloat(item.total_price).toFixed(2)}</td>
+                                                            </tr>
+                                                        `).join('')}
                     </tbody>
                 </table>
             </div>
@@ -633,11 +633,11 @@
                     <span>₱${parseFloat(transaction.subtotal).toFixed(2)}</span>
                 </div>
                 ${parseFloat(transaction.discount_amount) > 0 ? `
-                                            <div class="summary-line">
-                                                <span>Discount:</span>
-                                                <span>-₱${parseFloat(transaction.discount_amount).toFixed(2)}</span>
-                                            </div>
-                                            ` : ''}
+                                                <div class="summary-line">
+                                                    <span>Discount:</span>
+                                                    <span>-₱${parseFloat(transaction.discount_amount).toFixed(2)}</span>
+                                                </div>
+                                                ` : ''}
                 <div class="summary-line total-line">
                     <span><strong>Total:</strong></span>
                     <span><strong>₱${parseFloat(transaction.total_amount).toFixed(2)}</strong></span>
@@ -675,7 +675,7 @@
         <head>
             <title>Receipt - MJ's Pharmacy</title>
             <style>
-                body { font-family: Arial, sans-serif; max-width: 300px; margin: 0 auto; }
+                body { font-family: Arial, sans-serif; max-width: 300px; margin: 0 auto;}
                 .receipt { padding: 20px; }
                 .receipt-business-info { text-align: center; margin-bottom: 20px; }
                 .receipt-business-info h3 { margin: 0; font-size: 18px; }
