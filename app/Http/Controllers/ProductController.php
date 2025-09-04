@@ -54,67 +54,6 @@ class ProductController extends Controller
         return view('client.products', compact('products'));
     }
 
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'product_name' => 'required|string|max:100',
-            'manufacturer' => 'nullable|string|max:100',
-            'brand_name' => 'nullable|string|max:100',
-            'product_type' => 'required|string|max:50',
-            'dosage_unit' => 'required|string|max:20',
-            'form_type' => 'required|string|max:50',
-            'storage_requirements' => 'nullable|string|max:100',
-            'classification' => 'required|integer|min:1|max:13',
-            'reorder_level' => 'required|integer|min:0',
-            'supplier_id' => 'nullable|exists:suppliers,id',
-            'category_id' => 'nullable|exists:categories,id',
-        ]);
-
-        try {
-            DB::beginTransaction();
-
-            $product_code = $this->generateUniqueProductCode();
-
-            $product = Product::create([
-                'product_name' => $validated['product_name'],
-                'manufacturer' => $validated['manufacturer'],
-                'brand_name' => $validated['brand_name'],
-                'product_type' => $validated['product_type'],
-                'dosage_unit' => $validated['dosage_unit'],
-                'form_type' => $validated['form_type'],
-                'storage_requirements' => $validated['storage_requirements'],
-                'classification' => $validated['classification'],
-                'reorder_level' => $validated['reorder_level'],
-                'supplier_id' => $validated['supplier_id'],
-                'category_id' => $validated['category_id'],
-                'product_code' => $product_code,
-            ]);
-
-            DB::commit();
-
-            Log::info('Product created successfully', [
-                'product_id' => $product->id,
-                'product_code' => $product->product_code,
-                'product_name' => $product->product_name,
-            ]);
-
-            return redirect()->route('products.index')
-                ->with('success', "Product '{$product->product_name}' created successfully! (Code: {$product->product_code}). You can now add inventory batches.");
-        } catch (\Exception $e) {
-            DB::rollback();
-
-            Log::error('Failed to create product', [
-                'error' => $e->getMessage(),
-                'product_name' => $validated['product_name'] ?? 'Unknown',
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            return redirect()->back()
-                ->withInput()
-                ->withErrors(['error' => 'Failed to create product: ' . $e->getMessage()]);
-        }
-    }
-
     private function generateUniqueProductCode($maxAttempts = 100)
     {
         $attempts = 0;
@@ -141,6 +80,83 @@ class ProductController extends Controller
         return $product_code;
     }
 
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'product_name' => 'required|string|max:100',
+            'manufacturer' => 'nullable|string|max:100',
+            'brand_name' => 'nullable|string|max:100',
+            'generic_name' => 'nullable|string|max:100|regex:/^[a-zA-Z\s\-\.]+$/',
+            'product_type' => 'required|string|max:50',
+            'dosage_strength' => 'nullable|string|max:10',
+            'dosage_unit' => 'required|string|max:50',
+            'form_type' => 'required|string|max:50',
+            'storage_requirements' => 'nullable|string|max:100',
+            'classification' => 'required|integer|min:1|max:13',
+            'reorder_level' => 'required|integer|min:0',
+            'supplier_id' => 'nullable|exists:suppliers,id',
+            'category_id' => 'nullable|exists:categories,id',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $product_code = $this->generateUniqueProductCode();
+
+            // Combine dosage strength and unit
+            $combinedDosage = '';
+            if (!empty($validated['dosage_strength']) && !empty($validated['dosage_unit'])) {
+                $combinedDosage = $validated['dosage_strength'] . $validated['dosage_unit'];
+            } elseif (!empty($validated['dosage_unit'])) {
+                $combinedDosage = $validated['dosage_unit'];
+            } elseif (!empty($validated['dosage_strength'])) {
+                $combinedDosage = $validated['dosage_strength'];
+            }
+
+            $product = Product::create([
+                'product_name' => $validated['product_name'],
+                'manufacturer' => $validated['manufacturer'],
+                'brand_name' => $validated['brand_name'],
+                'product_type' => $validated['product_type'],
+                'generic_name' => $validated['generic_name'] ? ucwords(strtolower($validated['generic_name'])) : null,
+                'dosage_unit' => $combinedDosage, // Store combined value
+                'form_type' => $validated['form_type'],
+                'storage_requirements' => $validated['storage_requirements'],
+                'classification' => $validated['classification'],
+                'reorder_level' => $validated['reorder_level'],
+                'supplier_id' => $validated['supplier_id'],
+                'category_id' => $validated['category_id'],
+                'product_code' => $product_code,
+            ]);
+
+            DB::commit();
+
+            Log::info('Product created successfully', [
+                'product_id' => $product->id,
+                'product_code' => $product->product_code,
+                'product_name' => $product->product_name,
+                'combined_dosage' => $combinedDosage,
+            ]);
+
+            return redirect()->route('products.index')
+                ->with('success', "Product '{$product->product_name}' created successfully! (Code: {$product->product_code}). You can now add inventory batches.");
+        } catch (\Exception $e) {
+            DB::rollback();
+
+            Log::error('Failed to create product', [
+                'error' => $e->getMessage(),
+                'product_name' => $validated['product_name'] ?? 'Unknown',
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['error' => 'Failed to create product: ' . $e->getMessage()]);
+        }
+    }
+
+
+
     public function update(Request $request, $id)
     {
         $product = Product::findOrFail($id);
@@ -149,8 +165,10 @@ class ProductController extends Controller
             'product_name' => 'required|string|max:100',
             'manufacturer' => 'nullable|string|max:100',
             'brand_name' => 'nullable|string|max:100',
+            'generic_name' => 'nullable|string|max:100|regex:/^[a-zA-Z\s\-\.]+$/',
             'product_type' => 'required|string|max:50',
-            'dosage_unit' => 'required|string|max:20',
+            'dosage_strength' => 'nullable|string|max:10',
+            'dosage_unit' => 'nullable|string|max:50',
             'form_type' => 'required|string|max:50',
             'storage_requirements' => 'nullable|string|max:100',
             'classification' => 'nullable|string|max:50',
@@ -160,11 +178,42 @@ class ProductController extends Controller
         ]);
 
         try {
-            $product->update($validated);
+            $combinedDosage = '';
+            if (!empty($validated['dosage_unit'])) {
+                // Use the combined value from hidden field
+                $combinedDosage = $validated['dosage_unit'];
+            } else {
+                // Fallback: combine manually if hidden field is empty
+                if (!empty($validated['dosage_strength']) && !empty($validated['unit_type'])) {
+                    $combinedDosage = $validated['dosage_strength'] . $validated['unit_type'];
+                } elseif (!empty($validated['unit_type'])) {
+                    $combinedDosage = $validated['unit_type'];
+                } elseif (!empty($validated['dosage_strength'])) {
+                    $combinedDosage = $validated['dosage_strength'];
+                }
+            }
+
+            $updateData = [
+                'product_name' => $validated['product_name'],
+                'manufacturer' => $validated['manufacturer'],
+                'brand_name' => $validated['brand_name'],
+                'product_type' => $validated['product_type'],
+                'generic_name' => $validated['generic_name'] ? ucwords(strtolower($validated['generic_name'])) : null,
+                'dosage_unit' => $combinedDosage, // Store combined value
+                'form_type' => $validated['form_type'],
+                'storage_requirements' => $validated['storage_requirements'],
+                'classification' => $validated['classification'],
+                'reorder_level' => $validated['reorder_level'],
+                'supplier_id' => $validated['supplier_id'],
+                'category_id' => $validated['category_id'],
+            ];
+
+            $product->update($updateData);
 
             Log::info('Product updated successfully', [
                 'product_id' => $product->id,
                 'product_code' => $product->product_code,
+                'combined_dosage' => $combinedDosage,
             ]);
 
             return redirect()->route('products.index')
@@ -180,7 +229,6 @@ class ProductController extends Controller
                 ->withErrors(['error' => 'Failed to update product: ' . $e->getMessage()]);
         }
     }
-
     public function destroy($id)
     {
         $product = Product::findOrFail($id);

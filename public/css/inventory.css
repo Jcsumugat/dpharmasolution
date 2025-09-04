@@ -548,6 +548,11 @@ btn btn-danger btn-sm:hover {
     transition: all 0.2s ease;
 }
 
+.modal-title {
+    flex: 1;
+    text-align: left;
+}
+
 .modal-close:hover {
     background: rgba(0, 0, 0, 0.1);
     color: var(--color-text-primary);

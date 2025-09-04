@@ -151,6 +151,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/orders/{prescription}/messages', [AdminOrderController::class, 'getMessages'])->name('admin.prescription.messages');
     Route::post('/admin/orders/{prescription}/messages', [AdminOrderController::class, 'sendMessage'])->name('admin.prescription.send-message');
     Route::post('/admin/orders/{prescription}/messages/mark-read', [AdminOrderController::class, 'markMessagesRead'])->name('admin.prescription.mark-read');
+    Route::get('/admin/products', [AdminOrderController::class, 'getProducts'])->name('admin.products.index');
 });
 
 Route::middleware(['auth', 'admin'])->group(function () {

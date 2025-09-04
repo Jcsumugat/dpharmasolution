@@ -39,7 +39,79 @@ class AdminOrderController extends Controller
 
         return view('orders.orders', compact('prescriptions', 'products'));
     }
+    public function getProducts(Request $request)
+    {
+        try {
+            // Only show products with non-expired available stock
+            $products = Product::whereHas('batches', function ($q) {
+                $q->where('quantity_remaining', '>', 0)
+                    ->where('expiration_date', '>', now());
+            })->with(['batches' => function ($q) {
+                $q->where('quantity_remaining', '>', 0)
+                    ->where('expiration_date', '>', now())
+                    ->orderBy('expiration_date', 'asc');
+            }])->get();
 
+            // Format the products for the frontend
+            $formattedProducts = $products->map(function ($product) {
+                // Get total stock from non-expired batches
+                $totalStock = $product->batches->sum('quantity_remaining');
+
+                // Get price from earliest expiring batch
+                $earliestBatch = $product->batches->first();
+                $price = $earliestBatch ? $earliestBatch->sale_price : 0;
+
+                // Get earliest expiration date
+                $earliestExpiration = $product->batches->min('expiration_date');
+
+                return [
+                    'id' => $product->id,
+                    'name' => $product->product_name,
+                    'product_name' => $product->product_name,
+                    'form_type' => $product->form_type,
+                    'dosage_unit' => $product->dosage_unit,
+                    'manufacturer' => $product->manufacturer,
+                    'reorder_level' => $product->reorder_level,
+                    'price' => $price,
+                    'sale_price' => $price,
+                    'selling_price' => $price,
+                    'stock' => $totalStock,
+                    'quantity' => $totalStock,
+                    'total_stock' => $totalStock,
+                    'earliest_expiration' => $earliestExpiration,
+                    'batches' => $product->batches->map(function ($batch) {
+                        return [
+                            'id' => $batch->id,
+                            'batch_number' => $batch->batch_number,
+                            'expiration_date' => $batch->expiration_date,
+                            'quantity_remaining' => $batch->quantity_remaining,
+                            'sale_price' => $batch->sale_price,
+                            'unit_cost' => $batch->unit_cost
+                        ];
+                    })->toArray()
+                ];
+            });
+
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'products' => $formattedProducts
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'products' => $formattedProducts
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error loading products for admin: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error loading products: ' . $e->getMessage()
+            ], 500);
+        }
+    }
     public function getSaleDetails($saleId)
     {
         try {
@@ -601,6 +673,7 @@ class AdminOrderController extends Controller
 
     public function sales()
     {
+        $sales = Sale::with('customer')->get();
         $completedOrders = Order::where('status', 'completed')
             ->with(['items.product', 'customer', 'prescription', 'sale'])
             ->orderByDesc('updated_at')

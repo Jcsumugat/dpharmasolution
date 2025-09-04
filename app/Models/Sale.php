@@ -39,12 +39,6 @@ class Sale extends Model
         return $this->belongsTo(Order::class);
     }
 
-    // Relationship with customer
-    public function customer()
-    {
-        return $this->belongsTo(Customer::class);
-    }
-
     // Relationship with sale items
     public function items()
     {
@@ -56,5 +50,9 @@ class Sale extends Model
     {
         return $this->items()->sum(DB::raw('quantity * unit_price'));
     }
-    
+    // In app/Models/Sale.php
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class, 'customer_id');
+    }
 }

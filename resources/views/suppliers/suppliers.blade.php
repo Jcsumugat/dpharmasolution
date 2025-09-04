@@ -100,23 +100,28 @@
             <form method="POST" id="supplierForm" action="{{ route('suppliers.store') }}">
                 @csrf
                 <div class="form-group">
-                    <input type="text" name="name" id="name" placeholder="Supplier Name" required>
+                    <input type="text" name="name" id="name" placeholder=" " required>
+                    <label for="name">Supplier Name *</label>
                 </div>
 
                 <div class="form-group">
-                    <input type="text" name="contact_person" id="contact_person" placeholder="Contact Person">
+                    <input type="text" name="contact_person" id="contact_person" placeholder=" ">
+                    <label for="contact_person">Contact Person</label>
                 </div>
 
                 <div class="form-group">
-                    <input type="tel" name="phone" id="phone" placeholder="Phone Number">
+                    <input type="tel" name="phone" id="phone" placeholder=" ">
+                    <label for="phone">Phone Number</label>
                 </div>
 
                 <div class="form-group">
-                    <input type="email" name="email" id="email" placeholder="Email Address">
+                    <input type="email" name="email" id="email" placeholder=" ">
+                    <label for="email">Email Address</label>
                 </div>
 
                 <div class="form-group">
-                    <textarea name="address" id="address" placeholder="Complete Address" rows="4"></textarea>
+                    <textarea name="address" id="address" placeholder=" " rows="4"></textarea>
+                    <label for="address">Complete Address</label>
                 </div>
 
                 <div class="modal-buttons">
@@ -141,12 +146,20 @@
 
             // Toggle current dropdown
             menu.style.display = (menu.style.display === 'block') ? 'none' : 'block';
+
+            // Add active class for z-index management
+            if (menu.style.display === 'block') {
+                dropdown.classList.add('active');
+            } else {
+                dropdown.classList.remove('active');
+            }
         }
 
         // Close dropdowns when clicking outside
         window.addEventListener('click', () => {
             document.querySelectorAll('.dropdown-menu').forEach(menu => {
                 menu.style.display = 'none';
+                menu.closest('.dropdown').classList.remove('active');
             });
         });
 
@@ -167,7 +180,11 @@
             // Clear all form fields
             ['name', 'contact_person', 'phone', 'email', 'address'].forEach(id => {
                 const field = document.getElementById(id);
-                if (field) field.value = '';
+                if (field) {
+                    field.value = '';
+                    // Trigger label animation check
+                    field.dispatchEvent(new Event('input'));
+                }
             });
 
             // Focus on first input
@@ -200,11 +217,24 @@
             }
 
             // Populate form fields
-            document.getElementById("name").value = supplier.name || '';
-            document.getElementById("contact_person").value = supplier.contact_person || '';
-            document.getElementById("phone").value = supplier.phone || '';
-            document.getElementById("email").value = supplier.email || '';
-            document.getElementById("address").value = supplier.address || '';
+            const fields = {
+                name: supplier.name || '',
+                contact_person: supplier.contact_person || '',
+                phone: supplier.phone || '',
+                email: supplier.email || '',
+                address: supplier.address || ''
+            };
+
+            Object.keys(fields).forEach(id => {
+                const field = document.getElementById(id);
+                if (field) {
+                    field.value = fields[id];
+                    // Force floating label to activate for filled fields
+                    if (fields[id]) {
+                        field.setAttribute('value', fields[id]);
+                    }
+                }
+            });
 
             // Focus on name field
             setTimeout(() => {
@@ -212,6 +242,94 @@
                 document.getElementById("name").select();
             }, 100);
         }
+
+        // Enhanced floating label functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            // Handle all form inputs for floating labels
+            const formInputs = document.querySelectorAll('#supplierForm input, #supplierForm textarea, #supplierForm select');
+
+            formInputs.forEach(input => {
+                // Check on page load for pre-filled values
+                checkFloatingLabel(input);
+
+                // Handle various events
+                input.addEventListener('input', () => checkFloatingLabel(input));
+                input.addEventListener('focus', () => checkFloatingLabel(input));
+                input.addEventListener('blur', () => checkFloatingLabel(input));
+                input.addEventListener('change', () => checkFloatingLabel(input));
+
+                // Handle paste events
+                input.addEventListener('paste', () => {
+                    setTimeout(() => checkFloatingLabel(input), 10);
+                });
+
+                // Handle autofill detection
+                if (input.tagName === 'INPUT') {
+                    // Check for autofill periodically
+                    const checkAutofill = () => {
+                        if (input.matches(':-webkit-autofill') || input.value !== '') {
+                            checkFloatingLabel(input);
+                        }
+                    };
+
+                    // Check immediately and then periodically
+                    setTimeout(checkAutofill, 100);
+                    setTimeout(checkAutofill, 500);
+                    setTimeout(checkAutofill, 1000);
+                }
+            });
+
+            function checkFloatingLabel(input) {
+                const hasValue = input.value && input.value.trim() !== '';
+                const isFocused = document.activeElement === input;
+                const isAutofilled = input.matches && input.matches(':-webkit-autofill');
+
+                // Set data attribute to trigger CSS
+                if (hasValue || isFocused || isAutofilled) {
+                    input.setAttribute('data-filled', 'true');
+                } else {
+                    input.removeAttribute('data-filled');
+                }
+            }
+
+            // Add additional CSS for better floating label behavior
+            const style = document.createElement('style');
+            style.textContent = `
+                /* Enhanced floating label styles */
+                #supplierForm input[data-filled="true"] + label,
+                #supplierForm textarea[data-filled="true"] + label,
+                #supplierForm select[data-filled="true"] + label {
+                    top: 0 !important;
+                    left: var(--spacing-md) !important;
+                    transform: translateY(-50%) scale(0.85) !important;
+                    font-size: var(--font-size-sm) !important;
+                    color: var(--color-primary) !important;
+                    background: var(--color-bg-primary) !important;
+                    font-weight: var(--font-weight-semibold) !important;
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+                    padding: 0 var(--spacing-sm) !important;
+                    z-index: 3 !important;
+                }
+
+                /* Force immediate transition for autofill */
+                #supplierForm input:-webkit-autofill + label {
+                    transition: all 0.15s ease-out !important;
+                }
+
+                /* Ensure labels don't interfere with input clicks */
+                #supplierForm label {
+                    pointer-events: none !important;
+                }
+
+                /* Better visual separation */
+                #supplierForm input:focus + label,
+                #supplierForm textarea:focus + label {
+                    color: var(--color-primary) !important;
+                    font-weight: var(--font-weight-bold) !important;
+                }
+            `;
+            document.head.appendChild(style);
+        });
 
         // Keyboard shortcuts
         window.addEventListener("keydown", function(e) {

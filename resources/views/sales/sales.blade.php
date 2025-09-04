@@ -11,7 +11,6 @@
 
 <body>
     @include('admin.admin-header')
-
     <div class="content">
         <div class="sales-header">
             <h2>Sales Dashboard</h2>
@@ -56,7 +55,7 @@
                     <tr>
                         <th>Sale ID</th>
                         <th>Customer</th>
-                        <th>Prescription</th>
+                        <th>Order Type</th>
                         <th>Items</th>
                         <th>Total Amount</th>
                         <th>Payment Method</th>
@@ -65,38 +64,51 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach ($sales as $sale)
+                    @forelse ($sales as $sale)
                         @php
-                            // Ensure sale_date is a Carbon instance
                             $saleDate =
                                 $sale->sale_date instanceof \Carbon\Carbon
                                     ? $sale->sale_date
-                                    : \Carbon\Carbon::parse($sale->sale_date);
+                                    : \Carbon\Carbon::parse($sale->sale_date ?? $sale->updated_at);
                         @endphp
                         <tr class="sale-row" data-status="{{ $sale->status }}"
                             data-date="{{ $saleDate->format('Y-m-d') }}" data-timestamp="{{ $saleDate->timestamp }}">
                             <td class="sale-id">{{ str_pad($sale->id, 6, '0', STR_PAD_LEFT) }}</td>
                             <td class="customer-info">
-                                <strong>{{ $sale->customer->name ?? 'Guest' }}</strong><br>
-                                <small>{{ $sale->customer->email ?? 'No email' }}</small>
-                            </td>
-                            <td class="prescription-info">
-                                @if ($sale->prescription && $sale->prescription->file_path)
-                                    <a href="{{ asset('storage/' . $sale->prescription->file_path) }}" target="_blank"
-                                        class="prescription-link">
-                                        📄 Prescription #{{ $sale->prescription_id }}
-                                    </a>
-                                @elseif($sale->prescription)
-                                    Prescription #{{ $sale->prescription_id }}
+                                @if ($sale->customer)
+                                    <strong>{{ $sale->customer->contact_number }}</strong><br>
+                                    <small>{{ $sale->customer->email_address ?? 'No email' }}</small>
+                                @elseif ($sale->prescription && $sale->prescription->customer)
+                                    <strong>{{ $sale->prescription->customer->contact_number }}</strong><br>
+                                    <small>{{ $sale->prescription->customer->email_address ?? 'No email' }}</small>
                                 @else
-                                    <span style="color:#888;">N/A</span>
+                                    <strong>No contact</strong><br>
+                                    <small>{{ $sale->prescription->mobile_number ?? 'No contact' }}</small>
+                                @endif
+                            </td>
+                            <td class="order-type-info">
+                                @if ($sale->prescription && $sale->prescription->order_type)
+                                    <span
+                                        class="order-type-badge order-type-{{ strtolower($sale->prescription->order_type) }}">
+                                        {{ ucfirst($sale->prescription->order_type) }}
+                                    </span>
+                                    @if ($sale->prescription->file_path)
+                                        <br><small>
+                                            <a href="{{ asset('storage/' . $sale->prescription->file_path) }}"
+                                                target="_blank" class="prescription-link">
+                                                📄 View Prescription
+                                            </a>
+                                        </small>
+                                    @endif
+                                @else
+                                    <span class="order-type-badge order-type-regular">Regular</span>
                                 @endif
                             </td>
                             <td class="items-count">
                                 <span class="items-badge">{{ $sale->items->count() }} items</span>
                                 <small>{{ $sale->items->sum('quantity') }} total qty</small>
                             </td>
-                            <td class="total-amount">₱{{ number_format($sale->total_amount, 2) }}</td>
+                            <td class="total_amount">₱{{ number_format($sale->total_amount, 2) }}</td>
                             <td class="payment-method">
                                 <span class="payment-badge payment-{{ $sale->payment_method ?? 'cash' }}">
                                     {{ ucfirst($sale->payment_method ?? 'cash') }}
@@ -112,7 +124,11 @@
                                 <small>{{ $saleDate->format('h:i A') }}</small>
                             </td>
                         </tr>
-                    @endforeach
+                    @empty
+                        <tr>
+                            <td colspan="8" class="text-center">No sales found</td>
+                        </tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>

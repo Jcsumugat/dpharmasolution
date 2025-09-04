@@ -269,7 +269,7 @@ class NotificationService
                 "New order received from {$customerInfo}. Status: {$prescription->status}."
             );
 
-            // Also notify the customer that their order was received
+            // Notify the customer that their order was received
             self::notifyCustomerOrderReceived($prescription);
         } catch (\Exception $e) {
             Log::error('Error creating new order notification: ' . $e->getMessage());

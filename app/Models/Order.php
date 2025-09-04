@@ -46,14 +46,10 @@ class Order extends Model
         return $this->belongsTo(Prescription::class);
     }
 
-    /**
-     * Get the customer that this order belongs to
-     */
-    public function customer(): BelongsTo
+    public function customer()
     {
-        return $this->belongsTo(Customer::class);
+        return $this->belongsTo(Customer::class, 'customer_id');
     }
-
     /**
      * Get the order items for this order
      */
@@ -63,9 +59,9 @@ class Order extends Model
     }
 
     public function items(): HasMany
-{
-    return $this->hasMany(OrderItem::class);
-}
+    {
+        return $this->hasMany(OrderItem::class);
+    }
 
     /**
      * Get the sale associated with this order

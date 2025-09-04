@@ -152,9 +152,31 @@
                         </div>
                         <div class="form-group">
                             <input type="text" class="form-input" name="generic_name" id="generic_name"
-                                placeholder=" " value="{{ old('generic_name') }}">
+                                placeholder=" " value="{{ old('generic_name') }}" list="generic_names_list">
                             <label for="generic_name" class="form-label">Generic Name</label>
-                            <div class="help-text">Active pharmaceutical ingredient (API) name</div>
+                            <div class="help-text">Active pharmaceutical ingredient (API) name (e.g., Paracetamol, Ibuprofen)</div>
+                            <datalist id="generic_names_list">
+                                <option value="Paracetamol">
+                                <option value="Ibuprofen">
+                                <option value="Aspirin">
+                                <option value="Amoxicillin">
+                                <option value="Cetirizine">
+                                <option value="Loratadine">
+                                <option value="Metformin">
+                                <option value="Omeprazole">
+                                <option value="Simvastatin">
+                                <option value="Amlodipine">
+                                <option value="Losartan">
+                                <option value="Atorvastatin">
+                                <option value="Salbutamol">
+                                <option value="Prednisolone">
+                                <option value="Diclofenac">
+                                <option value="Dextromethorphan">
+                                <option value="Chlorpheniramine">
+                                <option value="Phenylephrine">
+                                <option value="Ascorbic Acid">
+                                <option value="Calcium Carbonate">
+                            </datalist>
                         </div>
                         <div class="form-group">
                             <input type="text" class="form-input" name="brand_name" id="brand_name" placeholder=" "
@@ -249,31 +271,41 @@
                         Dosage and Formulation
                     </h2>
                     <div class="form-grid">
-                        <div class="form-group">
-                            <div class="dosage-grid">
-                                <div class="form-group">
-                                    <input type="text" class="form-input" name="dosage_strength"
-                                        id="dosage_strength" placeholder=" " required
-                                        value="{{ old('dosage_strength') }}">
-                                    <label for="dosage_strength" class="form-label">Dosage Strength <span
-                                            class="required-indicator">*</span></label>
+                        <div class="form-group full-width">
+                            <div class="dosage-container">
+                                <div class="dosage-input-row">
+                                    <div class="form-group dosage-strength-group">
+                                        <input type="text" class="form-input" name="dosage_strength"
+                                            id="dosage_strength" placeholder=" "
+                                            value="{{ old('dosage_strength') }}">
+                                        <label for="dosage_strength" class="form-label">Dosage Strength</label>
+                                    </div>
+                                    <div class="form-group dosage-unit-group">
+                                        <select class="form-select" name="dosage_unit" id="dosage_unit" required>
+                                            <option value="">Unit</option>
+                                            <option value="mg">mg (milligram)</option>
+                                            <option value="g">g (gram)</option>
+                                            <option value="mcg">mcg (microgram)</option>
+                                            <option value="IU">IU (International Unit)</option>
+                                            <option value="mL">mL (milliliter)</option>
+                                            <option value="L">L (liter)</option>
+                                            <option value="%">% (percentage)</option>
+                                            <option value="mg/ml">mg/ml</option>
+                                            <option value="mg/5ml">mg/5ml</option>
+                                            <option value="drops">drops</option>
+                                            <option value="ratio">ratio</option>
+                                        </select>
+                                        <label for="dosage_unit" class="form-label">Unit <span class="required-indicator">*</span></label>
+                                    </div>
                                 </div>
-                                <div class="form-group">
-                                    <select class="form-select" name="dosage_unit" id="dosage_unit" required>
-                                        <option value="">Unit</option>
-                                        <option value="mg">mg (milligram)</option>
-                                        <option value="g">g (gram)</option>
-                                        <option value="mcg">mcg (microgram)</option>
-                                        <option value="IU">IU (International Unit)</option>
-                                        <option value="mL">mL (milliliter)</option>
-                                        <option value="L">L (liter)</option>
-                                        <option value="%">% (percentage)</option>
-                                        <option value="ratio">ratio</option>
-                                    </select>
-                                    <label for="dosage_unit" class="form-label">Unit</label>
+                                <div class="dosage-preview">
+                                    <label class="preview-label">Combined Dosage Preview:</label>
+                                    <div class="dosage-preview-box">
+                                        <span id="dosage-preview-text">Enter strength and unit above</span>
+                                    </div>
                                 </div>
+                                <div class="help-text">e.g., 500mg, 250mg/5mL, 1%, 1:1000</div>
                             </div>
-                            <div class="help-text">e.g., 500mg, 250mg/5mL, 1%, 1:1000</div>
                         </div>
                         <div class="form-group">
                             <select class="form-select" name="form_type" id="form_type" required>
@@ -455,10 +487,26 @@
     <script type="text/javascript">
         window.productData = {
             @foreach ($products as $product)
-                '{{ $product->id }}': @json($product)
-                @if (!$loop->last)
-                    ,
-                @endif
+                '{{ $product->id }}': {
+                    id: {{ $product->id }},
+                    product_code: '{{ $product->product_code }}',
+                    product_name: '{{ $product->product_name }}',
+                    generic_name: '{{ $product->generic_name ?? '' }}',
+                    manufacturer: '{{ $product->manufacturer ?? '' }}',
+                    brand_name: '{{ $product->brand_name ?? '' }}',
+                    product_type: '{{ $product->product_type ?? '' }}',
+                    dosage_unit: '{{ $product->dosage_unit ?? '' }}',
+                    form_type: '{{ $product->form_type ?? '' }}',
+                    classification: '{{ $product->classification ?? '' }}',
+                    storage_requirements: '{{ $product->storage_requirements ?? '' }}',
+                    reorder_level: {{ $product->reorder_level ?? 0 }},
+                    supplier_id: {{ $product->supplier_id ?? 'null' }},
+                    category_id: {{ $product->category_id ?? 'null' }},
+                    supplier: @if($product->supplier) { name: '{{ $product->supplier->name }}' } @else null @endif,
+                    category: @if($product->category) { name: '{{ $product->category->name }}' } @else null @endif,
+                    created_at: '{{ $product->created_at }}',
+                    updated_at: '{{ $product->updated_at }}'
+                }@if (!$loop->last),@endif
             @endforeach
         };
 
@@ -514,7 +562,7 @@
         }
     </script>
 
-    <script>
+<script>
         let currentBatchId = null;
         let maxQuantity = 0;
         let currentProductId = null;
@@ -523,6 +571,66 @@
             const flash = document.getElementById("flashMessage");
             if (flash) {
                 setTimeout(() => flash.style.display = "none", 3000);
+            }
+        });
+
+        // Add this function to split combined dosage units
+        function splitDosageUnit(combinedDosage) {
+            if (!combinedDosage) {
+                return { strength: '', unit: '' };
+            }
+
+            // Define common units to look for
+            const units = ['mg/5ml', 'mg/ml', 'mg', 'g', 'mcg', 'IU', 'mL', 'L', '%', 'drops', 'ratio'];
+
+            // Sort units by length (longest first) to match more specific units first
+            const sortedUnits = units.sort((a, b) => b.length - a.length);
+
+            for (let unit of sortedUnits) {
+                if (combinedDosage.endsWith(unit)) {
+                    const strength = combinedDosage.substring(0, combinedDosage.length - unit.length);
+                    return { strength: strength, unit: unit };
+                }
+            }
+
+            // If no unit is found, check if it's all numeric (strength only)
+            if (/^\d+\.?\d*$/.test(combinedDosage)) {
+                return { strength: combinedDosage, unit: '' };
+            }
+
+            // If it's not numeric and no unit found, treat as unit only
+            return { strength: '', unit: combinedDosage };
+        }
+
+        // Dosage preview functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const strengthInput = document.getElementById('dosage_strength');
+            const unitSelect = document.getElementById('dosage_unit');
+            const previewText = document.getElementById('dosage-preview-text');
+
+            function updateDosagePreview() {
+                const strength = strengthInput.value.trim();
+                const unit = unitSelect.value;
+
+                if (strength && unit) {
+                    previewText.textContent = strength + unit;
+                    previewText.className = 'preview-text combined';
+                } else if (unit) {
+                    previewText.textContent = unit;
+                    previewText.className = 'preview-text unit-only';
+                } else if (strength) {
+                    previewText.textContent = strength + ' (select unit)';
+                    previewText.className = 'preview-text incomplete';
+                } else {
+                    previewText.textContent = 'Enter strength and unit above';
+                    previewText.className = 'preview-text empty';
+                }
+            }
+
+            if (strengthInput && unitSelect && previewText) {
+                strengthInput.addEventListener('input', updateDosagePreview);
+                unitSelect.addEventListener('change', updateDosagePreview);
+                updateDosagePreview(); // Initial update
             }
         });
 
@@ -590,11 +698,60 @@
             form.reset();
             document.getElementById("product_id").value = "";
             removeMethodInput();
+
+            // Reset dosage preview
+            const previewText = document.getElementById('dosage-preview-text');
+            if (previewText) {
+                previewText.textContent = 'Enter strength and unit above';
+                previewText.className = 'preview-text empty';
+            }
         }
 
         function closeModal() {
             modal.style.display = "none";
         }
+
+        // Add form submission handler to combine dosage fields
+        document.addEventListener('DOMContentLoaded', function() {
+            const productForm = document.getElementById('productForm');
+            if (productForm) {
+                productForm.addEventListener('submit', function(event) {
+                    const strengthInput = document.getElementById('dosage_strength');
+                    const unitSelect = document.getElementById('dosage_unit');
+
+                    if (strengthInput && unitSelect) {
+                        const strength = strengthInput.value.trim();
+                        const unit = unitSelect.value;
+
+                        // Create or update a hidden field with combined dosage
+                        let combinedField = document.getElementById('combined_dosage_unit');
+                        if (!combinedField) {
+                            combinedField = document.createElement('input');
+                            combinedField.type = 'hidden';
+                            combinedField.id = 'combined_dosage_unit';
+                            combinedField.name = 'dosage_unit';
+                            productForm.appendChild(combinedField);
+                        }
+
+                        // Combine strength and unit
+                        let combinedValue = '';
+                        if (strength && unit) {
+                            combinedValue = strength + unit;
+                        } else if (unit && !strength) {
+                            combinedValue = unit;
+                        } else if (strength && !unit) {
+                            combinedValue = strength;
+                        }
+
+                        combinedField.value = combinedValue;
+
+                        // Remove the name attribute from the original fields to prevent conflicts
+                        strengthInput.removeAttribute('name');
+                        unitSelect.removeAttribute('name');
+                    }
+                });
+            }
+        });
 
         function editProduct(productId) {
             const product = window.productData[productId];
@@ -610,19 +767,48 @@
             form.method = "POST";
             addMethodInput('PUT');
 
+            // Split combined dosage unit back to strength and unit
+            const dosageSplit = splitDosageUnit(product.dosage_unit);
+
+            // Populate form fields
             document.getElementById("product_id").value = product.id;
             document.getElementById("product_name").value = product.product_name || '';
+            document.getElementById("generic_name").value = product.generic_name || '';
+            document.getElementById("brand_name").value = product.brand_name || '';
             document.getElementById("manufacturer").value = product.manufacturer || '';
             document.getElementById("supplier_id").value = product.supplier_id || '';
-            document.getElementById("brand_name").value = product.brand_name || '';
             document.getElementById("category_id").value = product.category_id || '';
             document.getElementById("product_type").value = product.product_type || '';
-            document.getElementById("dosage_unit").value = product.dosage_unit || '';
+            document.getElementById("dosage_strength").value = dosageSplit.strength;
+            document.getElementById("dosage_unit").value = dosageSplit.unit;
             document.getElementById("form_type").value = product.form_type || '';
-            document.getElementById("packaging_unit").value = product.packaging_unit || '';
             document.getElementById("classification").value = product.classification || '';
             document.getElementById("reorder_level").value = product.reorder_level || '';
             document.getElementById("storage_requirements").value = product.storage_requirements || '';
+
+            // Update dosage preview after setting values
+            const strengthInput = document.getElementById('dosage_strength');
+            const unitSelect = document.getElementById('dosage_unit');
+            const previewText = document.getElementById('dosage-preview-text');
+
+            if (strengthInput && unitSelect && previewText) {
+                const strength = strengthInput.value.trim();
+                const unit = unitSelect.value;
+
+                if (strength && unit) {
+                    previewText.textContent = strength + unit;
+                    previewText.className = 'preview-text combined';
+                } else if (unit) {
+                    previewText.textContent = unit;
+                    previewText.className = 'preview-text unit-only';
+                } else if (strength) {
+                    previewText.textContent = strength + ' (select unit)';
+                    previewText.className = 'preview-text incomplete';
+                } else {
+                    previewText.textContent = 'Enter strength and unit above';
+                    previewText.className = 'preview-text empty';
+                }
+            }
         }
 
         function showProductInfo(productId) {
@@ -660,6 +846,10 @@
                         <span class="info-value">${product.product_name || '-'}</span>
                     </div>
                     <div class="info-item">
+                        <span class="info-label">Generic Name:</span>
+                        <span class="info-value">${product.generic_name || '-'}</span>
+                    </div>
+                    <div class="info-item">
                         <span class="info-label">Brand Name:</span>
                         <span class="info-value">${product.brand_name || '-'}</span>
                     </div>
@@ -692,7 +882,11 @@
                         <span class="info-value">${product.form_type || '-'}</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">Dosage:</span>
+                        <span class="info-label">Dosage Strength:</span>
+                        <span class="info-value">${product.dosage_strength || '-'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Dosage Unit:</span>
                         <span class="info-value">${product.dosage_unit || '-'}</span>
                     </div>
                 </div>
@@ -761,15 +955,6 @@
         function closeBatchesModal() {
             batchesModal.style.display = "none";
             currentProductId = null;
-            // Don't clear product info content when closing batches modal
-        }
-
-        // Add specific modal close handlers to prevent content clearing conflicts
-        function closeModalSafely(modalId) {
-            const modal = document.getElementById(modalId);
-            if (modal) {
-                modal.style.display = "none";
-            }
         }
 
         function openStockOutModal(batchId, batchNumber, availableStock, productName, unitCost, salePrice) {

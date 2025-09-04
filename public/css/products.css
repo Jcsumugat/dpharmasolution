@@ -456,7 +456,7 @@ body {
 
 .modal {
     background: var(--color-bg-primary);
-    border-radius: 20px;
+    border-radius: 12px 0 0 12px;;
     width: 90%;
     max-width: 800px;
     max-height: 90vh;
@@ -702,6 +702,7 @@ body {
     .modal {
         margin: 1rem;
         width: calc(100% - 2rem);
+        border-radius: 12px 0 0 12px;
     }
 
     .modal-header {

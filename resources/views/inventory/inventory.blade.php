@@ -188,7 +188,9 @@
     <div class="modal-bg" id="inventoryBatchModal" style="display: none;">
         <div class="modal" style="max-width: 600px;">
             <div class="modal-header">
-                Add New Batch - <span id="inventoryModalProductName"></span>
+                <div class="modal-title">
+                    Add New Batch - <span id="inventoryModalProductName"></span>
+                </div>
                 <div class="modal-close" onclick="inventoryCloseBatchModal()">&times;</div>
             </div>
             <div class="modal-body">
