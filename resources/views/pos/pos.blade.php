@@ -18,13 +18,11 @@
     <main class="pos-main">
 
         <div class="pos-content">
-            <!-- Left Panel - Products -->
             <section class="left-panel">
                 <div class="card product-search">
                     <h2>Products</h2>
                     <hr>
 
-                    <!-- Search and Filter -->
                     <div class="search-container">
                         <input type="text" id="productSearch" placeholder="Search products..." class="search-input">
                         <select id="categoryFilter" class="filter-select">
@@ -35,51 +33,70 @@
                         </select>
                     </div>
 
-                    <!-- Product List -->
                     <div class="product-list" id="productList">
-                        @foreach ($products as $product)
-                            <div class="product-item" data-id="{{ $product->id }}">
-                                <div class="product-info">
-                                    <h4>{{ $product->product_name }}</h4>
-                                    <p class="brand">{{ $product->brand_name }}</p>
-                                    <p class="category">{{ $product->category->name ?? 'Uncategorized' }}</p>
-                                    <p class="price">
-                                        ₱{{ number_format($product->batches->first()->sale_price ?? 0, 2) }}</p>
-                                    <p class="stock">Stock: {{ $product->stock_quantity ?? 0 }}</p>
-                                    @if ($product->batches->first() && $product->batches->first()->expiration_date <= now()->addDays(30))
-                                        <p class="expiry-warning">Expires:
-                                            {{ $product->batches->first()->expiration_date->format('M d, Y') }}</p>
-                                    @endif
-                                </div>
-                                <button type="button" class="btn-add-to-cart"
-                                    onclick="addToCart({{ $product->id }})">
-                                    Add to Cart
-                                </button>
-                            </div>
-                        @endforeach
+                        <table class="product-table">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Category</th>
+                                    <th>Price</th>
+                                    <th>Stock</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($products as $product)
+                                    <tr data-id="{{ $product->id }}">
+                                        <td>
+                                            <div class="product-name">{{ $product->product_name }}</div>
+                                            <div class="product-brand">{{ $product->brand_name }}</div>
+                                            @if ($product->batches->first() && $product->batches->first()->expiration_date <= now()->addDays(30))
+                                                <div class="product-expiry">Expires:
+                                                    {{ $product->batches->first()->expiration_date->format('M d, Y') }}
+                                                </div>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            <div class="product-category">
+                                                {{ $product->category->name ?? 'Uncategorized' }}</div>
+                                        </td>
+                                        <td>
+                                            <div class="product-price">
+                                                ₱{{ number_format($product->batches->first()->sale_price ?? 0, 2) }}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="product-stock">{{ $product->stock_quantity ?? 0 }}</div>
+                                        </td>
+                                        <td class="action-cell">
+                                            <button type="button" class="btn-add-to-cart"
+                                                onclick="addToCart({{ $product->id }})">
+                                                Add to Cart
+                                            </button>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
                     </div>
 
-                    <!-- Pagination -->
                     <div class="pagination-container">
                         {{ $products->links() }}
                     </div>
                 </div>
             </section>
 
-            <!-- Right Panel - Cart -->
             <section class="right-panel">
                 <div class="card cart-section">
                     <h2>Cart</h2>
                     <hr>
 
-                    <!-- Cart Items -->
                     <div class="cart-items" id="cartItems">
                         <div class="empty-cart">
                             <p>No items in cart</p>
                         </div>
                     </div>
 
-                    <!-- Cart Summary -->
                     <div class="cart-summary" id="cartSummary" style="display: none;">
                         <div class="summary-row">
                             <span>Subtotal:</span>
@@ -98,7 +115,6 @@
                         </div>
                     </div>
 
-                    <!-- Payment Section -->
                     <div class="payment-section" id="paymentSection" style="display: none;">
                         <h3>Payment</h3>
 
@@ -125,7 +141,6 @@
                         <textarea id="notes" rows="2" placeholder="Additional notes..."></textarea>
                     </div>
 
-                    <!-- Action Buttons -->
                     <div class="action-buttons">
                         <button type="button" class="btn-cancel" onclick="clearCartWithConfirmation()">Clear
                             Cart</button>
@@ -140,7 +155,6 @@
         </div>
     </main>
 
-    <!-- Receipt Modal -->
     <div id="receiptModal" class="modal-overlay">
         <div class="modal-content receipt-modal">
             <div class="receipt-header">
@@ -148,7 +162,6 @@
                 <button class="modal-close" onclick="hideReceiptModal()">&times;</button>
             </div>
             <div id="receiptContent">
-                <!-- Receipt content will be populated here -->
             </div>
             <div class="receipt-actions">
                 <button class="btn-print" onclick="printReceipt()">Print Receipt</button>
@@ -157,7 +170,6 @@
         </div>
     </div>
 
-    <!-- Confirmation Modal -->
     <div id="confirmModal" class="modal-overlay">
         <div class="modal-content">
             <h2 id="confirmTitle">Confirm Action</h2>
@@ -173,7 +185,6 @@
         let cart = [];
         let searchTimeout;
 
-        // Save cart to localStorage
         function saveCartToStorage() {
             try {
                 localStorage.setItem('pos_cart', JSON.stringify(cart));
@@ -183,30 +194,24 @@
             }
         }
 
-        // Load cart from localStorage
         function loadCartFromStorage() {
             try {
                 const savedCart = localStorage.getItem('pos_cart');
                 const timestamp = localStorage.getItem('pos_cart_timestamp');
 
                 if (savedCart && timestamp) {
-                    // Check if cart is less than 24 hours old
                     const cartAge = Date.now() - parseInt(timestamp);
-                    const maxAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+                    const maxAge = 24 * 60 * 60 * 1000;
 
                     if (cartAge < maxAge) {
                         cart = JSON.parse(savedCart);
                         updateCartDisplay();
-
-                        // Validate cart items against current stock
                         validateCartItems();
 
-                        // Show notification if cart was recovered
                         if (cart.length > 0) {
                             showCartRecoveryNotification(cart.length);
                         }
                     } else {
-                        // Clear expired cart
                         clearStoredCart();
                     }
                 }
@@ -216,7 +221,6 @@
             }
         }
 
-        // Clear cart from localStorage
         function clearStoredCart() {
             try {
                 localStorage.removeItem('pos_cart');
@@ -226,7 +230,6 @@
             }
         }
 
-        // Validate cart items against current stock levels
         async function validateCartItems() {
             const invalidItems = [];
 
@@ -238,16 +241,13 @@
                     const data = await response.json();
 
                     if (!data.success) {
-                        // Product no longer available
                         invalidItems.push(cartItem.name);
                         cart.splice(i, 1);
                     } else {
                         const product = data.product;
-                        // Update maxStock and adjust quantity if necessary
                         cartItem.maxStock = product.total_stock;
                         cartItem.price = parseFloat(product.unit_price);
 
-                        // If current quantity exceeds available stock, adjust it
                         if (cartItem.quantity > product.total_stock) {
                             if (product.total_stock > 0) {
                                 cartItem.quantity = product.total_stock;
@@ -259,21 +259,17 @@
                     }
                 } catch (error) {
                     console.error(`Failed to validate item ${cartItem.name}:`, error);
-                    // Keep item in cart but user will get error if they try to purchase
                 }
             }
 
-            // Notify user of removed items
             if (invalidItems.length > 0) {
                 alert(
-                    `The following items were removed from your cart due to stock changes:\n${invalidItems.join(', ')}`
-                );
+                    `The following items were removed from your cart due to stock changes:\n${invalidItems.join(', ')}`);
             }
 
             updateCartDisplay();
         }
 
-        // Cart recovery notification
         function showCartRecoveryNotification(itemCount) {
             const notification = document.createElement('div');
             notification.style.cssText = `
@@ -297,22 +293,23 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
-            // Load saved cart on page load
             loadCartFromStorage();
 
-            // Initialize search functionality
             document.getElementById('productSearch').addEventListener('input', function() {
                 clearTimeout(searchTimeout);
+                const searchTerm = this.value.trim();
+
+                const delay = searchTerm.length < 3 ? 100 : 200;
+
                 searchTimeout = setTimeout(() => {
                     searchProducts();
-                }, 300);
+                }, delay);
             });
 
             document.getElementById('categoryFilter').addEventListener('change', function() {
                 searchProducts();
             });
 
-            // Save cart before page unload (backup)
             window.addEventListener('beforeunload', function() {
                 if (cart.length > 0) {
                     saveCartToStorage();
@@ -332,13 +329,15 @@
                     },
                     body: JSON.stringify({
                         search,
-                        category
+                        category,
+                        fuzzy: true
                     })
                 })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        displayProducts(data.products);
+                        const filteredProducts = search ? filterProductsFuzzy(data.products, search) : data.products;
+                        displayProducts(filteredProducts);
                     }
                 })
                 .catch(error => {
@@ -346,30 +345,192 @@
                 });
         }
 
+        function filterProductsFuzzy(products, searchTerm) {
+            if (!searchTerm || searchTerm.length < 2) {
+                return products;
+            }
+
+            const normalizedSearch = searchTerm.toLowerCase().trim();
+
+            return products.filter(product => {
+                const searchableText = [
+                    product.product_name || '',
+                    product.brand_name || '',
+                    product.category?.name || ''
+                ].join(' ').toLowerCase();
+
+                const words = [
+                    product.product_name || '',
+                    product.brand_name || '',
+                    product.category?.name || ''
+                ];
+
+                return (
+                    // Exact substring match (highest priority)
+                    searchableText.includes(normalizedSearch) ||
+
+                    // Partial word matching
+                    containsPartialWords(searchableText, normalizedSearch) ||
+
+                    // Character sequence matching (original order)
+                    containsCharacterSequence(searchableText, normalizedSearch) ||
+
+                    // Scrambled letters matching (any order)
+                    containsScrambledLetters(searchableText, normalizedSearch) ||
+
+                    // Word similarity matching
+                    words.some(word => calculateWordSimilarity(word, normalizedSearch) >= 0.5) ||
+
+                    // Traditional fuzzy matching
+                    (normalizedSearch.split(' ').some(word =>
+                        word.length > 2 && fuzzyMatch(searchableText, word, 0.6)
+                    ))
+                );
+            }).sort((a, b) => {
+                const aText = [a.product_name || '', a.brand_name || ''].join(' ').toLowerCase();
+                const bText = [b.product_name || '', b.brand_name || ''].join(' ').toLowerCase();
+
+                // Calculate match scores for sorting
+                const aExact = aText.includes(normalizedSearch) ? 100 : 0;
+                const bExact = bText.includes(normalizedSearch) ? 100 : 0;
+
+                const aScrambled = containsScrambledLetters(aText, normalizedSearch) ? 80 : 0;
+                const bScrambled = containsScrambledLetters(bText, normalizedSearch) ? 80 : 0;
+
+                const aWords = [a.product_name || '', a.brand_name || ''];
+                const bWords = [b.product_name || '', b.brand_name || ''];
+
+                const aSimilarity = Math.max(...aWords.map(word => calculateWordSimilarity(word,
+                    normalizedSearch))) * 60;
+                const bSimilarity = Math.max(...bWords.map(word => calculateWordSimilarity(word,
+                    normalizedSearch))) * 60;
+
+                const aScore = Math.max(aExact, aScrambled, aSimilarity);
+                const bScore = Math.max(bExact, bScrambled, bSimilarity);
+
+                if (aScore !== bScore) {
+                    return bScore - aScore; // Higher score first
+                }
+
+                // Then by product name alphabetically
+                return (a.product_name || '').localeCompare(b.product_name || '');
+            });
+        }
+
+        function containsPartialWords(text, search) {
+            const words = search.split(' ').filter(word => word.length > 1);
+            return words.every(word =>
+                text.split(' ').some(textWord =>
+                    textWord.startsWith(word) || textWord.includes(word)
+                )
+            );
+        }
+
+        function containsCharacterSequence(text, search) {
+            if (search.length < 3) return false;
+
+            let textIndex = 0;
+            let searchIndex = 0;
+            let matches = 0;
+
+            while (textIndex < text.length && searchIndex < search.length) {
+                if (text[textIndex] === search[searchIndex]) {
+                    matches++;
+                    searchIndex++;
+                }
+                textIndex++;
+            }
+
+            return matches >= Math.ceil(search.length * 0.7);
+        }
+
+        function fuzzyMatch(text, pattern, threshold = 0.7) {
+            if (pattern.length < 3) return false;
+
+            const words = text.split(' ');
+
+            return words.some(word => {
+                if (word.length < pattern.length - 2) return false;
+
+                let matches = 0;
+                let patternIndex = 0;
+
+                for (let i = 0; i < word.length && patternIndex < pattern.length; i++) {
+                    if (word[i] === pattern[patternIndex]) {
+                        matches++;
+                        patternIndex++;
+                    }
+                }
+
+                const score = matches / pattern.length;
+                return score >= threshold;
+            });
+        }
+
+        function highlightMatch(text, searchTerm) {
+            if (!text || !searchTerm || searchTerm.length < 2) {
+                return text || '';
+            }
+
+            const regex = new RegExp(`(${escapeRegex(searchTerm)})`, 'gi');
+            return text.replace(regex, '<span style="background-color: yellow; font-weight: bold;">$1</span>');
+        }
+
+        function escapeRegex(string) {
+            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
         function displayProducts(products) {
             const productList = document.getElementById('productList');
+            const searchTerm = document.getElementById('productSearch').value.toLowerCase().trim();
 
             if (products.length === 0) {
-                productList.innerHTML = '<div class="no-products">No products found</div>';
+                productList.innerHTML =
+                    '<table class="product-table"><tbody><tr><td colspan="5" class="no-products-row">No products found</td></tr></tbody></table>';
                 return;
             }
 
-            productList.innerHTML = products.map(product => `
-        <div class="product-item" data-id="${product.id}">
-            <div class="product-info">
-                <h4>${product.product_name}</h4>
-                <p class="brand">${product.brand_name}</p>
-                <p class="category">${product.category ? product.category.name : 'Uncategorized'}</p>
-                <p class="price">₱${parseFloat(product.unit_price || 0).toFixed(2)}</p>
-                <p class="stock">Stock: ${product.total_stock || 0}</p>
-                ${product.batches && product.batches[0] && new Date(product.batches[0].expiration_date) <= new Date(Date.now() + 30*24*60*60*1000) ?
-                    `<p class="expiry-warning">Expires: ${new Date(product.batches[0].expiration_date).toLocaleDateString()}</p>` : ''}
-            </div>
-            <button type="button" class="btn-add-to-cart" onclick="addToCart(${product.id})">
-                Add to Cart
-            </button>
-        </div>
-    `).join('');
+            const tableHTML = `
+        <table class="product-table">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Category</th>
+                    <th>Price</th>
+                    <th>Stock</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${products.map(product => `
+                        <tr data-id="${product.id}">
+                            <td>
+                                <div class="product-name">${highlightMatch(product.product_name, searchTerm)}</div>
+                                <div class="product-brand">${highlightMatch(product.brand_name, searchTerm)}</div>
+                                ${product.batches && product.batches[0] && new Date(product.batches[0].expiration_date) <= new Date(Date.now() + 30*24*60*60*1000) ?
+                                    `<div class="product-expiry">Expires: ${new Date(product.batches[0].expiration_date).toLocaleDateString()}</div>` : ''}
+                            </td>
+                            <td>
+                                <div class="product-category">${highlightMatch(product.category ? product.category.name : 'Uncategorized', searchTerm)}</div>
+                            </td>
+                            <td>
+                                <div class="product-price">₱${parseFloat(product.unit_price || 0).toFixed(2)}</div>
+                            </td>
+                            <td>
+                                <div class="product-stock">${product.total_stock || 0}</div>
+                            </td>
+                            <td class="action-cell">
+                                <button type="button" class="btn-add-to-cart" onclick="addToCart(${product.id})">
+                                    Add to Cart
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('')}
+            </tbody>
+        </table>
+    `;
+
+            productList.innerHTML = tableHTML;
         }
 
         function addToCart(productId) {
@@ -481,7 +642,6 @@
 
             calculateChange();
 
-            // Enable submit button if cart has items
             document.getElementById('submitBtn').disabled = cart.length === 0;
         }
 
@@ -524,7 +684,6 @@
                 return;
             }
 
-            // Show loading state
             const btnText = document.querySelector('.btn-text');
             const btnLoading = document.querySelector('.btn-loading');
             const submitBtn = document.getElementById('submitBtn');
@@ -557,7 +716,7 @@
                 .then(data => {
                     if (data.success) {
                         showReceipt(data.transaction);
-                        clearCart(); // This will also clear storage
+                        clearCart();
                     } else {
                         alert(data.message || 'Error processing transaction');
                     }
@@ -567,7 +726,6 @@
                     alert('Network error occurred. Please try again.');
                 })
                 .finally(() => {
-                    // Reset button state
                     btnText.style.display = 'inline';
                     btnLoading.style.display = 'none';
                     submitBtn.disabled = false;
@@ -613,16 +771,16 @@
                     </thead>
                     <tbody>
                         ${transaction.items.map(item => `
-                                                            <tr>
-                                                                <td>
-                                                                    <div class="item-name">${item.product_name}</div>
-                                                                    <div class="item-brand">${item.brand_name}</div>
-                                                                </td>
-                                                                <td>${item.quantity}</td>
-                                                                <td>₱${parseFloat(item.unit_price).toFixed(2)}</td>
-                                                                <td>₱${parseFloat(item.total_price).toFixed(2)}</td>
-                                                            </tr>
-                                                        `).join('')}
+                                <tr>
+                                    <td>
+                                        <div class="item-name">${item.product_name}</div>
+                                        <div class="item-brand">${item.brand_name}</div>
+                                    </td>
+                                    <td>${item.quantity}</td>
+                                    <td>₱${parseFloat(item.unit_price).toFixed(2)}</td>
+                                    <td>₱${parseFloat(item.total_price).toFixed(2)}</td>
+                                </tr>
+                            `).join('')}
                     </tbody>
                 </table>
             </div>
@@ -633,11 +791,11 @@
                     <span>₱${parseFloat(transaction.subtotal).toFixed(2)}</span>
                 </div>
                 ${parseFloat(transaction.discount_amount) > 0 ? `
-                                                <div class="summary-line">
-                                                    <span>Discount:</span>
-                                                    <span>-₱${parseFloat(transaction.discount_amount).toFixed(2)}</span>
-                                                </div>
-                                                ` : ''}
+                        <div class="summary-line">
+                            <span>Discount:</span>
+                            <span>-₱${parseFloat(transaction.discount_amount).toFixed(2)}</span>
+                        </div>
+                    ` : ''}
                 <div class="summary-line total-line">
                     <span><strong>Total:</strong></span>
                     <span><strong>₱${parseFloat(transaction.total_amount).toFixed(2)}</strong></span>

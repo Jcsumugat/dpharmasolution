@@ -18,7 +18,10 @@ use App\Http\Controllers\PrescriptionItemController;
 use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\StockController;
+use App\Http\Controllers\CustomerChatController;
+use App\Http\Controllers\CustomerChatApiController;
+use App\Http\Controllers\ChatConversationController;
+use App\Http\Controllers\ChatViewController;
 use App\Http\Controllers\PosController;
 
 Route::get('/', fn() => redirect('/admin/login'));
@@ -73,6 +76,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
         Route::get('/settings/permissions', [CheckLogin::class, 'showPermissions'])->name('admin.settings.permissions');
     });
 });
+
+
 
 Route::prefix('dashboard/products')->middleware(['auth', 'admin'])->name('products.')->group(function () {
     Route::get('/', [ProductController::class, 'index'])->name('index');
@@ -249,3 +254,51 @@ Route::post('/reset-password', function (Request $request) {
         return back()->with('error', 'Code doesn\'t match or email is incorrect.');
     }
 })->name('password.update');
+
+Route::prefix('api/admin/customers')->group(function () {
+    // Get customers for chat
+    Route::get('/chat', [CustomerChatController::class, 'getCustomers']);
+    Route::get('/chat/stats', [CustomerChatController::class, 'getChatStats']);
+    Route::put('/chat/{customerId}/status', [CustomerChatController::class, 'updateOnlineStatus']);
+});
+
+// Chat API endpoints for admin (moved outside auth middleware)
+Route::prefix('api/admin/chat')->group(function () {
+    // Conversations management
+    Route::get('/conversations', [ChatConversationController::class, 'getConversations']);
+    Route::post('/conversations', [ChatConversationController::class, 'store']);
+    Route::post('/conversations/find-or-create', [ChatConversationController::class, 'findOrCreateConversation']);
+    Route::put('/conversations/{id}', [ChatConversationController::class, 'update']);
+    Route::put('/conversations/{id}/status', [ChatConversationController::class, 'updateStatus']);
+    Route::delete('/conversations/{id}', [ChatConversationController::class, 'destroy']);
+
+    // Messages
+    Route::get('/conversations/{id}/messages', [ChatConversationController::class, 'getMessages']);
+    Route::post('/conversations/{id}/messages', [ChatConversationController::class, 'sendMessage']);
+
+    // Utilities
+    Route::post('/conversations/{id}/read', [ChatConversationController::class, 'markAsRead']);
+    Route::get('/stats', [ChatConversationController::class, 'getStats']);
+    Route::get('/unread-count', [ChatConversationController::class, 'getUnreadCount']);
+});
+
+// Keep the main routes with authentication
+Route::middleware(['auth', 'verified'])->group(function () {
+    // Chat Dashboard (existing)
+    Route::get('/chat', [ChatViewController::class, 'chatSupport'])->name('chat.index');
+
+    // Customer Chat Page (new)
+    Route::get('/home/messages', [ChatViewController::class, 'customerChat'])->name('customer-chat.index');
+
+    // View specific conversation (existing)
+    Route::get('/chat/conversation/{id}', [ChatConversationController::class, 'show'])->name('chat.show');
+});
+
+// Customer Chat API Routes
+Route::middleware(['auth:customer'])->prefix('api/customer/chat')->group(function () {
+    Route::post('conversations/find-or-create', [CustomerChatApiController::class, 'findOrCreateConversation']);
+    Route::get('conversations/{conversationId}/messages', [CustomerChatApiController::class, 'getMessages']);
+    Route::post('conversations/{conversationId}/messages', [CustomerChatApiController::class, 'sendMessage']);
+    Route::post('typing-status', [CustomerChatApiController::class, 'updateTypingStatus']);
+    Route::get('download/{attachmentId}', [CustomerChatApiController::class, 'downloadAttachment']);
+});

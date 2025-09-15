@@ -305,57 +305,6 @@ tbody tr:nth-child(even):hover {
     }
 }
 
-.status-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    padding: 0.375rem 0.75rem;
-    border-radius: 9999px;
-    font-size: var(--font-size-xs);
-    font-weight: var(--font-weight-semibold);
-    text-transform: uppercase;
-    letter-spacing: var(--letter-spacing-wider);
-    border: 1px solid transparent;
-    min-width: 80px;
-    justify-content: center;
-}
-
-.status-badge.pending {
-    background: #fef3c7;
-    color: #92400e;
-    border-color: #fbbf24;
-}
-
-.status-badge.approved {
-    background: #d1fae5;
-    color: #065f46;
-    border-color: var(--color-success);
-}
-
-.status-badge.rejected {
-    background: #fee2e2;
-    color: #991b1b;
-    border-color: var(--color-danger);
-}
-
-.status-badge.processing {
-    background: #dbeafe;
-    color: #1e40af;
-    border-color: var(--color-info);
-}
-
-.status-badge.completed {
-    background: #e9d5ff;
-    color: #6b21a8;
-    border-color: #a855f7;
-}
-
-.status-badge.cancelled {
-    background: #f3f4f6;
-    color: #374151;
-    border-color: #9ca3af;
-}
-
 .prescription-file-info {
     background: var(--color-bg-tertiary);
     border: 1px solid var(--color-border-light);
@@ -2778,4 +2727,280 @@ textarea#reasonMessage::placeholder {
 
 #completeOrderModal #orderSummary::-webkit-scrollbar-thumb:hover {
     background: #a1a1a1;
+}
+.prescription-image-container {
+    position: relative;
+    background: linear-gradient(45deg, #f0f0f0 25%, transparent 25%),
+                linear-gradient(-45deg, #f0f0f0 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #f0f0f0 75%),
+                linear-gradient(-45deg, transparent 75%, #f0f0f0 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+}
+
+.prescription-viewer-content {
+    max-width: 95vw !important;
+    max-height: 95vh !important;
+    width: auto !important;
+}
+
+.prescription-viewer-body {
+    padding: 20px;
+    max-height: 80vh;
+    overflow: hidden;
+}
+
+.zoom-controls button:hover {
+    background: #f0f0f0 !important;
+    transform: scale(1.1);
+    transition: all 0.2s ease;
+}
+
+.message {
+    display: flex;
+    margin: 10px 0;
+    align-items: flex-start;
+}
+
+.message.admin {
+    justify-content: flex-end;
+}
+
+.message.admin .message-content {
+    text-align: right;
+}
+
+.message-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: white;
+    margin: 0 8px;
+}
+
+.message.admin .message-avatar {
+    background: #007bff;
+    order: 2;
+}
+
+.message.customer .message-avatar {
+    background: #6c757d;
+}
+
+.message-bubble {
+    background: #f8f9fa;
+    padding: 8px 12px;
+    border-radius: 18px;
+    max-width: 300px;
+    word-wrap: break-word;
+}
+
+.message.admin .message-bubble {
+    background: #007bff;
+    color: white;
+}
+
+.message-time {
+    font-size: 0.75em;
+    color: #6c757d;
+    margin-top: 4px;
+}
+
+.chat-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.chat-modal.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.chat-container {
+    background: white;
+    border-radius: 8px;
+    width: 500px;
+    max-height: 600px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.chat-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f8f9fa;
+    border-radius: 8px 8px 0 0;
+}
+
+.chat-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #6c757d;
+}
+
+.chat-messages {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+    max-height: 400px;
+    min-height: 300px;
+}
+
+.chat-input-container {
+    padding: 15px;
+    border-top: 1px solid #eee;
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+}
+
+.chat-input {
+    flex: 1;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    padding: 10px 15px;
+    resize: none;
+    outline: none;
+    font-family: inherit;
+    max-height: 80px;
+}
+
+.chat-send {
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.chat-send:hover {
+    background: #0056b3;
+}
+
+.no-messages {
+    text-align: center;
+    color: #6c757d;
+    font-style: italic;
+    padding: 40px 20px;
+}
+
+@media (max-width: 768px) {
+    .chat-container {
+        width: 90vw;
+        max-height: 80vh;
+    }
+
+    .prescription-viewer-content {
+        width: 95vw !important;
+        height: 95vh !important;
+        margin: 0;
+    }
+
+    .prescription-viewer-body {
+        padding: 10px;
+    }
+
+    .zoom-controls {
+        top: 5px !important;
+        right: 5px !important;
+    }
+
+    .zoom-controls button {
+        width: 28px !important;
+        height: 28px !important;
+        font-size: 14px !important;
+    }
+}
+
+/* Loading spinner */
+.loading-spinner {
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #007bff;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto;
+}
+
+.loading-spinner-small {
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #007bff;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    animation: spin 1s linear infinite;
+    margin-right: 10px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Product management enhancements */
+.product-list li {
+    transition: background-color 0.2s ease;
+}
+
+.product-list li:hover {
+    background-color: #f8f9fa;
+}
+
+.product-list li.out-of-stock {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.product-list li.low-stock {
+    border-left: 3px solid #ffc107;
+}
+
+.product-list li.in-stock {
+    border-left: 3px solid #28a745;
+}
+
+.expiry-date.expired {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+.expiry-date.expiring-soon {
+    color: #fd7e14;
+    font-weight: bold;
+}
+
+.expiry-date.expiring-moderate {
+    color: #ffc107;
+}
+
+.expiry-date.expiring-safe {
+    color: #28a745;
 }

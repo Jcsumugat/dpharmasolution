@@ -960,6 +960,7 @@ class AdminOrderController extends Controller
             ], 500);
         }
     }
+    
     public function getMessages(Prescription $prescription)
     {
         $messages = $prescription->messages()->with('sender')->get();

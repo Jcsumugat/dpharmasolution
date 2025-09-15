@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\CustomerChat;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -46,80 +47,90 @@ class AuthController extends Controller
         return view('client.signup2', ['registration' => $registration]);
     }
 
-  public function handleSignupStepTwo(Request $request)
-{
-    // Single validator with all rules
-    $validator = Validator::make($request->all(), [
-        'password' => [
-            'required',
-            'string',
-            'min:8',
-            'confirmed',
-            'regex:/[A-Z]/',      // At least one uppercase letter
-            'regex:/[0-9]/',      // At least one number
-        ],
-        'terms' => 'required|accepted',
-    ]);
-
-    if ($validator->fails()) {
-        Log::info('Validation failed:', $validator->errors()->toArray());
-        return redirect()->route('signup.step_two')
-            ->withErrors($validator)
-            ->withInput();
-    }
-
-    $registrationData = session('registration');
-
-    Log::info('Step 2 session data:', (array) $registrationData);
-
-    if (!$registrationData) {
-        Log::error('No registration data found in session');
-        return redirect()->route('signup.step_one')->withErrors(['error' => 'Session expired. Please start over.']);
-    }
-
-    try {
-        $customer = new Customer();
-        
-        // Generate customer_id if it's a custom field
-        // Option 1: Auto-increment based approach
-        $lastCustomer = Customer::latest('id')->first();
-        $customer->customer_id = $lastCustomer ? $lastCustomer->id + 1 : 1;
-        $customer->full_name = $registrationData['full_name'];
-        $customer->address = $registrationData['address'];
-        $customer->birthdate = $registrationData['birthdate'];
-        $customer->sex = $registrationData['sex'];
-        $customer->email_address = $registrationData['email_address'];
-        $customer->contact_number = $registrationData['contact_number'];
-        $customer->password = Hash::make($request->password);
-        
-        // Use the correct status column instead of is_active/is_restricted
-        $customer->status = 'active'; // Set default status to active
-        
-        $customer->save();
-
-        Log::info('Customer successfully registered', [
-            'id' => $customer->id,
-            'customer_id' => $customer->customer_id,
-            'full_name' => $customer->full_name,
-            'email' => $customer->email_address
+    public function handleSignupStepTwo(Request $request)
+    {
+        // Single validator with all rules
+        $validator = Validator::make($request->all(), [
+            'password' => [
+                'required',
+                'string',
+                'min:8',
+                'confirmed',
+                'regex:/[A-Z]/',      // At least one uppercase letter
+                'regex:/[0-9]/',      // At least one number
+            ],
+            'terms' => 'required|accepted',
         ]);
 
-        session()->forget('registration');
+        if ($validator->fails()) {
+            Log::info('Validation failed:', $validator->errors()->toArray());
+            return redirect()->route('signup.step_two')
+                ->withErrors($validator)
+                ->withInput();
+        }
 
-        return redirect()->route('login.form')->with('success', 'Registration successful! You can now log in.');
-        
-    } catch (\Exception $e) {
-        Log::error('Registration failed', [
-            'message' => $e->getMessage(),
-            'file' => $e->getFile(),
-            'line' => $e->getLine(),
-            'trace' => $e->getTraceAsString()
-        ]);
+        $registrationData = session('registration');
 
-        return redirect()->route('signup.step_two')
-            ->withErrors(['error' => 'Registration failed: ' . $e->getMessage()]);
+        Log::info('Step 2 session data:', (array) $registrationData);
+
+        if (!$registrationData) {
+            Log::error('No registration data found in session');
+            return redirect()->route('signup.step_one')->withErrors(['error' => 'Session expired. Please start over.']);
+        }
+
+        try {
+            $customer = new Customer();
+
+            // Generate customer_id if it's a custom field
+            // Option 1: Auto-increment based approach
+            $lastCustomer = Customer::latest('id')->first();
+            $customer->customer_id = $lastCustomer ? $lastCustomer->id + 1 : 1;
+            $customer->full_name = $registrationData['full_name'];
+            $customer->address = $registrationData['address'];
+            $customer->birthdate = $registrationData['birthdate'];
+            $customer->sex = $registrationData['sex'];
+            $customer->email_address = $registrationData['email_address'];
+            $customer->contact_number = $registrationData['contact_number'];
+            $customer->password = Hash::make($request->password);
+
+            // Use the correct status column instead of is_active/is_restricted
+            $customer->status = 'active'; // Set default status to active
+
+            $customer->save();
+
+            // CREATE CUSTOMER CHAT RECORD
+            CustomerChat::create([
+                'customer_id' => $customer->customer_id,
+                'email_address' => $customer->email_address,
+                'full_name' => $customer->full_name,
+                'is_online' => false,
+                'last_active' => now(),
+                'chat_status' => 'offline'
+            ]);
+
+            Log::info('Customer successfully registered with chat record', [
+                'id' => $customer->id,
+                'customer_id' => $customer->customer_id,
+                'full_name' => $customer->full_name,
+                'email' => $customer->email_address
+            ]);
+
+            session()->forget('registration');
+
+            return redirect()->route('login.form')->with('success', 'Registration successful! You can now log in.');
+
+        } catch (\Exception $e) {
+            Log::error('Registration failed', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->route('signup.step_two')
+                ->withErrors(['error' => 'Registration failed: ' . $e->getMessage()]);
+        }
     }
-}
 
     public function showLoginForm1()
     {
@@ -161,13 +172,32 @@ class AuthController extends Controller
             'password' => $credentials['password'],
         ])) {
             $request->session()->regenerate(); // Prevent session fixation
-            
+
+            // UPDATE CUSTOMER CHAT STATUS TO ONLINE
+            try {
+                CustomerChat::where('customer_id', $customer->customer_id)->update([
+                    'is_online' => true,
+                    'last_active' => now(),
+                    'chat_status' => 'online'
+                ]);
+
+                Log::info('Customer chat status updated to online', [
+                    'customer_id' => $customer->customer_id,
+                    'customer_name' => $customer->full_name
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Failed to update customer chat status on login', [
+                    'customer_id' => $customer->customer_id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+
             Log::info('Customer logged in successfully', [
                 'customer_id' => $customer->id,
                 'customer_name' => $customer->full_name,
                 'login_time' => now()
             ]);
-            
+
             return redirect()->route('home');
         }
 
@@ -185,13 +215,45 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
+        // Get the authenticated customer before logging out
+        $customer = Auth::guard('customer')->user();
+
+        if ($customer) {
+            // UPDATE CUSTOMER CHAT STATUS TO OFFLINE
+            try {
+                Log::info('Attempting to update chat status to offline for customer', [
+                    'customer_id' => $customer->customer_id,
+                    'customer_name' => $customer->full_name
+                ]);
+
+                $updated = CustomerChat::where('customer_id', $customer->customer_id)->update([
+                    'is_online' => false,
+                    'last_active' => now(),
+                    'chat_status' => 'offline'
+                ]);
+
+                Log::info('Customer chat status updated to offline', [
+                    'customer_id' => $customer->customer_id,
+                    'customer_name' => $customer->full_name,
+                    'rows_affected' => $updated,
+                    'logout_time' => now()
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Failed to update customer chat status on logout', [
+                    'customer_id' => $customer->customer_id,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+            }
+        }
+
         // Logout from customer guard
         Auth::guard('customer')->logout();
-        
+
         // Clear session data
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-        
+
         // Redirect to customer login form
         return redirect()->route('login.form')->with('success', 'You have been logged out successfully.');
     }

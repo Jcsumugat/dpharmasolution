@@ -31,7 +31,7 @@
                 </div>
                 <div class="dropdown-arrow">▼</div>
             </div>
-            
+
             <div class="user-dropdown" id="userDropdown">
                 <div class="dropdown-header">
                     <div class="dropdown-user-name" id="dropdownUserName">
@@ -49,23 +49,23 @@
                         @endif
                     </div>
                 </div>
-                
+
                 @if(Auth::guard('customer')->check())
                     <a href="{{ url('/profile') }}" class="dropdown-item">
                         <span class="dropdown-icon">👤</span>
                         <span>My Profile</span>
                     </a>
-                    
+
                     <a href="{{ url('/home/uploads') }}" class="dropdown-item">
                         <span class="dropdown-icon">📦</span>
                         <span>My Orders</span>
                     </a>
-                    
+
                     <a href="{{ url('/settings') }}" class="dropdown-item">
                         <span class="dropdown-icon">⚙️</span>
                         <span>Settings</span>
                     </a>
-                    
+
                     <button class="dropdown-item logout" onclick="showLogoutModal()">
                         <span class="dropdown-icon">🚪</span>
                         <span>Logout</span>
@@ -75,7 +75,7 @@
                         <span class="dropdown-icon">🔑</span>
                         <span>Login</span>
                     </a>
-                    
+
                     <a href="{{ route('signup.step_one') }}" class="dropdown-item">
                         <span class="dropdown-icon">📝</span>
                         <span>Sign Up</span>
@@ -93,7 +93,7 @@
         <a href="{{ url('/home') }}" class="nav-button {{ request()->is('home') ? 'active' : '' }}">Home</a>
         <a href="{{ url('/home/uploads') }}" class="nav-button {{ request()->is('home/uploads') ? 'active' : '' }}">Order</a>
         <a href="{{ url('/home/products') }}" class="nav-button {{ request()->is('home/products') ? 'active' : '' }}">Products</a>
-        
+
         {{-- Notifications button with badge --}}
         <a href="{{ url('/home/notifications') }}" class="nav-button notifications-nav {{ request()->is('home/notifications') ? 'active' : '' }}">
             Notifications
@@ -108,8 +108,9 @@
                 @endif
             @endif
         </a>
-        
+
         <a href="{{ url('/home/contact-us') }}" class="nav-button {{ request()->is('home/contact-us') ? 'active' : '' }}">Contact us</a>
+        <a href="{{ url('/home/messages') }}" class="nav-button {{ request()->is('home/messages') ? 'active' : '' }}">Messages</a>
     </div>
 </nav>
 
@@ -252,7 +253,7 @@
             if (menu) {
                 menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
             }
-            
+
             // Close user dropdown if open
             if (userDropdown) {
                 userDropdown.classList.remove('show');
@@ -263,21 +264,21 @@
         // User dropdown functions
         window.toggleUserDropdown = function(e) {
             if (e) e.stopPropagation();
-            
+
             const userDropdown = document.getElementById('userDropdown');
             const userInfo = document.querySelector('.user-info');
             const settingsMenu = document.getElementById('settingsMenu');
-            
+
             if (userDropdown && userInfo) {
                 const isOpen = userDropdown.classList.contains('show');
-                
+
                 if (isOpen) {
                     userDropdown.classList.remove('show');
                     userInfo.classList.remove('active');
                 } else {
                     userDropdown.classList.add('show');
                     userInfo.classList.add('active');
-                    
+
                     // Close settings menu if open
                     if (settingsMenu) {
                         settingsMenu.style.display = 'none';
@@ -292,7 +293,7 @@
                 const settingsMenu = document.getElementById('settingsMenu');
                 if (settingsMenu) settingsMenu.style.display = 'none';
             }
-            
+
             if (!e.target.closest('.user-profile')) {
                 const userDropdown = document.getElementById('userDropdown');
                 const userInfo = document.querySelector('.user-info');

@@ -26,7 +26,7 @@ class User extends Authenticatable
         'password',
         'role',
         'email_verified_at',
-        // Removed: 'phone', 'department', 'last_login_at' - these don't exist in your database
+
     ];
 
     /**
@@ -92,9 +92,67 @@ class User extends Authenticatable
             self::ROLE_STAFF,
         ];
     }
-    
+
     public function notifications()
     {
         return $this->hasMany(Notification::class);
+    }
+    /**
+     * Get conversations assigned to this admin
+     */
+    public function assignedConversations()
+    {
+        return $this->hasMany(Conversation::class, 'admin_id');
+    }
+
+    /**
+     * Get messages sent by this admin
+     */
+    public function messages()
+    {
+        return $this->morphMany(Message::class, 'sender');
+    }
+
+    /**
+     * Get conversation participations
+     */
+    public function conversationParticipations()
+    {
+        return $this->morphMany(ConversationParticipant::class, 'participant');
+    }
+
+    /**
+     * Get active assigned conversations
+     */
+    public function activeAssignedConversations()
+    {
+        return $this->assignedConversations()->active();
+    }
+
+    /**
+     * Get total unread messages count for admin
+     */
+    public function getTotalUnreadMessagesAttribute(): int
+    {
+        return $this->conversationParticipations()
+            ->with('conversation.messages')
+            ->get()
+            ->sum(function ($participation) {
+                return $participation->unread_count;
+            });
+    }
+
+    /**
+     * Assign conversation to this admin
+     */
+    public function assignConversation($conversationId)
+    {
+        $conversation = Conversation::findOrFail($conversationId);
+        $conversation->update(['admin_id' => $this->id]);
+
+        // Add admin as participant if not already
+        $conversation->addParticipant('App\Models\User', $this->id, 'admin');
+
+        return $conversation;
     }
 }

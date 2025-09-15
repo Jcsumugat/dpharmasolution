@@ -35,6 +35,11 @@
             class="nav-button {{ request()->routeIs('customer.*') ? 'active' : '' }}">Customer</a>
         <a href="{{ route('reports.index') }}"
             class="nav-button {{ request()->routeIs('reports.*') ? 'active' : '' }}">Reports</a>
+        <div class="nav-button-wrapper">
+            <a href="{{ route('chat.index') }}"
+                class="nav-button-chat {{ request()->routeIs('chat.*') ? 'active' : '' }}">🗨️</a>
+            <span class="chat-alert-badge" id="chatAlertBadge" style="display: none;"></span>
+        </div>
     </div>
 
     <div class="header-actions">
@@ -125,7 +130,7 @@
                 toggle.addEventListener('click', () => {
                     body.classList.toggle('dark-mode');
                     toggle.textContent = body.classList.contains('dark-mode') ? '☀️ Light Mode' :
-                    '🌙 Dark Mode';
+                        '🌙 Dark Mode';
                     localStorage.setItem('theme', body.classList.contains('dark-mode') ? 'dark' : 'light');
                 });
             }
