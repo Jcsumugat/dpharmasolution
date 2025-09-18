@@ -271,6 +271,7 @@ Route::prefix('api/admin/chat')->group(function () {
     Route::put('/conversations/{id}', [ChatConversationController::class, 'update']);
     Route::put('/conversations/{id}/status', [ChatConversationController::class, 'updateStatus']);
     Route::delete('/conversations/{id}', [ChatConversationController::class, 'destroy']);
+    Route::get('download/{attachmentId}', [CustomerChatApiController::class, 'downloadAttachment']);
 
     // Messages
     Route::get('/conversations/{id}/messages', [ChatConversationController::class, 'getMessages']);

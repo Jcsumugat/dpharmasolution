@@ -18,8 +18,12 @@ class Kernel extends ConsoleKernel
         // Generate expiration reports weekly on Monday at 8 AM
         $schedule->command('batches:cleanup-expired')->weekly()->mondays()->at('08:00');
 
-        // Optional: Auto-cleanup expired batches daily at 3 AM
-        $schedule->command('batches:cleanup-expired --auto')->daily()->at('03:00');
+
+        $schedule->command('products:process-expired-batches')
+            ->dailyAt('02:00')
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->appendOutputTo(storage_path('logs/expired-batches.log'));
     }
 
     /**
@@ -27,7 +31,7 @@ class Kernel extends ConsoleKernel
      */
     protected function commands(): void
     {
-        $this->load(__DIR__.'/Commands');
+        $this->load(__DIR__ . '/Commands');
 
         require base_path('routes/console.php');
     }

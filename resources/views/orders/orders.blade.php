@@ -191,20 +191,30 @@
 
                             <td class="action-cell">
                                 <div class="action-dropdown">
-                                    <button class="dropdown-trigger"
-                                        data-id="{{ $prescription->id }}">&#8230;</button>
+                                    <button class="dropdown-trigger" data-id="{{ $prescription->id }}">
+                                        &#8943;
+                                    </button>
                                     <div class="dropdown-menu">
-                                        <button class="dropdown-item manage manage-order-btn"
-                                            data-id="{{ $prescription->id }}">Process Order</button>
+                                        <button class="dropdown-item process-complete-btn"
+                                            data-id="{{ $prescription->id }}">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                                stroke="currentColor" stroke-width="2">
+                                                <path d="M9 11l3 3L22 4" />
+                                                <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
+                                            </svg>
+                                            Process Order
+                                        </button>
                                         <div class="dropdown-divider"></div>
-                                        <button class="dropdown-item chat chat-order-btn"
-                                            data-id="{{ $prescription->id }}">Message Customer</button>
-                                        <div class="dropdown-divider"></div>
-                                        <button class="dropdown-item status-action manage-status-btn"
-                                            data-id="{{ $prescription->id }}">Manage Status</button>
-                                        <div class="dropdown-divider"></div>
-                                        <button class="dropdown-item complete complete-order-btn"
-                                            data-id="{{ $prescription->id }}">Complete Order</button>
+                                        <button class="dropdown-item cancel-order-btn"
+                                            data-id="{{ $prescription->id }}">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                                stroke="currentColor" stroke-width="2">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <line x1="15" y1="9" x2="9" y2="15" />
+                                                <line x1="9" y1="9" x2="15" y2="15" />
+                                            </svg>
+                                            Cancel Order
+                                        </button>
                                     </div>
                                 </div>
                             </td>
@@ -214,8 +224,7 @@
             </table>
         </div>
 
-        <div class="dropdown-overlay"></div>
-
+        <!-- Rest of your modals remain the same -->
         <div id="manageStatusModal" class="modal">
             <div class="modal-content">
                 <h3>Manage Order Status</h3>
@@ -309,7 +318,7 @@
 
                 <div class="modal-footer">
                     <button class="btn btn-secondary" id="cancelManageOrder">Cancel</button>
-                    <button id="saveSelection" class="btn btn-primary">Save Selection</button>
+                    <button id="saveSelection" class="btn btn-primary">Complete Order</button>
                 </div>
             </div>
         </div>
@@ -341,27 +350,6 @@
             </div>
         </div>
     </div>
-    <div id="chatModal" class="chat-modal">
-        <div class="chat-container">
-            <div class="chat-header">
-                <div class="chat-title">
-                    <span id="chatOrderId">Order Chat</span>
-                </div>
-                <button class="chat-close" id="closeChatModal">&times;</button>
-            </div>
-            <div class="chat-messages" id="chatMessages">
-                <div class="no-messages">No messages yet. Start the conversation!</div>
-            </div>
-            <div class="chat-input-container">
-                <textarea class="chat-input" id="chatInput" placeholder="Type your message..." rows="1"></textarea>
-                <button class="chat-send" id="sendMessage">
-                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M2 21l21-9L2 3v7l15 2-15 2v7z" />
-                    </svg>
-                </button>
-            </div>
-        </div>
-    </div>
 
     <div id="prescriptionViewerModal" class="modal">
         <div class="modal-content prescription-viewer-content">
@@ -389,19 +377,11 @@
             </div>
         </div>
     </div>
-
     <script>
-        /**
-         * Enhanced Order Management System
-         * Organized and optimized JavaScript for pharmacy order management
-         */
-
         class OrderManagementSystem {
             constructor() {
                 this.state = {
                     currentPrescriptionId: null,
-                    currentOrderPrescriptionId: null,
-                    currentChatPrescriptionId: null,
                     selectedProductLi: null,
                     selectedProductsByOrder: {},
                     currentManageOrderData: {
@@ -410,78 +390,55 @@
                         documentType: null,
                         documentUrl: null
                     },
-                    currentPrescriptionData: {
-                        id: null,
-                        type: null,
-                        filename: null,
-                        viewUrl: null,
-                        downloadUrl: null
+                    currentPrescriptionData: null,
+                    isLoading: false,
+                    cache: {
+                        products: null,
+                        lastProductFetch: 0
                     }
                 };
-
                 this.elements = {};
-                this.statusMessages = {
-                    'pending': {
-                        'prescription': 'This order has been placed and prescription document needs to be validated before processing.',
-                        'online_order': 'This medicine order is pending review. Direct orders don\'t require prescription validation but need approval before fulfillment.'
-                    },
-                    'approved': {
-                        'prescription': 'This prescription has been reviewed and approved by a licensed pharmacist. The order can now be prepared and fulfilled.',
-                        'online_order': 'This medicine order has been approved and is ready for preparation. Products can now be allocated and prepared for delivery.'
-                    },
-                    'completed': {
-                        'prescription': 'This prescription order has been successfully fulfilled and completed. All medications have been dispensed.',
-                        'online_order': 'This medicine order has been completed successfully. All ordered products have been delivered or picked up.'
-                    }
-                };
-
+                this.debounceTimers = {};
+                this.CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
                 this.init();
             }
 
             init() {
                 this.cacheElements();
                 this.bindEvents();
-                this.initializeTooltips();
                 this.filterOrders();
+                this.preloadCriticalData();
             }
 
             cacheElements() {
-                // Modal elements
-                this.elements.dropdownOverlay = document.querySelector('.dropdown-overlay');
-                this.elements.statusModal = document.getElementById('manageStatusModal');
-                this.elements.manageModal = document.getElementById('manageOrderModal');
-                this.elements.qtyModal = document.getElementById('productQuantityModal');
-                this.elements.completeOrderModal = document.getElementById('completeOrderModal');
-                this.elements.chatModal = document.getElementById('chatModal');
-                this.elements.prescriptionModal = document.getElementById('prescriptionViewerModal');
+                // Use object mapping for better performance
+                const elementMap = {
+                    // Modal elements
+                    dropdownOverlay: '.dropdown-overlay',
+                    manageModal: '#manageOrderModal',
+                    qtyModal: '#productQuantityModal',
+                    prescriptionModal: '#prescriptionViewerModal',
 
-                // Form elements
-                this.elements.statusForm = document.getElementById('statusForm');
-                this.elements.statusPrescriptionId = document.getElementById('statusPrescriptionId');
-                this.elements.statusSelect = document.getElementById('statusSelect');
-                this.elements.reasonMessage = document.getElementById('reasonMessage');
+                    // Product management elements
+                    availableList: '#availableProducts',
+                    selectedList: '#selectedProducts',
+                    productSearchInput: '#productSearch',
+                    qtyInput: '#productQty',
+                    productModalName: '#productModalName',
 
-                // Product management elements
-                this.elements.availableList = document.getElementById('availableProducts');
-                this.elements.selectedList = document.getElementById('selectedProducts');
-                this.elements.productSearchInput = document.getElementById('productSearch');
-                this.elements.qtyInput = document.getElementById('productQty');
-                this.elements.productModalName = document.getElementById('productModalName');
+                    // Search and filter elements
+                    searchInput: '#order-search',
+                    statusFilter: '#status-filter',
+                    typeFilters: '.filter-btn[data-filter]'
+                };
 
-                // Order completion elements
-                this.elements.orderSummary = document.getElementById('orderSummary');
-                this.elements.submitOrderBtn = document.getElementById('submitOrderBtn');
-
-                // Search and filter elements
-                this.elements.searchInput = document.getElementById('order-search');
-                this.elements.statusFilter = document.getElementById('status-filter');
-                this.elements.typeFilters = document.querySelectorAll('.filter-btn[data-filter]');
-
-                // Chat elements
-                this.elements.chatMessages = document.getElementById('chatMessages');
-                this.elements.chatInput = document.getElementById('chatInput');
-                this.elements.sendButton = document.getElementById('sendMessage');
-                this.elements.chatOrderId = document.getElementById('chatOrderId');
+                for (const [key, selector] of Object.entries(elementMap)) {
+                    if (key === 'typeFilters') {
+                        this.elements[key] = document.querySelectorAll(selector);
+                    } else {
+                        this.elements[key] = document.querySelector(selector);
+                    }
+                }
             }
 
             bindEvents() {
@@ -489,10 +446,8 @@
                 this.bindSearchAndFilter();
                 this.bindDropdownEvents();
                 this.bindModalEvents();
-                this.bindStatusManagement();
+                this.bindOrderActions();
                 this.bindProductManagement();
-                this.bindOrderCompletion();
-                this.bindChatFunctionality();
                 this.bindPrescriptionViewer();
             }
 
@@ -503,11 +458,20 @@
                         this.closeAllModals();
                     }
                 });
+
+                // Handle visibility change to refresh data when tab becomes active
+                document.addEventListener('visibilitychange', () => {
+                    if (!document.hidden && this.shouldRefreshData()) {
+                        this.refreshOrderData();
+                    }
+                });
             }
 
             bindSearchAndFilter() {
                 if (this.elements.searchInput) {
-                    this.elements.searchInput.addEventListener('input', () => this.filterOrders());
+                    this.elements.searchInput.addEventListener('input',
+                        this.debounce(() => this.filterOrders(), 300)
+                    );
                 }
 
                 if (this.elements.statusFilter) {
@@ -519,11 +483,13 @@
                         this.elements.typeFilters.forEach(b => b.classList.remove('active'));
                         btn.classList.add('active');
                         this.filterOrders();
+                        this.updateOrderStats();
                     });
                 });
             }
 
             bindDropdownEvents() {
+                // Use event delegation for better performance
                 document.addEventListener('click', (e) => {
                     if (e.target.classList.contains('dropdown-trigger')) {
                         e.stopPropagation();
@@ -539,11 +505,9 @@
             }
 
             bindModalEvents() {
-                // Close modals when clicking outside
-                [this.elements.statusModal, this.elements.manageModal, this.elements.qtyModal,
-                    this.elements.completeOrderModal, this.elements.chatModal, this.elements.prescriptionModal
-                ]
-                .forEach(modal => {
+                const modals = [this.elements.manageModal, this.elements.qtyModal, this.elements.prescriptionModal];
+
+                modals.forEach(modal => {
                     if (modal) {
                         modal.addEventListener('click', (e) => {
                             if (e.target === e.currentTarget) {
@@ -553,43 +517,43 @@
                     }
                 });
 
-                // Cancel buttons
-                document.getElementById('cancelStatusModal')?.addEventListener('click', () => this.closeStatusModal());
-                document.getElementById('cancelManageOrder')?.addEventListener('click', () => this
-                    .closeManageOrderModal());
-                document.getElementById('cancelQtyModal')?.addEventListener('click', () => this.closeQtyModal());
-                document.getElementById('cancelCompleteModal')?.addEventListener('click', () => this
-                    .closeCompleteOrderModal());
-                document.getElementById('closeChatModal')?.addEventListener('click', () => this.closeChatModal());
+                // Bind cancel buttons efficiently
+                const cancelButtons = [
+                    ['#cancelManageOrder', () => this.closeManageOrderModal()],
+                    ['#cancelQtyModal', () => this.closeQtyModal()],
+                    ['#manageOrderModal .modal-close', () => this.closeManageOrderModal()]
+                ];
 
-                // Close buttons
-                document.querySelector('#manageOrderModal .modal-close')?.addEventListener('click', () => this
-                    .closeManageOrderModal());
+                cancelButtons.forEach(([selector, handler]) => {
+                    const element = document.querySelector(selector);
+                    if (element) element.addEventListener('click', handler);
+                });
             }
 
-            bindStatusManagement() {
+            bindOrderActions() {
+                // Use event delegation for dynamically generated content
                 document.addEventListener('click', (e) => {
-                    if (e.target.classList.contains('manage-status-btn')) {
-                        this.openStatusModal(e.target.dataset.id);
+                    const target = e.target;
+                    const prescriptionId = target.dataset.id;
+
+                    if (target.classList.contains('process-complete-btn')) {
+                        e.preventDefault();
+                        this.processOrder(prescriptionId);
+                    } else if (target.classList.contains('cancel-order-btn')) {
+                        e.preventDefault();
+                        this.cancelOrder(prescriptionId);
                     }
                 });
-
-                if (this.elements.statusForm) {
-                    this.elements.statusForm.addEventListener('submit', (e) => this.handleStatusSubmit(e));
-                }
             }
 
             bindProductManagement() {
-                document.addEventListener('click', (e) => {
-                    if (e.target.classList.contains('manage-order-btn')) {
-                        this.openManageOrderModal(e.target.dataset.id, e.target);
-                    }
-                });
-
                 if (this.elements.productSearchInput) {
-                    this.elements.productSearchInput.addEventListener('input', () => this.handleProductSearch());
+                    this.elements.productSearchInput.addEventListener('input',
+                        this.debounce(() => this.handleProductSearch(), 200)
+                    );
                 }
 
+                // Event delegation for product lists
                 if (this.elements.availableList) {
                     this.elements.availableList.addEventListener('click', (e) => this.handleAvailableProductClick(e));
                 }
@@ -598,61 +562,23 @@
                     this.elements.selectedList.addEventListener('click', (e) => this.handleSelectedProductClick(e));
                 }
 
-                // Quantity modal events
-                document.getElementById('increaseQty')?.addEventListener('click', () => this.increaseQuantity());
-                document.getElementById('decreaseQty')?.addEventListener('click', () => this.decreaseQuantity());
-                document.getElementById('confirmQtyModal')?.addEventListener('click', () => this
-                    .confirmQuantitySelection());
+                // Quantity controls
+                const qtyControls = [
+                    ['#increaseQty', () => this.increaseQuantity()],
+                    ['#decreaseQty', () => this.decreaseQuantity()],
+                    ['#confirmQtyModal', () => this.confirmQuantitySelection()],
+                    ['#saveSelection', (e) => this.saveAndCompleteOrder(e)],
+                    ['#togglePrescriptionBtn', () => this.togglePrescriptionViewer()],
+                    ['#refreshPrescriptionBtn', () => this.loadPrescriptionReference()]
+                ];
+
+                qtyControls.forEach(([selector, handler]) => {
+                    const element = document.querySelector(selector);
+                    if (element) element.addEventListener('click', handler);
+                });
 
                 if (this.elements.qtyInput) {
                     this.elements.qtyInput.addEventListener('input', () => this.validateQuantityInput());
-                }
-
-                // Save selection
-                document.getElementById('saveSelection')?.addEventListener('click', (e) => this.saveProductSelection(
-                e));
-
-                // Prescription viewer toggle
-                document.getElementById('togglePrescriptionBtn')?.addEventListener('click', () => this
-                    .togglePrescriptionViewer());
-                document.getElementById('refreshPrescriptionBtn')?.addEventListener('click', () => this
-                    .loadPrescriptionReference());
-            }
-
-            bindOrderCompletion() {
-                document.addEventListener('click', (e) => {
-                    if (e.target.classList.contains('complete-order-btn')) {
-                        this.openCompleteOrderModal(e.target.dataset.id);
-                    }
-                });
-
-                if (this.elements.submitOrderBtn) {
-                    this.elements.submitOrderBtn.addEventListener('click', (e) => this.submitOrderCompletion(e));
-                }
-            }
-
-            bindChatFunctionality() {
-                document.addEventListener('click', (e) => {
-                    if (e.target.classList.contains('chat-order-btn')) {
-                        this.openChatModal(e.target.dataset.id, e.target);
-                    }
-                });
-
-                this.elements.sendButton?.addEventListener('click', () => this.sendMessage());
-
-                if (this.elements.chatInput) {
-                    this.elements.chatInput.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            this.sendMessage();
-                        }
-                    });
-
-                    // Auto-resize textarea
-                    this.elements.chatInput.addEventListener('input', function() {
-                        this.style.height = 'auto';
-                        this.style.height = Math.min(this.scrollHeight, 100) + 'px';
-                    });
                 }
             }
 
@@ -666,36 +592,91 @@
                 window.retryLoadPrescription = () => this.loadPrescriptionReference();
                 window.closeManageOrderModal = () => this.closeManageOrderModal();
 
-                // Download button
-                document.getElementById('downloadPrescriptionBtn')?.addEventListener('click', () => {
-                    if (this.state.currentPrescriptionData.downloadUrl) {
-                        window.open(this.state.currentPrescriptionData.downloadUrl, '_blank');
-                    }
-                });
+                const downloadBtn = document.getElementById('downloadPrescriptionBtn');
+                if (downloadBtn) {
+                    downloadBtn.addEventListener('click', () => {
+                        if (this.state.currentPrescriptionData?.downloadUrl) {
+                            window.open(this.state.currentPrescriptionData.downloadUrl, '_blank');
+                        }
+                    });
+                }
             }
 
             // Utility Methods
+            debounce(func, wait) {
+                return (...args) => {
+                    const key = func.name || 'anonymous';
+                    clearTimeout(this.debounceTimers[key]);
+                    this.debounceTimers[key] = setTimeout(() => func.apply(this, args), wait);
+                };
+            }
+
             getCSRFToken() {
                 return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
             }
 
-            closeAllDropdowns() {
-                document.querySelectorAll('.dropdown-menu.show').forEach(menu => {
-                    menu.classList.remove('show');
+            shouldRefreshData() {
+                return Date.now() - this.state.cache.lastProductFetch > this.CACHE_DURATION;
+            }
+
+            async preloadCriticalData() {
+                // Preload products for better UX
+                if (!this.state.cache.products) {
+                    try {
+                        await this.loadAvailableProducts(false); // Don't show loading state
+                    } catch (error) {
+                        console.warn('Failed to preload products:', error);
+                    }
+                }
+            }
+
+            async refreshOrderData() {
+                // Refresh order statistics and update UI
+                try {
+                    const response = await fetch('/admin/orders/stats', {
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': this.getCSRFToken()
+                        }
+                    });
+                    if (response.ok) {
+                        const stats = await response.json();
+                        this.updateOrderStatsDisplay(stats);
+                    }
+                } catch (error) {
+                    console.warn('Failed to refresh order data:', error);
+                }
+            }
+
+            updateOrderStatsDisplay(stats) {
+                const statElements = {
+                    'total-orders': stats.total,
+                    'pending-orders': stats.pending,
+                    'prescription-count': stats.prescriptions,
+                    'online-order-count': stats.online_orders
+                };
+
+                Object.entries(statElements).forEach(([id, value]) => {
+                    const element = document.getElementById(id);
+                    if (element && value !== undefined) {
+                        element.textContent = value;
+                    }
                 });
+            }
+
+            closeAllDropdowns() {
+                const activeMenus = document.querySelectorAll('.dropdown-menu.show');
+                activeMenus.forEach(menu => menu.classList.remove('show'));
+
                 if (this.elements.dropdownOverlay) {
                     this.elements.dropdownOverlay.style.display = 'none';
                 }
             }
 
             closeAllModals() {
-                [this.elements.statusModal, this.elements.manageModal, this.elements.qtyModal,
-                    this.elements.completeOrderModal, this.elements.chatModal, this.elements.prescriptionModal
-                ]
-                .forEach(modal => {
-                    if (modal) {
-                        this.closeModal(modal);
-                    }
+                const modals = [this.elements.manageModal, this.elements.qtyModal, this.elements.prescriptionModal];
+                modals.forEach(modal => {
+                    if (modal) this.closeModal(modal);
                 });
                 this.resetState();
             }
@@ -706,258 +687,289 @@
             }
 
             resetState() {
-                this.state.currentPrescriptionId = null;
-                this.state.currentOrderPrescriptionId = null;
-                this.state.currentChatPrescriptionId = null;
-                this.state.selectedProductLi = null;
-            }
-
-            // Tooltip Management
-            initializeTooltips() {
-                const statusIcons = document.querySelectorAll('.status-info-icon');
-
-                statusIcons.forEach(icon => {
-                    const status = icon.dataset.status;
-                    const orderType = icon.dataset.orderType;
-                    const tooltip = icon.querySelector('.status-tooltip');
-
-                    if (tooltip) {
-                        const message = this.statusMessages[status]?.[orderType] ||
-                            this.statusMessages[status]?.['prescription'] ||
-                            'Status information not available.';
-                        tooltip.textContent = message;
-                    }
-                });
-
-                statusIcons.forEach(icon => {
-                    icon.addEventListener('click', (e) => this.handleTooltipClick(e, icon, statusIcons));
-                });
-
-                document.addEventListener('click', () => {
-                    statusIcons.forEach(icon => {
-                        const tooltip = icon.querySelector('.status-tooltip');
-                        if (tooltip) {
-                            tooltip.style.opacity = '0';
-                            tooltip.style.visibility = 'hidden';
-                        }
-                    });
+                Object.assign(this.state, {
+                    currentPrescriptionId: null,
+                    selectedProductLi: null,
+                    currentPrescriptionData: null
                 });
             }
 
-            handleTooltipClick(e, icon, allIcons) {
-                e.stopPropagation();
-
-                // Hide other tooltips
-                allIcons.forEach(otherIcon => {
-                    if (otherIcon !== icon) {
-                        const otherTooltip = otherIcon.querySelector('.status-tooltip');
-                        if (otherTooltip) {
-                            otherTooltip.style.opacity = '0';
-                            otherTooltip.style.visibility = 'hidden';
-                        }
-                    }
-                });
-
-                // Toggle current tooltip
-                const tooltip = icon.querySelector('.status-tooltip');
-                if (tooltip) {
-                    const isVisible = tooltip.style.opacity === '1';
-
-                    if (isVisible) {
-                        tooltip.style.opacity = '0';
-                        tooltip.style.visibility = 'hidden';
-                    } else {
-                        tooltip.style.opacity = '1';
-                        tooltip.style.visibility = 'visible';
-
-                        setTimeout(() => {
-                            tooltip.style.opacity = '0';
-                            tooltip.style.visibility = 'hidden';
-                        }, 3000);
-                    }
-                }
-            }
-
-            // Filter and Search
+            // Enhanced Filter and Search
             filterOrders() {
-                const searchTerm = this.elements.searchInput ? this.elements.searchInput.value.toLowerCase() : '';
-                const statusFilterValue = this.elements.statusFilter ? this.elements.statusFilter.value : 'all';
+                const searchTerm = this.elements.searchInput?.value.toLowerCase() || '';
+                const statusFilterValue = this.elements.statusFilter?.value || 'all';
                 const activeTypeFilter = document.querySelector('.filter-btn.active')?.dataset.filter || 'all';
 
-                document.querySelectorAll('.order-row').forEach(row => {
+                const rows = document.querySelectorAll('.order-row');
+                let visibleCount = 0;
+
+                rows.forEach(row => {
                     const searchData = row.dataset.search || '';
                     const orderStatus = row.dataset.status;
                     const orderType = row.dataset.orderType;
 
-                    let show = true;
+                    const matchesSearch = !searchTerm || searchData.includes(searchTerm);
+                    const matchesStatus = statusFilterValue === 'all' || orderStatus === statusFilterValue;
+                    const matchesType = activeTypeFilter === 'all' || orderType === activeTypeFilter;
 
-                    if (searchTerm && !searchData.includes(searchTerm)) {
-                        show = false;
-                    }
+                    const shouldShow = matchesSearch && matchesStatus && matchesType;
 
-                    if (statusFilterValue !== 'all' && orderStatus !== statusFilterValue) {
-                        show = false;
-                    }
-
-                    if (activeTypeFilter !== 'all' && orderType !== activeTypeFilter) {
-                        show = false;
-                    }
-
-                    row.style.display = show ? '' : 'none';
+                    row.style.display = shouldShow ? '' : 'none';
+                    if (shouldShow) visibleCount++;
                 });
+
+                // Update visible count indicator
+                this.updateFilterResultsIndicator(visibleCount, rows.length);
             }
 
-            // Dropdown Management
+            updateFilterResultsIndicator(visible, total) {
+                let indicator = document.querySelector('.filter-results-indicator');
+
+                if (!indicator) {
+                    indicator = document.createElement('div');
+                    indicator.className = 'filter-results-indicator';
+                    indicator.style.cssText = 'font-size: 0.9em; color: #666; margin: 10px 0;';
+
+                    const tableWrapper = document.querySelector('.table-wrapper');
+                    if (tableWrapper) {
+                        tableWrapper.parentNode.insertBefore(indicator, tableWrapper);
+                    }
+                }
+
+                if (visible === total) {
+                    indicator.textContent = `Showing all ${total} orders`;
+                } else {
+                    indicator.textContent = `Showing ${visible} of ${total} orders`;
+                }
+            }
+
+            updateOrderStats() {
+                const activeFilter = document.querySelector('.filter-btn.active')?.dataset.filter || 'all';
+                const visibleRows = document.querySelectorAll('.order-row:not([style*="display: none"])');
+
+                const stats = {
+                    total: visibleRows.length,
+                    pending: 0,
+                    prescription: 0,
+                    online_order: 0
+                };
+
+                visibleRows.forEach(row => {
+                    const status = row.dataset.status;
+                    const type = row.dataset.orderType;
+
+                    if (status === 'pending') stats.pending++;
+                    if (type === 'prescription') stats.prescription++;
+                    if (type === 'online_order') stats.online_order++;
+                });
+
+                // Update display if filtering is active
+                if (activeFilter !== 'all') {
+                    this.updateOrderStatsDisplay({
+                        total: stats.total,
+                        pending: stats.pending,
+                        prescriptions: stats.prescription,
+                        online_orders: stats.online_order
+                    });
+                }
+            }
+
+            // Enhanced Dropdown Management
             handleDropdownTrigger(trigger) {
+                // Close all other dropdowns first
                 document.querySelectorAll('.dropdown-menu.show').forEach(menu => {
-                    menu.classList.remove('show');
+                    if (menu !== trigger.nextElementSibling) {
+                        menu.classList.remove('show');
+                    }
                 });
 
                 const dropdown = trigger.nextElementSibling;
-                if (dropdown) {
-                    dropdown.classList.toggle('show');
-                    if (dropdown.classList.contains('show') && this.elements.dropdownOverlay) {
-                        this.elements.dropdownOverlay.style.display = 'block';
-                    }
-                }
-            }
+                if (dropdown?.classList.contains('dropdown-menu')) {
+                    const isVisible = dropdown.classList.contains('show');
 
-            // Status Management
-            openStatusModal(id) {
-                this.closeAllDropdowns();
-                if (this.elements.statusPrescriptionId) this.elements.statusPrescriptionId.value = id;
-                if (this.elements.statusSelect) this.elements.statusSelect.selectedIndex = 0;
-                if (this.elements.reasonMessage) this.elements.reasonMessage.value = '';
-                if (this.elements.statusModal) this.elements.statusModal.style.display = 'flex';
-            }
-
-            closeStatusModal() {
-                if (this.elements.statusModal) this.elements.statusModal.style.display = 'none';
-                if (this.elements.statusSelect) this.elements.statusSelect.selectedIndex = 0;
-                if (this.elements.reasonMessage) this.elements.reasonMessage.value = '';
-            }
-
-            async handleStatusSubmit(e) {
-                e.preventDefault();
-
-                const id = this.elements.statusPrescriptionId ? this.elements.statusPrescriptionId.value : '';
-                const action = this.elements.statusSelect ? this.elements.statusSelect.value : '';
-                const message = this.elements.reasonMessage ? this.elements.reasonMessage.value.trim() : '';
-
-                if (!action) {
-                    alert('Please select a status.');
-                    return;
-                }
-
-                if (!message) {
-                    alert('Please enter a reason or message.');
-                    return;
-                }
-
-                const submitBtn = this.elements.statusForm.querySelector('button[type="submit"]');
-                const originalText = submitBtn ? submitBtn.textContent : 'Submit';
-                if (submitBtn) {
-                    submitBtn.textContent = 'Processing...';
-                    submitBtn.disabled = true;
-                }
-
-                try {
-                    const formData = new FormData();
-                    formData.append('_token', this.getCSRFToken());
-                    formData.append('message', message);
-
-                    const response = await fetch(`/admin/orders/${id}/${action}`, {
-                        method: 'POST',
-                        body: formData,
-                        headers: {
-                            'X-CSRF-TOKEN': this.getCSRFToken(),
-                            'Accept': 'application/json'
+                    if (isVisible) {
+                        dropdown.classList.remove('show');
+                        if (this.elements.dropdownOverlay) {
+                            this.elements.dropdownOverlay.style.display = 'none';
                         }
-                    });
-
-                    if (!response.ok) {
-                        const text = await response.text();
-                        console.error('Server error:', text);
-                        throw new Error(`Server error: ${response.status}`);
-                    }
-
-                    const data = await response.json();
-
-                    if (data.success) {
-                        alert(data.message || 'Action completed successfully!');
-                        this.closeStatusModal();
-                        window.location.reload();
                     } else {
-                        alert(data.message || 'Action failed!');
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                    alert('An error occurred: ' + error.message);
-                } finally {
-                    if (submitBtn) {
-                        submitBtn.textContent = originalText;
-                        submitBtn.disabled = false;
+                        dropdown.classList.add('show');
+                        if (this.elements.dropdownOverlay) {
+                            this.elements.dropdownOverlay.style.display = 'block';
+                        }
+
+                        // Position dropdown if needed
+                        this.positionDropdown(dropdown, trigger);
                     }
                 }
             }
 
-            // Product Management
-            openManageOrderModal(prescriptionId, triggerElement) {
+            positionDropdown(dropdown, trigger) {
+                const rect = trigger.getBoundingClientRect();
+                const dropdownRect = dropdown.getBoundingClientRect();
+                const viewportHeight = window.innerHeight;
+
+                // Check if dropdown would go below viewport
+                if (rect.bottom + dropdownRect.height > viewportHeight) {
+                    dropdown.style.top = 'auto';
+                    dropdown.style.bottom = '100%';
+                } else {
+                    dropdown.style.top = '100%';
+                    dropdown.style.bottom = 'auto';
+                }
+            }
+
+            // Enhanced Order Actions
+            async processOrder(prescriptionId) {
+                if (this.state.isLoading) return;
+
                 this.closeAllDropdowns();
                 this.state.currentPrescriptionId = prescriptionId;
+                this.state.isLoading = true;
 
-                // Get prescription document info
-                const orderRow = triggerElement.closest('.order-row');
-                const documentCell = orderRow.querySelector('td:nth-child(4)');
-                const viewButton = documentCell ? documentCell.querySelector('.btn-view') : null;
-
-                if (viewButton && viewButton.onclick) {
-                    const onclickStr = viewButton.getAttribute('onclick');
-                    const match = onclickStr.match(
-                        /viewPrescriptionInModal\((\d+),\s*'([^']+)',\s*'([^']+)',\s*'([^']+)',\s*'([^']+)'\)/
-                    );
-
-                    if (match) {
-                        this.state.currentManageOrderData = {
-                            prescriptionId: prescriptionId,
-                            hasDocument: true,
-                            documentType: match[2],
-                            documentUrl: match[4],
-                            filename: match[3]
-                        };
+                try {
+                    // Get prescription document info from the row
+                    const orderRow = document.querySelector(`[data-id="${prescriptionId}"]`)?.closest('.order-row');
+                    if (!orderRow) {
+                        throw new Error('Order row not found');
                     }
-                } else {
+
+                    const documentCell = orderRow.querySelector('td:nth-child(4)');
+                    const viewButton = documentCell?.querySelector('.btn-view');
+
                     this.state.currentManageOrderData = {
                         prescriptionId: prescriptionId,
                         hasDocument: false,
                         documentType: null,
                         documentUrl: null
                     };
-                }
 
-                // Update modal title
-                const manageOrderId = document.getElementById('manageOrderId');
-                if (manageOrderId && orderRow) {
-                    const orderIdElement = orderRow.querySelector('strong');
-                    if (orderIdElement) {
-                        manageOrderId.textContent = orderIdElement.textContent;
+                    if (viewButton?.onclick) {
+                        const onclickStr = viewButton.getAttribute('onclick');
+                        const match = onclickStr.match(
+                            /viewPrescriptionInModal\((\d+),\s*'([^']+)',\s*'([^']+)',\s*'([^']+)',\s*'([^']+)'\)/);
+
+                        if (match) {
+                            this.state.currentManageOrderData = {
+                                prescriptionId: prescriptionId,
+                                hasDocument: true,
+                                documentType: match[2],
+                                documentUrl: match[4],
+                                filename: match[3]
+                            };
+                        }
                     }
-                }
 
-                // Reset and show modal
-                this.resetPrescriptionViewer();
-                if (this.elements.manageModal) {
-                    this.elements.manageModal.style.display = 'flex';
-
-                    // Clear search and reset products display
-                    if (this.elements.productSearchInput) {
-                        this.elements.productSearchInput.value = '';
+                    // Update modal title
+                    const manageOrderId = document.getElementById('manageOrderId');
+                    if (manageOrderId) {
+                        const orderIdElement = orderRow.querySelector('strong');
+                        manageOrderId.textContent = orderIdElement?.textContent || `Order ${prescriptionId}`;
                     }
-                    this.loadAvailableProducts();
-                    this.loadSavedProducts(prescriptionId);
+
+                    // Reset and show modal
+                    this.resetPrescriptionViewer();
+
+                    if (this.elements.manageModal) {
+                        this.elements.manageModal.style.display = 'flex';
+
+                        if (this.elements.productSearchInput) {
+                            this.elements.productSearchInput.value = '';
+                        }
+
+                        // Load data in parallel for better performance
+                        await Promise.all([
+                            this.loadAvailableProducts(),
+                            this.loadSavedProducts(prescriptionId)
+                        ]);
+                    }
+
+                } catch (error) {
+                    console.error('Error processing order:', error);
+                    alert('Failed to load order: ' + error.message);
+                } finally {
+                    this.state.isLoading = false;
                 }
             }
 
+            async cancelOrder(prescriptionId) {
+                if (this.state.isLoading) return;
+
+                this.closeAllDropdowns();
+
+                const reason = prompt("Please provide a reason for cancelling this order:");
+                if (!reason?.trim()) return;
+
+                if (!confirm("Are you sure you want to cancel this order? This action cannot be undone.")) {
+                    return;
+                }
+
+                this.state.isLoading = true;
+
+                try {
+                    const response = await fetch(`/admin/orders/${prescriptionId}/cancel`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': this.getCSRFToken(),
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            message: reason.trim()
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.message || `Server error: ${response.status}`);
+                    }
+
+                    if (data.success) {
+                        this.showSuccessMessage(data.message || 'Order cancelled successfully!');
+                        // Update UI instead of full page reload
+                        this.updateOrderRowStatus(prescriptionId, 'cancelled');
+                        setTimeout(() => window.location.reload(), 1500);
+                    } else {
+                        throw new Error(data.message || 'Failed to cancel order');
+                    }
+
+                } catch (error) {
+                    console.error('Error cancelling order:', error);
+                    alert('Failed to cancel order: ' + error.message);
+                } finally {
+                    this.state.isLoading = false;
+                }
+            }
+
+            updateOrderRowStatus(prescriptionId, newStatus) {
+                const orderRow = document.querySelector(`[data-id="${prescriptionId}"]`)?.closest('.order-row');
+                if (orderRow) {
+                    orderRow.dataset.status = newStatus;
+                    const statusElement = orderRow.querySelector('.status-badges');
+                    if (statusElement) {
+                        statusElement.className = `status-badges ${newStatus}`;
+                        statusElement.textContent = newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
+                    }
+                }
+            }
+
+            showSuccessMessage(message) {
+                // Create temporary success notification
+                const notification = document.createElement('div');
+                notification.className = 'alert alert-success';
+                notification.style.cssText =
+                    'position: fixed; top: 20px; right: 20px; z-index: 10000; max-width: 300px;';
+                notification.textContent = message;
+
+                document.body.appendChild(notification);
+
+                setTimeout(() => {
+                    notification.remove();
+                }, 3000);
+            }
+
+            // Enhanced Product Management
             closeManageOrderModal() {
                 if (this.elements.manageModal) {
                     this.elements.manageModal.style.display = 'none';
@@ -974,35 +986,67 @@
 
             handleProductSearch() {
                 const searchTerm = this.elements.productSearchInput.value.toLowerCase();
+                const selectedProductIds = new Set(
+                    (this.state.selectedProductsByOrder[this.state.currentPrescriptionId] || []).map(p => p.id)
+                );
+
                 document.querySelectorAll('#availableProducts li').forEach(li => {
                     const productName = (li.dataset.name || '').toLowerCase();
-                    const isSelected = this.state.selectedProductsByOrder[this.state.currentPrescriptionId]
-                        ?.find(p =>
-                            p.id === li.dataset.id);
+                    const isSelected = selectedProductIds.has(li.dataset.id);
 
-                    if (!isSelected) {
-                        li.style.display = productName.includes(searchTerm) ? 'block' : 'none';
-                    }
+                    const matchesSearch = !searchTerm || productName.includes(searchTerm);
+                    li.style.display = (matchesSearch && !isSelected) ? 'block' : 'none';
                 });
+
+                // Show "no results" message if needed
+                this.showProductSearchResults(searchTerm);
+            }
+
+            showProductSearchResults(searchTerm) {
+                const visibleProducts = document.querySelectorAll(
+                    '#availableProducts li[style*="block"], #availableProducts li:not([style*="none"])').length;
+
+                let noResultsMsg = document.querySelector('.no-search-results');
+
+                if (searchTerm && visibleProducts === 0) {
+                    if (!noResultsMsg) {
+                        noResultsMsg = document.createElement('li');
+                        noResultsMsg.className = 'no-search-results';
+                        noResultsMsg.style.cssText =
+                            'text-align: center; padding: 20px; color: #666; font-style: italic;';
+                        noResultsMsg.textContent = `No products found for "${searchTerm}"`;
+                        this.elements.availableList.appendChild(noResultsMsg);
+                    }
+                } else if (noResultsMsg) {
+                    noResultsMsg.remove();
+                }
             }
 
             handleAvailableProductClick(e) {
-                if (e.target.tagName === 'LI') {
+                if (e.target.tagName === 'LI' && !e.target.classList.contains('no-search-results')) {
                     const stockLevel = parseInt(e.target.dataset.stock) || 0;
+
                     if (stockLevel <= 0) {
                         alert('This product is out of stock.');
                         return;
                     }
 
                     this.state.selectedProductLi = e.target;
+
                     if (this.elements.qtyInput) {
                         this.elements.qtyInput.value = 1;
                         this.elements.qtyInput.max = stockLevel;
                     }
+
                     if (this.elements.productModalName) {
                         this.elements.productModalName.textContent = this.state.selectedProductLi.dataset.product || '';
                     }
-                    if (this.elements.qtyModal) this.elements.qtyModal.style.display = 'flex';
+
+                    if (this.elements.qtyModal) {
+                        this.elements.qtyModal.style.display = 'flex';
+                        // Focus on quantity input for better UX
+                        setTimeout(() => this.elements.qtyInput?.focus(), 100);
+                    }
                 }
             }
 
@@ -1012,49 +1056,88 @@
                     e.stopPropagation();
 
                     const productId = e.target.dataset.id;
+                    const productName = e.target.closest('li')?.textContent?.split(' — ')[0];
 
-                    if (this.state.selectedProductsByOrder[this.state.currentPrescriptionId]) {
-                        this.state.selectedProductsByOrder[this.state.currentPrescriptionId] =
-                            this.state.selectedProductsByOrder[this.state.currentPrescriptionId]
-                            .filter(p => p.id.toString() !== productId.toString());
-
-                        this.updateSelectedProductsDisplay();
+                    if (confirm(`Remove "${productName}" from selection?`)) {
+                        this.removeSelectedProduct(productId);
                     }
+                }
+            }
+
+            removeSelectedProduct(productId) {
+                if (this.state.selectedProductsByOrder[this.state.currentPrescriptionId]) {
+                    this.state.selectedProductsByOrder[this.state.currentPrescriptionId] =
+                        this.state.selectedProductsByOrder[this.state.currentPrescriptionId]
+                        .filter(p => p.id.toString() !== productId.toString());
+
+                    this.updateSelectedProductsDisplay();
                 }
             }
 
             closeQtyModal() {
-                if (this.elements.qtyModal) this.elements.qtyModal.style.display = 'none';
+                if (this.elements.qtyModal) {
+                    this.elements.qtyModal.style.display = 'none';
+                }
                 this.state.selectedProductLi = null;
             }
 
             increaseQuantity() {
-                if (this.state.selectedProductLi && this.elements.qtyInput) {
-                    const currentQty = parseInt(this.elements.qtyInput.value) || 1;
-                    const maxStock = parseInt(this.state.selectedProductLi.dataset.stock) || 0;
-                    if (currentQty < maxStock) {
-                        this.elements.qtyInput.value = currentQty + 1;
-                    } else {
-                        alert(`Maximum stock available: ${maxStock}`);
-                    }
+                if (!this.state.selectedProductLi || !this.elements.qtyInput) return;
+
+                const currentQty = parseInt(this.elements.qtyInput.value) || 1;
+                const maxStock = parseInt(this.state.selectedProductLi.dataset.stock) || 0;
+
+                if (currentQty < maxStock) {
+                    this.elements.qtyInput.value = currentQty + 1;
+                } else {
+                    this.showStockLimitMessage(maxStock);
                 }
             }
 
             decreaseQuantity() {
-                if (this.elements.qtyInput && this.elements.qtyInput.value > 1) {
-                    this.elements.qtyInput.value = parseInt(this.elements.qtyInput.value) - 1;
+                if (!this.elements.qtyInput) return;
+
+                const currentQty = parseInt(this.elements.qtyInput.value) || 1;
+                if (currentQty > 1) {
+                    this.elements.qtyInput.value = currentQty - 1;
                 }
             }
 
             validateQuantityInput() {
+                if (!this.elements.qtyInput || !this.state.selectedProductLi) return;
+
                 const currentQty = parseInt(this.elements.qtyInput.value) || 1;
-                const maxStock = parseInt(this.state.selectedProductLi?.dataset.stock || 999);
+                const maxStock = parseInt(this.state.selectedProductLi.dataset.stock || 999);
 
                 if (currentQty < 1) {
                     this.elements.qtyInput.value = 1;
                 } else if (currentQty > maxStock) {
                     this.elements.qtyInput.value = maxStock;
-                    alert(`Maximum stock available: ${maxStock}`);
+                    this.showStockLimitMessage(maxStock);
+                }
+            }
+
+            showStockLimitMessage(maxStock) {
+                const message = `Maximum stock available: ${maxStock}`;
+
+                // Show temporary message instead of alert
+                let notification = document.querySelector('.stock-limit-notification');
+                if (notification) {
+                    notification.remove();
+                }
+
+                notification = document.createElement('div');
+                notification.className = 'stock-limit-notification';
+                notification.style.cssText =
+                    'position: absolute; top: -30px; left: 50%; transform: translateX(-50%); background: #ff9800; color: white; padding: 5px 10px; border-radius: 4px; font-size: 12px; z-index: 1000;';
+                notification.textContent = message;
+
+                const qtyControls = document.querySelector('.quantity-controls');
+                if (qtyControls) {
+                    qtyControls.style.position = 'relative';
+                    qtyControls.appendChild(notification);
+
+                    setTimeout(() => notification?.remove(), 2000);
                 }
             }
 
@@ -1062,9 +1145,13 @@
                 if (!this.state.selectedProductLi || !this.elements.qtyInput) return;
 
                 const quantity = parseInt(this.elements.qtyInput.value) || 1;
-                const id = this.state.selectedProductLi.dataset.id;
-                const name = this.state.selectedProductLi.dataset.product;
-                const price = this.state.selectedProductLi.dataset.price;
+                const productData = {
+                    id: this.state.selectedProductLi.dataset.id,
+                    name: this.state.selectedProductLi.dataset.product,
+                    price: this.state.selectedProductLi.dataset.price,
+                    quantity: quantity
+                };
+
                 const maxStock = parseInt(this.state.selectedProductLi.dataset.stock) || 0;
 
                 if (quantity > maxStock) {
@@ -1076,105 +1163,98 @@
                     this.state.selectedProductsByOrder[this.state.currentPrescriptionId] = [];
                 }
 
-                const exists = this.state.selectedProductsByOrder[this.state.currentPrescriptionId].find(p => p.id ===
-                    id);
-                if (!exists) {
-                    this.state.selectedProductsByOrder[this.state.currentPrescriptionId].push({
-                        id: id,
-                        name: name,
-                        price: price,
-                        quantity: quantity
-                    });
-                    this.updateSelectedProductsDisplay();
+                const existingProduct = this.state.selectedProductsByOrder[this.state.currentPrescriptionId]
+                    .find(p => p.id === productData.id);
+
+                if (existingProduct) {
+                    if (confirm(`"${productData.name}" is already selected. Update quantity to ${quantity}?`)) {
+                        existingProduct.quantity = quantity;
+                        this.updateSelectedProductsDisplay();
+                    }
                 } else {
-                    alert('Product already selected!');
+                    this.state.selectedProductsByOrder[this.state.currentPrescriptionId].push(productData);
+                    this.updateSelectedProductsDisplay();
                 }
 
                 this.closeQtyModal();
             }
 
-            async loadAvailableProducts() {
+            async loadAvailableProducts(showLoading = true) {
                 const availableList = this.elements.availableList;
-                if (!availableList) {
-                    console.error('Available products list not found');
+                if (!availableList) return;
+
+                // Use cache if available and recent
+                if (this.state.cache.products &&
+                    Date.now() - this.state.cache.lastProductFetch < this.CACHE_DURATION) {
+                    this.renderProducts(this.state.cache.products);
                     return;
                 }
 
-                availableList.innerHTML = '<li style="text-align: center; padding: 20px;">Loading products...</li>';
+                if (showLoading) {
+                    availableList.innerHTML = '<li class="loading-item">Loading products...</li>';
+                }
 
                 try {
-                    const response = await this.fetchWithFallback('/admin/products', '/dashboard/products');
-                    const data = await response.json();
+                    const response = await fetch('/admin/products', {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': this.getCSRFToken(),
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
 
-                    let products = this.extractProductsFromResponse(data);
-
-                    availableList.innerHTML = '';
-
-                    if (products && products.length > 0) {
-                        products.forEach(product => {
-                            const li = this.createProductListItem(product);
-                            availableList.appendChild(li);
-                        });
-                    } else {
-                        availableList.innerHTML =
-                            '<li style="text-align: center; padding: 20px; color: #666;">No products available</li>';
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
                     }
+
+                    const data = await response.json();
+                    const products = data.success && data.products ? data.products : data.data || data || [];
+
+                    // Cache the products
+                    this.state.cache.products = products;
+                    this.state.cache.lastProductFetch = Date.now();
+
+                    this.renderProducts(products);
+
                 } catch (error) {
                     console.error('Error loading products:', error);
-                    availableList.innerHTML = `
-                <li style="text-align: center; padding: 20px; color: #d32f2f;">
-                    Error loading products: ${error.message}
-                    <br><button onclick="orderManager.loadAvailableProducts()" style="margin-top: 10px; padding: 5px 10px; background: #1976d2; color: white; border: none; border-radius: 4px; cursor: pointer;">Retry</button>
-                </li>
-            `;
+                    availableList.innerHTML = this.createErrorMessage(error.message);
                 }
             }
 
-            async fetchWithFallback(primaryUrl, fallbackUrl) {
-                const csrfToken = this.getCSRFToken();
-                const headers = {
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                    'X-Requested-With': 'XMLHttpRequest'
-                };
+            renderProducts(products) {
+                const availableList = this.elements.availableList;
+                if (!availableList) return;
 
-                try {
-                    const response = await fetch(primaryUrl, {
-                        method: 'GET',
-                        headers
+                availableList.innerHTML = '';
+
+                if (products && products.length > 0) {
+                    const fragment = document.createDocumentFragment();
+
+                    products.forEach(product => {
+                        const li = this.createProductListItem(product);
+                        fragment.appendChild(li);
                     });
 
-                    if (!response.ok || response.headers.get('content-type')?.includes('text/html')) {
-                        throw new Error('Primary route failed');
-                    }
-
-                    return response;
-                } catch (error) {
-                    console.log('Primary route failed, trying fallback:', error.message);
-                    const response = await fetch(fallbackUrl, {
-                        method: 'GET',
-                        headers
-                    });
-
-                    if (!response.ok || response.headers.get('content-type')?.includes('text/html')) {
-                        throw new Error('Both routes failed');
-                    }
-
-                    return response;
+                    availableList.appendChild(fragment);
+                } else {
+                    availableList.innerHTML = '<li class="no-products">No products available</li>';
                 }
             }
 
-            extractProductsFromResponse(data) {
-                if (data.success && data.products) {
-                    return data.products;
-                } else if (data.data && Array.isArray(data.data)) {
-                    return data.data;
-                } else if (Array.isArray(data)) {
-                    return data;
-                } else if (data.products && Array.isArray(data.products)) {
-                    return data.products;
-                }
-                return [];
+            createErrorMessage(errorMessage) {
+                return `
+            <li class="error-item">
+                <div style="text-align: center; padding: 20px; color: #d32f2f;">
+                    <div>Error loading products: ${errorMessage}</div>
+                    <button onclick="orderManager.loadAvailableProducts()"
+                            style="margin-top: 10px; padding: 5px 15px; background: #1976d2; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        Retry
+                    </button>
+                </div>
+            </li>
+        `;
             }
 
             createProductListItem(product) {
@@ -1182,44 +1262,43 @@
                 li.dataset.id = product.id;
                 li.dataset.product = product.name || product.product_name;
                 li.dataset.name = (product.name || product.product_name || '').toLowerCase();
-                li.dataset.price = this.getProductPrice(product);
+                li.dataset.price = parseFloat(product.price || product.sale_price || product.selling_price || 0)
+                    .toFixed(2);
 
                 const totalQuantity = this.getTotalQuantity(product);
                 li.dataset.stock = totalQuantity;
 
                 const stockClass = this.getStockClass(product);
-                li.className = stockClass;
+                li.className = `product-item ${stockClass}`;
 
                 li.innerHTML = `
-            <span class="product-name">${product.product_name || product.name}</span>
-            <span class="product-details">
+            <div class="product-main">
+                <span class="product-name">${product.product_name || product.name}</span>
+                <span class="product-price">₱${li.dataset.price}</span>
+            </div>
+            <div class="product-details">
                 ${product.form_type ? `<span class="product-form">${product.form_type}</span>` : ''}
                 ${product.dosage_unit ? `<span class="product-dosage">${product.dosage_unit}</span>` : ''}
-                ${(product.form_type || product.dosage_unit) ? '<span class="separator">•</span>' : ''}
                 ${product.manufacturer ? `<span class="manufacturer">${product.manufacturer}</span>` : ''}
-            </span>
-            <span class="product-price">₱${this.getProductPrice(product)}</span>
-            <span class="product-stock ${this.getStockClass(product)}">${this.getStockText(product)}</span>
-            <span class="batch-info">${this.getBatchInfo(product)}</span>
-            <span class="expiration-info">${this.getExpirationInfo(product)}</span>
+            </div>
+            <div class="product-stock ${stockClass}">${this.getStockText(product)}</div>
         `;
 
                 return li;
             }
 
-            // Product helper methods
             getTotalQuantity(product) {
                 if (product.batches && Array.isArray(product.batches)) {
                     return product.batches
                         .filter(batch => batch.quantity_remaining > 0)
-                        .reduce((total, batch) => total + parseInt(batch.quantity_remaining), 0);
+                        .reduce((total, batch) => total + parseInt(batch.quantity_remaining || 0), 0);
                 }
-                return product.stock || product.quantity || product.total_stock || 0;
+                return parseInt(product.stock || product.quantity || product.total_stock || 0);
             }
 
             getStockClass(product) {
                 const totalQuantity = this.getTotalQuantity(product);
-                const reorderLevel = product.reorder_level || 10;
+                const reorderLevel = parseInt(product.reorder_level || 10);
 
                 if (totalQuantity === 0) {
                     return 'out-of-stock';
@@ -1232,137 +1311,103 @@
 
             getStockText(product) {
                 const totalQuantity = this.getTotalQuantity(product);
-                const activeBatches = this.getActiveBatches(product);
-
-                if (totalQuantity === 0) {
-                    return 'Out of Stock';
-                } else {
-                    return `${totalQuantity} available${activeBatches > 1 ? ` (${activeBatches} batches)` : ''}`;
-                }
-            }
-
-            getActiveBatches(product) {
-                if (product.batches && Array.isArray(product.batches)) {
-                    return product.batches.filter(batch => batch.quantity_remaining > 0).length;
-                }
-                return 0;
-            }
-
-            getProductPrice(product) {
-                if (product.batches && Array.isArray(product.batches)) {
-                    const activeBatch = product.batches
-                        .filter(batch => batch.quantity_remaining > 0)
-                        .sort((a, b) => new Date(a.expiration_date) - new Date(b.expiration_date))[0];
-
-                    if (activeBatch) {
-                        return parseFloat(activeBatch.sale_price || 0).toFixed(2);
-                    }
-                }
-                return parseFloat(product.price || product.sale_price || product.selling_price || 0).toFixed(2);
-            }
-
-            getBatchInfo(product) {
-                if (!product.batches || !Array.isArray(product.batches)) return '';
-
-                const activeBatches = product.batches.filter(batch => batch.quantity_remaining > 0);
-                if (activeBatches.length === 0) return '';
-
-                const nextBatch = activeBatches.sort((a, b) => new Date(a.expiration_date) - new Date(b
-                    .expiration_date))[0];
-
-                return `<small class="next-batch">Next: ${nextBatch.batch_number} (${nextBatch.quantity_remaining} units)</small>`;
-            }
-
-            getExpirationInfo(product) {
-                if (!product.earliest_expiration && (!product.batches || !Array.isArray(product.batches))) return '';
-
-                let earliestExpiry = product.earliest_expiration;
-
-                if (!earliestExpiry && product.batches && Array.isArray(product.batches)) {
-                    const activeBatches = product.batches.filter(batch => batch.quantity_remaining > 0);
-                    if (activeBatches.length > 0) {
-                        earliestExpiry = activeBatches
-                            .map(batch => batch.expiration_date)
-                            .sort((a, b) => new Date(a) - new Date(b))[0];
-                    }
-                }
-
-                if (!earliestExpiry) return '';
-
-                const expiryClass = this.getExpiryClass(earliestExpiry);
-                const formattedDate = this.formatDate(earliestExpiry);
-
-                return `<small class="expiry-date ${expiryClass}">Expires: ${formattedDate}</small>`;
-            }
-
-            formatDate(dateString) {
-                if (!dateString) return '';
-                const date = new Date(dateString);
-                return date.toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric'
-                });
-            }
-
-            getExpiryClass(expirationDate) {
-                if (!expirationDate) return '';
-
-                const expiry = new Date(expirationDate);
-                const now = new Date();
-                const daysUntilExpiry = Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
-
-                if (daysUntilExpiry < 0) {
-                    return 'expired';
-                } else if (daysUntilExpiry <= 30) {
-                    return 'expiring-soon';
-                } else if (daysUntilExpiry <= 90) {
-                    return 'expiring-moderate';
-                } else {
-                    return 'expiring-safe';
-                }
+                return totalQuantity === 0 ? 'Out of Stock' : `${totalQuantity} available`;
             }
 
             updateSelectedProductsDisplay() {
                 if (!this.elements.selectedList || !this.state.currentPrescriptionId) return;
 
-                this.elements.selectedList.innerHTML = '';
                 const selectedProducts = this.state.selectedProductsByOrder[this.state.currentPrescriptionId] || [];
 
-                // Clear search input and show all available products
+                // Clear current display
+                this.elements.selectedList.innerHTML = '';
+
+                // Reset search and show all available products
                 if (this.elements.productSearchInput) {
                     this.elements.productSearchInput.value = '';
                 }
 
+                // Create selected products list
+                if (selectedProducts.length > 0) {
+                    const fragment = document.createDocumentFragment();
+
+                    selectedProducts.forEach(product => {
+                        const li = this.createSelectedProductItem(product);
+                        fragment.appendChild(li);
+                    });
+
+                    this.elements.selectedList.appendChild(fragment);
+                }
+
+                // Update available products visibility
+                this.updateAvailableProductsVisibility(selectedProducts);
+
+                // Update totals display
+                this.updateSelectionTotals(selectedProducts);
+            }
+
+            createSelectedProductItem(product) {
+                const li = document.createElement('li');
+                li.dataset.id = product.id.toString();
+                li.className = 'selected-product-item';
+
+                const totalPrice = (parseFloat(product.price) * parseInt(product.quantity)).toFixed(2);
+
+                li.innerHTML = `
+            <div class="selected-product-main">
+                <span class="selected-product-name">${product.name}</span>
+                <span class="selected-product-quantity">Qty: ${product.quantity}</span>
+            </div>
+            <div class="selected-product-price">₱${product.price} each | Total: ₱${totalPrice}</div>
+            <button class="remove-btn" data-id="${product.id}" type="button" title="Remove product">
+                ❌
+            </button>
+        `;
+
+                return li;
+            }
+
+            updateAvailableProductsVisibility(selectedProducts) {
+                const selectedIds = new Set(selectedProducts.map(p => p.id.toString()));
+
                 document.querySelectorAll('#availableProducts li').forEach(li => {
-                    li.style.display = 'block';
+                    const isSelected = selectedIds.has(li.dataset.id);
+                    li.style.display = isSelected ? 'none' : 'block';
                 });
+            }
 
-                // Process selected products
+            updateSelectionTotals(selectedProducts) {
+                let totalItems = 0;
+                let totalAmount = 0;
+
                 selectedProducts.forEach(product => {
-                    // Hide from available list
-                    const availableLi = document.querySelector(
-                    `#availableProducts li[data-id="${product.id}"]`);
-                    if (availableLi) {
-                        availableLi.style.display = 'none';
-                    }
-
-                    // Create selected product item
-                    const li = document.createElement('li');
-                    li.dataset.id = product.id.toString();
-                    li.style.cssText =
-                        'display: flex; justify-content: space-between; align-items: center; padding: 8px; margin: 4px 0; background: #f8f9fa; border-radius: 4px;';
-
-                    li.innerHTML = `
-                <span style="flex: 1;">${product.name} — Qty: ${product.quantity}</span>
-                <button class="remove-btn" data-id="${product.id}" type="button"
-                        style="margin-left: 10px; padding: 4px 8px; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px; min-width: 24px; height: 24px;">
-                    ❌
-                </button>
-            `;
-
-                    this.elements.selectedList.appendChild(li);
+                    totalItems += parseInt(product.quantity);
+                    totalAmount += parseFloat(product.price) * parseInt(product.quantity);
                 });
+
+                // Update or create totals display
+                let totalsDisplay = document.querySelector('.selection-totals');
+                if (!totalsDisplay) {
+                    totalsDisplay = document.createElement('div');
+                    totalsDisplay.className = 'selection-totals';
+                    totalsDisplay.style.cssText =
+                        'margin-top: 10px; padding: 10px; background: #f5f5f5; border-radius: 4px; font-weight: bold;';
+
+                    const selectedSection = document.querySelector('.selected-products-section');
+                    if (selectedSection) {
+                        selectedSection.appendChild(totalsDisplay);
+                    }
+                }
+
+                if (selectedProducts.length > 0) {
+                    totalsDisplay.innerHTML = `
+                <div>Total Items: ${totalItems}</div>
+                <div>Total Amount: ₱${totalAmount.toFixed(2)}</div>
+            `;
+                    totalsDisplay.style.display = 'block';
+                } else {
+                    totalsDisplay.style.display = 'none';
+                }
             }
 
             async loadSavedProducts(prescriptionId) {
@@ -1381,76 +1426,70 @@
 
                     if (response.ok) {
                         const data = await response.json();
-                        if (data.success && data.items) {
+                        if (data.success && data.items && Array.isArray(data.items)) {
                             this.state.selectedProductsByOrder[prescriptionId] = data.items.map(item => ({
-                                id: item.product_id,
+                                id: item.product_id || item.id,
                                 name: item.product_name || item.name,
-                                price: item.unit_price || item.price,
-                                quantity: item.quantity
+                                price: parseFloat(item.unit_price || item.price || 0).toFixed(2),
+                                quantity: parseInt(item.quantity || 1)
                             }));
                         }
                     }
                 } catch (error) {
-                    console.log('No saved products or error:', error.message);
+                    console.warn('No saved products found or error loading:', error.message);
                     this.state.selectedProductsByOrder[prescriptionId] = [];
                 }
 
                 this.updateSelectedProductsDisplay();
             }
 
-            async saveProductSelection(e) {
+            async saveAndCompleteOrder(e) {
                 e.preventDefault();
+
+                if (this.state.isLoading) return;
 
                 const selectedProducts = this.state.selectedProductsByOrder[this.state.currentPrescriptionId] || [];
 
                 if (!selectedProducts.length) {
-                    alert("No products selected.");
+                    alert("Please select at least one product before completing the order.");
                     return;
                 }
 
+                // Validate stock levels before proceeding
+                const stockValidation = await this.validateProductStock(selectedProducts);
+                if (!stockValidation.valid) {
+                    alert(`Stock validation failed:\n${stockValidation.errors.join('\n')}`);
+                    return;
+                }
+
+                const orderSummary = this.generateOrderSummary(selectedProducts);
+                if (!confirm(`Complete this order?\n\n${orderSummary}`)) {
+                    return;
+                }
+
+                this.state.isLoading = true;
                 const saveBtn = document.getElementById('saveSelection');
-                const originalText = saveBtn ? saveBtn.textContent : 'Save Selection';
+                const originalText = saveBtn?.textContent || 'Save & Complete Order';
+
                 if (saveBtn) {
-                    saveBtn.textContent = 'Saving...';
+                    saveBtn.textContent = 'Processing...';
                     saveBtn.disabled = true;
                 }
 
                 try {
-                    const response = await fetch(`/prescriptions/${this.state.currentPrescriptionId}/save-selection`, {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': this.getCSRFToken(),
-                            'Accept': 'application/json',
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            items: selectedProducts.map(item => ({
-                                product_id: parseInt(item.id),
-                                quantity: parseInt(item.quantity),
-                                price: parseFloat(item.price),
-                                name: item.name
-                            }))
-                        })
-                    });
+                    // Save products first
+                    await this.saveOrderProducts(selectedProducts);
 
-                    if (!response.ok) {
-                        const text = await response.text();
-                        console.error('Server error:', text);
-                        throw new Error(`Server error: ${response.status} - ${text}`);
-                    }
+                    // Then complete the order
+                    const completionResult = await this.completeOrder();
 
-                    const data = await response.json();
+                    this.handleOrderCompletion(completionResult);
 
-                    if (data.success) {
-                        alert(data.message || 'Products saved successfully!');
-                        this.closeManageOrderModal();
-                    } else {
-                        alert(data.message || 'Failed to save products. Please try again.');
-                    }
                 } catch (error) {
-                    console.error('Error saving products:', error);
-                    alert('An error occurred while saving products: ' + error.message);
+                    console.error('Error processing order:', error);
+                    alert('Failed to process order: ' + error.message);
                 } finally {
+                    this.state.isLoading = false;
                     if (saveBtn) {
                         saveBtn.textContent = originalText;
                         saveBtn.disabled = false;
@@ -1458,22 +1497,151 @@
                 }
             }
 
+            async validateProductStock(selectedProducts) {
+                const validation = {
+                    valid: true,
+                    errors: []
+                };
+
+                for (const product of selectedProducts) {
+                    try {
+                        const response = await fetch(`/admin/products/${product.id}/stock`, {
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': this.getCSRFToken()
+                            }
+                        });
+
+                        if (response.ok) {
+                            const stockData = await response.json();
+                            const availableStock = stockData.available_stock || 0;
+
+                            if (product.quantity > availableStock) {
+                                validation.valid = false;
+                                validation.errors.push(
+                                    `${product.name}: Requested ${product.quantity}, but only ${availableStock} available`
+                                );
+                            }
+                        }
+                    } catch (error) {
+                        console.warn(`Could not validate stock for ${product.name}:`, error);
+                    }
+                }
+
+                return validation;
+            }
+
+            generateOrderSummary(selectedProducts) {
+                let totalItems = 0;
+                let totalAmount = 0;
+
+                const itemsList = selectedProducts.map(product => {
+                    const itemTotal = parseFloat(product.price) * parseInt(product.quantity);
+                    totalItems += parseInt(product.quantity);
+                    totalAmount += itemTotal;
+
+                    return `• ${product.name} (Qty: ${product.quantity}) - ₱${itemTotal.toFixed(2)}`;
+                }).join('\n');
+
+                return `Order Summary:\n${itemsList}\n\nTotal Items: ${totalItems}\nTotal Amount: ₱${totalAmount.toFixed(2)}`;
+            }
+
+            async saveOrderProducts(selectedProducts) {
+                const response = await fetch(`/prescriptions/${this.state.currentPrescriptionId}/save-selection`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': this.getCSRFToken(),
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        items: selectedProducts.map(item => ({
+                            product_id: parseInt(item.id),
+                            quantity: parseInt(item.quantity),
+                            price: parseFloat(item.price),
+                            name: item.name
+                        }))
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to save products: ${response.status}`);
+                }
+
+                const data = await response.json();
+                if (!data.success) {
+                    throw new Error(data.message || 'Failed to save products');
+                }
+
+                return data;
+            }
+
+            async completeOrder() {
+                const response = await fetch(`/orders/${this.state.currentPrescriptionId}/complete`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': this.getCSRFToken(),
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        payment_method: 'cash',
+                        notes: 'Order processed and completed via admin panel'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.message || `Failed to complete order: ${response.status}`);
+                }
+
+                if (!data.success) {
+                    throw new Error(data.message || 'Failed to complete order');
+                }
+
+                return data;
+            }
+
+            handleOrderCompletion(completionResult) {
+                const message = `Order completed successfully!\n\n` +
+                    `Sale ID: ${completionResult.sale_id}\n` +
+                    `Total Amount: ₱${parseFloat(completionResult.total_amount).toFixed(2)}\n` +
+                    `Total Items: ${completionResult.total_items}`;
+
+                alert(message);
+                this.closeManageOrderModal();
+
+                // Update UI instead of full reload
+                this.updateOrderRowStatus(this.state.currentPrescriptionId, 'completed');
+
+                // Refresh cache
+                this.state.cache.products = null;
+
+                setTimeout(() => window.location.reload(), 2000);
+            }
+
             // Prescription Viewer Management
             resetPrescriptionViewer() {
-                const container = document.getElementById('prescriptionReferenceContainer');
-                const toggleBtn = document.getElementById('togglePrescriptionBtn');
-                const refreshBtn = document.getElementById('refreshPrescriptionBtn');
-                const contentRef = document.getElementById('prescriptionContentRef');
-                const loadingRef = document.getElementById('prescriptionLoadingRef');
-                const errorRef = document.getElementById('prescriptionErrorRef');
+                const elements = {
+                    container: document.getElementById('prescriptionReferenceContainer'),
+                    toggleBtn: document.getElementById('togglePrescriptionBtn'),
+                    refreshBtn: document.getElementById('refreshPrescriptionBtn'),
+                    contentRef: document.getElementById('prescriptionContentRef'),
+                    loadingRef: document.getElementById('prescriptionLoadingRef'),
+                    errorRef: document.getElementById('prescriptionErrorRef')
+                };
 
-                if (container) container.style.display = 'none';
-                if (toggleBtn) toggleBtn.textContent = 'Show Prescription';
-                if (refreshBtn) refreshBtn.style.display = 'none';
-                if (contentRef) contentRef.innerHTML =
-                    '<div class="no-prescription-message"><p>No prescription document available</p></div>';
-                if (loadingRef) loadingRef.style.display = 'none';
-                if (errorRef) errorRef.style.display = 'none';
+                if (elements.container) elements.container.style.display = 'none';
+                if (elements.toggleBtn) elements.toggleBtn.textContent = 'Show Prescription';
+                if (elements.refreshBtn) elements.refreshBtn.style.display = 'none';
+                if (elements.loadingRef) elements.loadingRef.style.display = 'none';
+                if (elements.errorRef) elements.errorRef.style.display = 'none';
+
+                if (elements.contentRef) {
+                    elements.contentRef.innerHTML =
+                        '<div class="no-prescription-message"><p>No prescription document available</p></div>';
+                }
             }
 
             togglePrescriptionViewer() {
@@ -1481,78 +1649,148 @@
                 const toggleBtn = document.getElementById('togglePrescriptionBtn');
                 const refreshBtn = document.getElementById('refreshPrescriptionBtn');
 
-                if (container.style.display === 'none') {
+                if (!container || !toggleBtn) return;
+
+                const isVisible = container.style.display !== 'none';
+
+                if (!isVisible) {
                     if (this.state.currentManageOrderData.hasDocument) {
                         container.style.display = 'block';
                         toggleBtn.textContent = 'Hide Prescription';
-                        refreshBtn.style.display = 'inline-block';
+                        if (refreshBtn) refreshBtn.style.display = 'inline-block';
                         this.loadPrescriptionReference();
                     } else {
                         container.style.display = 'block';
                         toggleBtn.textContent = 'Hide Prescription';
+                        this.showNoPrescriptionMessage();
                     }
                 } else {
                     container.style.display = 'none';
                     toggleBtn.textContent = 'Show Prescription';
-                    refreshBtn.style.display = 'none';
+                    if (refreshBtn) refreshBtn.style.display = 'none';
                 }
             }
 
-            loadPrescriptionReference() {
-                if (!this.state.currentManageOrderData.hasDocument) return;
-
-                const loadingRef = document.getElementById('prescriptionLoadingRef');
+            showNoPrescriptionMessage() {
                 const contentRef = document.getElementById('prescriptionContentRef');
-                const errorRef = document.getElementById('prescriptionErrorRef');
+                if (contentRef) {
+                    contentRef.innerHTML = `
+                <div class="no-prescription-message">
+                    <p>No prescription document available for this order.</p>
+                    <p><small>This may be a direct medicine order that doesn't require prescription validation.</small></p>
+                </div>
+            `;
+                }
+            }
 
-                if (loadingRef) loadingRef.style.display = 'flex';
-                if (contentRef) contentRef.style.display = 'none';
-                if (errorRef) errorRef.style.display = 'none';
+            async loadPrescriptionReference() {
+                if (!this.state.currentManageOrderData.hasDocument) {
+                    this.showNoPrescriptionMessage();
+                    return;
+                }
 
-                const {
-                    documentType,
-                    documentUrl
-                } = this.state.currentManageOrderData;
+                const elements = {
+                    contentRef: document.getElementById('prescriptionContentRef'),
+                    loadingRef: document.getElementById('prescriptionLoadingRef'),
+                    errorRef: document.getElementById('prescriptionErrorRef')
+                };
 
-                setTimeout(() => {
-                    if (documentType === 'image' || documentType === 'legacy') {
-                        const img = new Image();
-                        img.onload = function() {
-                            if (contentRef) {
-                                contentRef.innerHTML =
-                                    `<img src="${documentUrl}" alt="Prescription Document" style="max-width: 100%; height: auto;" />`;
-                                contentRef.style.display = 'block';
-                            }
-                            if (loadingRef) loadingRef.style.display = 'none';
-                        };
-                        img.onerror = function() {
-                            showPrescriptionReferenceError();
-                        };
-                        img.src = documentUrl;
-                    } else if (documentType === 'pdf') {
-                        if (contentRef) {
-                            contentRef.innerHTML =
-                                `<iframe src="${documentUrl}" title="Prescription PDF" style="width: 100%; height: 400px; border: none;"></iframe>`;
-                            contentRef.style.display = 'block';
+                // Show loading state
+                if (elements.loadingRef) elements.loadingRef.style.display = 'block';
+                if (elements.errorRef) elements.errorRef.style.display = 'none';
+                if (elements.contentRef) elements.contentRef.style.display = 'none';
+
+                try {
+                    const {
+                        documentType,
+                        documentUrl,
+                        filename
+                    } = this.state.currentManageOrderData;
+
+                    await new Promise((resolve, reject) => {
+                        if (documentType === 'image' || documentType === 'legacy') {
+                            this.loadImagePrescription(documentUrl, elements, resolve, reject);
+                        } else if (documentType === 'pdf') {
+                            this.loadPDFPrescription(documentUrl, elements, resolve, reject);
+                        } else {
+                            reject(new Error('Unsupported document type'));
                         }
-                        if (loadingRef) loadingRef.style.display = 'none';
-                    } else {
-                        this.showPrescriptionReferenceError();
+                    });
+
+                } catch (error) {
+                    console.error('Error loading prescription:', error);
+                    this.showPrescriptionError(elements, error.message);
+                }
+            }
+
+            loadImagePrescription(documentUrl, elements, resolve, reject) {
+                const img = new Image();
+
+                img.onload = () => {
+                    if (elements.contentRef) {
+                        elements.contentRef.innerHTML = `
+                    <div class="prescription-image-container">
+                        <img src="${documentUrl}" alt="Prescription Document"
+                             style="max-width: 100%; height: auto; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
+                    </div>
+                `;
+                        elements.contentRef.style.display = 'block';
                     }
-                }, 300);
+                    if (elements.loadingRef) elements.loadingRef.style.display = 'none';
+                    resolve();
+                };
+
+                img.onerror = () => {
+                    reject(new Error('Failed to load prescription image'));
+                };
+
+                // Set timeout for loading
+                setTimeout(() => reject(new Error('Image loading timeout')), 10000);
+
+                img.src = documentUrl;
             }
 
-            showPrescriptionReferenceError() {
-                const loadingRef = document.getElementById('prescriptionLoadingRef');
-                const contentRef = document.getElementById('prescriptionContentRef');
-                const errorRef = document.getElementById('prescriptionErrorRef');
+            loadPDFPrescription(documentUrl, elements, resolve, reject) {
+                if (elements.contentRef) {
+                    elements.contentRef.innerHTML = `
+                <div class="prescription-pdf-container">
+                    <iframe src="${documentUrl}"
+                            title="Prescription PDF"
+                            style="width: 100%; height: 500px; border: none; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);"
+                            onload="this.style.display='block'"
+                            onerror="this.style.display='none'">
+                    </iframe>
+                    <div style="text-align: center; margin-top: 10px;">
+                        <a href="${documentUrl}" target="_blank" class="btn btn-outline">
+                            Open PDF in New Tab
+                        </a>
+                    </div>
+                </div>
+            `;
+                    elements.contentRef.style.display = 'block';
+                }
+                if (elements.loadingRef) elements.loadingRef.style.display = 'none';
 
-                if (loadingRef) loadingRef.style.display = 'none';
-                if (contentRef) contentRef.style.display = 'none';
-                if (errorRef) errorRef.style.display = 'flex';
+                // PDF iframe doesn't have reliable load events, so resolve immediately
+                setTimeout(resolve, 1000);
             }
 
-            // Enhanced Prescription Viewer with Zoom
+            showPrescriptionError(elements, errorMessage) {
+                if (elements.loadingRef) elements.loadingRef.style.display = 'none';
+                if (elements.contentRef) elements.contentRef.style.display = 'none';
+
+                if (elements.errorRef) {
+                    elements.errorRef.innerHTML = `
+                <p>Error loading prescription: ${errorMessage}</p>
+                <button class="retry-btn" onclick="orderManager.loadPrescriptionReference()">
+                    Retry Loading
+                </button>
+            `;
+                    elements.errorRef.style.display = 'block';
+                }
+            }
+
+            // Full Modal Prescription Viewer
             viewPrescriptionInModal(id, type, filename, viewUrl, downloadUrl) {
                 this.state.currentPrescriptionData = {
                     id,
@@ -1564,581 +1802,104 @@
 
                 const modal = this.elements.prescriptionModal;
                 const orderIdSpan = document.getElementById('prescriptionModalOrderId');
-                const loadingDiv = document.getElementById('prescriptionLoading');
                 const contentDiv = document.getElementById('prescriptionContent');
+                const loadingDiv = document.getElementById('prescriptionLoading');
                 const errorDiv = document.getElementById('prescriptionError');
 
-                if (!modal) {
-                    console.error('Prescription modal not found!');
-                    return;
-                }
+                if (!modal) return;
 
-                if (orderIdSpan) orderIdSpan.textContent = filename;
-
+                // Set modal title and show modal
+                if (orderIdSpan) orderIdSpan.textContent = filename || `Order ${id}`;
                 modal.style.display = 'flex';
                 modal.classList.add('active');
 
-                if (loadingDiv) loadingDiv.style.display = 'flex';
+                // Show loading state
+                if (loadingDiv) loadingDiv.style.display = 'block';
                 if (contentDiv) contentDiv.style.display = 'none';
                 if (errorDiv) errorDiv.style.display = 'none';
 
-                setTimeout(() => {
-                    this.loadPrescriptionContentWithZoom(type, viewUrl);
-                }, 500);
-            }
-
-            loadPrescriptionContentWithZoom(type, viewUrl) {
-                const loadingDiv = document.getElementById('prescriptionLoading');
-                const contentDiv = document.getElementById('prescriptionContent');
-                const errorDiv = document.getElementById('prescriptionError');
-
+                // Load content based on type
                 if (type === 'image' || type === 'legacy') {
-                    const img = new Image();
-                    img.onload = () => {
-                        if (contentDiv) {
-                            // Create enhanced image container with zoom functionality
-                            contentDiv.innerHTML = `
-                        <div class="prescription-image-container" style="
-                            position: relative;
-                            width: 100%;
-                            height: 80vh;
-                            overflow: hidden;
-                            background: #f5f5f5;
-                            border-radius: 8px;
-                            cursor: zoom-in;
-                        ">
-                            <img id="prescriptionImage"
-                                 src="${viewUrl}"
-                                 alt="Prescription Document"
-                                 style="
-                                     width: 100%;
-                                     height: 100%;
-                                     object-fit: contain;
-                                     transition: transform 0.3s ease;
-                                     transform-origin: center center;
-                                 "
-                            />
-                            <div class="zoom-controls" style="
-                                position: absolute;
-                                top: 10px;
-                                right: 10px;
-                                background: rgba(0,0,0,0.7);
-                                border-radius: 20px;
-                                padding: 5px;
-                                display: flex;
-                                gap: 5px;
-                            ">
-                                <button id="zoomIn" style="
-                                    background: white;
-                                    border: none;
-                                    border-radius: 50%;
-                                    width: 32px;
-                                    height: 32px;
-                                    cursor: pointer;
-                                    font-size: 16px;
-                                    display: flex;
-                                    align-items: center;
-                                    justify-content: center;
-                                ">+</button>
-                                <button id="zoomOut" style="
-                                    background: white;
-                                    border: none;
-                                    border-radius: 50%;
-                                    width: 32px;
-                                    height: 32px;
-                                    cursor: pointer;
-                                    font-size: 16px;
-                                    display: flex;
-                                    align-items: center;
-                                    justify-content: center;
-                                ">−</button>
-                                <button id="resetZoom" style="
-                                    background: white;
-                                    border: none;
-                                    border-radius: 50%;
-                                    width: 32px;
-                                    height: 32px;
-                                    cursor: pointer;
-                                    font-size: 12px;
-                                    display: flex;
-                                    align-items: center;
-                                    justify-content: center;
-                                ">⌂</button>
-                            </div>
-                        </div>
-                    `;
-
-                            this.initializeImageZoom();
-                            contentDiv.style.display = 'flex';
-                        }
-                        if (loadingDiv) loadingDiv.style.display = 'none';
-                    };
-
-                    img.onerror = () => this.showPrescriptionError();
-                    img.src = viewUrl;
-
+                    this.loadModalImageContent(viewUrl, contentDiv, loadingDiv, errorDiv);
                 } else if (type === 'pdf') {
-                    if (contentDiv) {
-                        contentDiv.innerHTML = `
-                    <div class="prescription-pdf-container" style="
-                        width: 100%;
-                        height: 80vh;
-                        border-radius: 8px;
-                        overflow: hidden;
-                    ">
-                        <iframe src="${viewUrl}"
-                                title="Prescription PDF"
-                                style="width: 100%; height: 100%; border: none;">
-                        </iframe>
-                    </div>
-                `;
-                        contentDiv.style.display = 'flex';
-                    }
-                    if (loadingDiv) loadingDiv.style.display = 'none';
+                    this.loadModalPDFContent(viewUrl, contentDiv, loadingDiv, errorDiv);
                 } else {
-                    this.showPrescriptionError();
+                    this.showModalError(errorDiv, loadingDiv, contentDiv, 'Unsupported file type');
                 }
             }
 
-            initializeImageZoom() {
-                const img = document.getElementById('prescriptionImage');
-                const container = img?.parentElement;
+            loadModalImageContent(viewUrl, contentDiv, loadingDiv, errorDiv) {
+                const img = new Image();
 
-                if (!img || !container) return;
-
-                let scale = 1;
-                let isDragging = false;
-                let startX = 0;
-                let startY = 0;
-                let translateX = 0;
-                let translateY = 0;
-
-                // Zoom controls
-                document.getElementById('zoomIn')?.addEventListener('click', () => {
-                    scale = Math.min(scale + 0.5, 5);
-                    this.updateImageTransform(img, scale, translateX, translateY);
-                });
-
-                document.getElementById('zoomOut')?.addEventListener('click', () => {
-                    scale = Math.max(scale - 0.5, 0.5);
-                    this.updateImageTransform(img, scale, translateX, translateY);
-                });
-
-                document.getElementById('resetZoom')?.addEventListener('click', () => {
-                    scale = 1;
-                    translateX = 0;
-                    translateY = 0;
-                    this.updateImageTransform(img, scale, translateX, translateY);
-                });
-
-                // Mouse wheel zoom
-                container.addEventListener('wheel', (e) => {
-                    e.preventDefault();
-                    const delta = e.deltaY > 0 ? -0.1 : 0.1;
-                    scale = Math.max(0.5, Math.min(5, scale + delta));
-                    this.updateImageTransform(img, scale, translateX, translateY);
-                });
-
-                // Double click to zoom
-                img.addEventListener('dblclick', (e) => {
-                    e.preventDefault();
-                    if (scale === 1) {
-                        scale = 2;
-                    } else {
-                        scale = 1;
-                        translateX = 0;
-                        translateY = 0;
+                img.onload = () => {
+                    if (contentDiv) {
+                        contentDiv.innerHTML = `
+                    <div class="modal-prescription-image">
+                        <img src="${viewUrl}" alt="Prescription"
+                             style="max-width: 100%; max-height: 70vh; object-fit: contain;" />
+                    </div>
+                `;
+                        contentDiv.style.display = 'block';
                     }
-                    this.updateImageTransform(img, scale, translateX, translateY);
-                });
+                    if (loadingDiv) loadingDiv.style.display = 'none';
+                };
 
-                // Drag to pan (only when zoomed)
-                img.addEventListener('mousedown', (e) => {
-                    if (scale > 1) {
-                        isDragging = true;
-                        startX = e.clientX - translateX;
-                        startY = e.clientY - translateY;
-                        img.style.cursor = 'grabbing';
-                    }
-                });
+                img.onerror = () => {
+                    this.showModalError(errorDiv, loadingDiv, contentDiv, 'Failed to load image');
+                };
 
-                document.addEventListener('mousemove', (e) => {
-                    if (isDragging && scale > 1) {
-                        translateX = e.clientX - startX;
-                        translateY = e.clientY - startY;
-                        this.updateImageTransform(img, scale, translateX, translateY);
-                    }
-                });
-
-                document.addEventListener('mouseup', () => {
-                    if (isDragging) {
-                        isDragging = false;
-                        img.style.cursor = scale > 1 ? 'grab' : 'zoom-in';
-                    }
-                });
-
-                // Update cursor based on zoom level
-                img.style.cursor = scale > 1 ? 'grab' : 'zoom-in';
+                img.src = viewUrl;
             }
 
-            updateImageTransform(img, scale, translateX, translateY) {
-                img.style.transform = `scale(${scale}) translate(${translateX/scale}px, ${translateY/scale}px)`;
-                img.style.cursor = scale > 1 ? 'grab' : 'zoom-in';
+            loadModalPDFContent(viewUrl, contentDiv, loadingDiv, errorDiv) {
+                if (contentDiv) {
+                    contentDiv.innerHTML = `
+                <div class="modal-prescription-pdf">
+                    <iframe src="${viewUrl}"
+                            style="width: 100%; height: 70vh; border: none;"
+                            title="Prescription PDF">
+                    </iframe>
+                </div>
+            `;
+                    contentDiv.style.display = 'block';
+                }
+                if (loadingDiv) loadingDiv.style.display = 'none';
             }
 
-            showPrescriptionError() {
-                const loadingDiv = document.getElementById('prescriptionLoading');
-                const contentDiv = document.getElementById('prescriptionContent');
-                const errorDiv = document.getElementById('prescriptionError');
-
+            showModalError(errorDiv, loadingDiv, contentDiv, message) {
                 if (loadingDiv) loadingDiv.style.display = 'none';
                 if (contentDiv) contentDiv.style.display = 'none';
-                if (errorDiv) errorDiv.style.display = 'flex';
+                if (errorDiv) {
+                    errorDiv.innerHTML = `<p>${message}</p>`;
+                    errorDiv.style.display = 'block';
+                }
             }
 
             closePrescriptionViewer() {
-                const modal = this.elements.prescriptionModal;
-                const contentDiv = document.getElementById('prescriptionContent');
-
-                if (modal) {
-                    modal.style.display = 'none';
-                    modal.classList.remove('active');
+                if (this.elements.prescriptionModal) {
+                    this.elements.prescriptionModal.style.display = 'none';
+                    this.elements.prescriptionModal.classList.remove('active');
                 }
-
-                if (contentDiv) {
-                    contentDiv.innerHTML = '';
-                }
-
-                this.state.currentPrescriptionData = {
-                    id: null,
-                    type: null,
-                    filename: null,
-                    viewUrl: null,
-                    downloadUrl: null
-                };
-            }
-
-            // Order Completion
-            async openCompleteOrderModal(prescriptionId) {
-                this.closeAllDropdowns();
-                this.state.currentOrderPrescriptionId = prescriptionId;
-
-                try {
-                    const response = await fetch(`/orders/${prescriptionId}/summary`, {
-                        method: 'GET',
-                        headers: {
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': this.getCSRFToken()
-                        }
-                    });
-
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-
-                    const data = await response.json();
-
-                    if (this.elements.orderSummary) {
-                        if (data.success && data.items && data.items.length > 0) {
-                            this.renderOrderSummary(data);
-                        } else {
-                            this.elements.orderSummary.innerHTML =
-                                '<p>No products selected yet. Please manage the order first.</p>';
-                        }
-                    }
-
-                    if (this.elements.completeOrderModal) {
-                        this.elements.completeOrderModal.style.display = 'block';
-                        this.elements.completeOrderModal.classList.add('active');
-                    }
-
-                } catch (error) {
-                    console.error('Error loading order summary:', error);
-                    alert(`Error loading order summary: ${error.message}. Please ensure products are saved first.`);
-                }
-            }
-
-            renderOrderSummary(data) {
-                let summaryHTML = '<h4>Order Summary:</h4>';
-                summaryHTML += '<div class="order-items">';
-
-                data.items.forEach(item => {
-                    const itemTotal = item.quantity * item.unit_price;
-                    summaryHTML += `
-                <div class="order-item">
-                    <strong>${item.product_name}</strong><br>
-                    <span>Quantity: ${item.quantity} | Unit Price: ₱${parseFloat(item.unit_price).toFixed(2)}</span><br>
-                    <span>Subtotal: ₱${itemTotal.toFixed(2)}</span>
-                    ${item.stock_available < item.quantity ? '<br><span class="low-stock">⚠️ Low Stock</span>' : ''}
-                </div>
-            `;
-                });
-
-                summaryHTML += '</div>';
-                summaryHTML += `
-            <div class="order-total">
-                <strong>Total Items: ${data.total_items}</strong><br>
-                <strong>Total Amount: ₱${parseFloat(data.total_amount).toFixed(2)}</strong>
-            </div>
-        `;
-
-                summaryHTML += `
-            <div class="payment-section">
-                <label for="paymentMethod"><strong>Payment Method:</strong></label>
-                <select id="paymentMethod">
-                    <option value="cash">Cash</option>
-                    <option value="card">Card</option>
-                    <option value="gcash">GCash</option>
-                    <option value="online">Online Banking</option>
-                </select>
-            </div>
-        `;
-
-                summaryHTML += `
-            <div class="notes-section">
-                <label for="orderNotes"><strong>Notes (optional):</strong></label>
-                <textarea id="orderNotes" rows="3" placeholder="Additional notes for this order..."></textarea>
-            </div>
-        `;
-
-                this.elements.orderSummary.innerHTML = summaryHTML;
-            }
-
-            closeCompleteOrderModal() {
-                if (this.elements.completeOrderModal) {
-                    this.elements.completeOrderModal.style.display = 'none';
-                    this.elements.completeOrderModal.classList.remove('active');
-                }
-                this.state.currentOrderPrescriptionId = null;
-            }
-
-            async submitOrderCompletion(e) {
-                e.preventDefault();
-
-                if (!this.state.currentOrderPrescriptionId) {
-                    alert('Error: No prescription selected. Please try again.');
-                    return;
-                }
-
-                const originalText = this.elements.submitOrderBtn.textContent;
-                this.elements.submitOrderBtn.textContent = 'Processing...';
-                this.elements.submitOrderBtn.disabled = true;
-
-                try {
-                    const paymentMethodElement = document.getElementById('paymentMethod');
-                    const orderNotesElement = document.getElementById('orderNotes');
-
-                    const paymentMethod = paymentMethodElement ? paymentMethodElement.value : 'cash';
-                    const orderNotes = orderNotesElement ? orderNotesElement.value.trim() : '';
-
-                    const response = await fetch(`/orders/${this.state.currentOrderPrescriptionId}/complete`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': this.getCSRFToken(),
-                            'Accept': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            payment_method: paymentMethod,
-                            notes: orderNotes
-                        })
-                    });
-
-                    const responseText = await response.text();
-                    let data;
-
-                    try {
-                        data = JSON.parse(responseText);
-                    } catch (parseError) {
-                        throw new Error(
-                            `Server returned invalid JSON. Status: ${response.status}, Response: ${responseText.substring(0, 200)}...`
-                            );
-                    }
-
-                    if (response.ok && data.success) {
-                        alert(
-                            `Order completed successfully!\n\nSale ID: ${data.sale_id}\nTotal Amount: ₱${parseFloat(data.total_amount).toFixed(2)}\nTotal Items: ${data.total_items}\nPayment Method: ${data.payment_method}\n\nStock has been updated automatically.`);
-
-                        this.closeCompleteOrderModal();
-                        window.location.reload();
-                    } else {
-                        throw new Error(data.message || `HTTP error! status: ${response.status}`);
-                    }
-
-                } catch (error) {
-                    console.error('Error completing order:', error);
-                    alert(`Failed to complete order: ${error.message}`);
-                } finally {
-                    this.elements.submitOrderBtn.textContent = originalText;
-                    this.elements.submitOrderBtn.disabled = false;
-                }
-            }
-
-            // Chat Functionality
-            openChatModal(prescriptionId, triggerElement) {
-                this.closeAllDropdowns();
-                this.state.currentChatPrescriptionId = prescriptionId;
-
-                const orderRow = triggerElement.closest('.order-row');
-                const orderIdElement = orderRow.querySelector('strong');
-                if (orderIdElement && this.elements.chatOrderId) {
-                    this.elements.chatOrderId.textContent = `Chat - ${orderIdElement.textContent}`;
-                }
-
-                if (this.elements.chatModal) {
-                    this.elements.chatModal.classList.add('active');
-                    this.loadMessages(prescriptionId);
-                    this.markMessagesAsRead(prescriptionId);
-                }
-            }
-
-            closeChatModal() {
-                if (this.elements.chatModal) {
-                    this.elements.chatModal.classList.remove('active');
-                }
-                this.state.currentChatPrescriptionId = null;
-            }
-
-            async loadMessages(prescriptionId) {
-                if (!this.elements.chatMessages) return;
-
-                this.elements.chatMessages.innerHTML = '<div class="no-messages">Loading messages...</div>';
-
-                try {
-                    const response = await fetch(`/admin/orders/${prescriptionId}/messages`, {
-                        headers: {
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': this.getCSRFToken()
-                        }
-                    });
-
-                    const data = await response.json();
-
-                    if (data.success) {
-                        this.displayMessages(data.messages);
-                    }
-                } catch (error) {
-                    console.error('Error loading messages:', error);
-                    this.elements.chatMessages.innerHTML = '<div class="no-messages">Error loading messages</div>';
-                }
-            }
-
-            displayMessages(messages) {
-                if (!this.elements.chatMessages) return;
-
-                if (messages.length === 0) {
-                    this.elements.chatMessages.innerHTML =
-                        '<div class="no-messages">No messages yet. Start the conversation!</div>';
-                    return;
-                }
-
-                this.elements.chatMessages.innerHTML = '';
-
-                messages.forEach(message => {
-                    const messageDiv = document.createElement('div');
-                    messageDiv.className = `message ${message.sender_type}`;
-
-                    messageDiv.innerHTML = `
-                <div class="message-avatar">${message.sender_type === 'admin' ? 'A' : 'C'}</div>
-                <div class="message-content">
-                    <div class="message-bubble">${message.message}</div>
-                    <div class="message-time">${message.created_at}</div>
-                </div>
-            `;
-
-                    this.elements.chatMessages.appendChild(messageDiv);
-                });
-
-                // Scroll to bottom
-                this.elements.chatMessages.scrollTop = this.elements.chatMessages.scrollHeight;
-            }
-
-            async sendMessage() {
-                if (!this.state.currentChatPrescriptionId || !this.elements.chatInput) return;
-
-                const message = this.elements.chatInput.value.trim();
-                if (!message) return;
-
-                const originalText = this.elements.sendButton ? this.elements.sendButton.innerHTML : '';
-                if (this.elements.sendButton) {
-                    this.elements.sendButton.disabled = true;
-                    this.elements.sendButton.innerHTML = '...';
-                }
-
-                try {
-                    const response = await fetch(`/admin/orders/${this.state.currentChatPrescriptionId}/messages`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': this.getCSRFToken(),
-                            'Accept': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            message: message
-                        })
-                    });
-
-                    const data = await response.json();
-
-                    if (data.success) {
-                        this.elements.chatInput.value = '';
-
-                        // Add message to display
-                        const messageDiv = document.createElement('div');
-                        messageDiv.className = 'message admin';
-                        messageDiv.innerHTML = `
-                    <div class="message-avatar">A</div>
-                    <div class="message-content">
-                        <div class="message-bubble">${data.message.message}</div>
-                        <div class="message-time">${data.message.created_at}</div>
-                    </div>
-                `;
-
-                        if (this.elements.chatMessages.querySelector('.no-messages')) {
-                            this.elements.chatMessages.innerHTML = '';
-                        }
-
-                        this.elements.chatMessages.appendChild(messageDiv);
-                        this.elements.chatMessages.scrollTop = this.elements.chatMessages.scrollHeight;
-                    }
-                } catch (error) {
-                    console.error('Error sending message:', error);
-                    alert('Failed to send message');
-                } finally {
-                    if (this.elements.sendButton) {
-                        this.elements.sendButton.disabled = false;
-                        this.elements.sendButton.innerHTML = originalText;
-                    }
-                }
-            }
-
-            async markMessagesAsRead(prescriptionId) {
-                try {
-                    await fetch(`/admin/orders/${prescriptionId}/messages/mark-read`, {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': this.getCSRFToken(),
-                            'Accept': 'application/json'
-                        }
-                    });
-                } catch (error) {
-                    console.error('Error marking messages as read:', error);
-                }
+                this.state.currentPrescriptionData = null;
             }
         }
 
-        // Initialize the system when DOM is ready
+        // Initialize the system when DOM is loaded
         document.addEventListener('DOMContentLoaded', function() {
-            // Create global instance
             window.orderManager = new OrderManagementSystem();
-
-            // Make loadAvailableProducts globally accessible for retry buttons
-            window.loadAvailableProducts = () => {
-                if (window.orderManager) {
-                    window.orderManager.loadAvailableProducts();
-                }
-            };
         });
+
+        // Export for module systems if needed
+        if (typeof module !== 'undefined' && module.exports) {
+            module.exports = OrderManagementSystem;
+        }
+
+        // Also support AMD/RequireJS
+        if (typeof define === 'function' && define.amd) {
+            define(function() {
+                return OrderManagementSystem;
+            });
+        }
     </script>
     @stack('scripts')
 </body>

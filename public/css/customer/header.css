@@ -563,3 +563,280 @@ body.dark-mode .modal-content p {
         justify-content: center;
     }
 }
+/* Mobile Responsive Add-on Styles */
+/* Add these styles to your existing header.css */
+
+/* Hamburger Menu */
+.hamburger {
+    display: none;
+    flex-direction: column;
+    cursor: pointer;
+    padding: 5px;
+    z-index: 1001;
+}
+
+.hamburger span {
+    width: 25px;
+    height: 3px;
+    background: white;
+    margin: 3px 0;
+    border-radius: 2px;
+    transition: all 0.3s ease;
+}
+
+.hamburger.active span:nth-child(1) {
+    transform: rotate(45deg) translate(5px, 5px);
+}
+
+.hamburger.active span:nth-child(2) {
+    opacity: 0;
+}
+
+.hamburger.active span:nth-child(3) {
+    transform: rotate(-45deg) translate(7px, -6px);
+}
+
+/* Mobile Sidebar */
+.mobile-sidebar {
+    position: fixed;
+    top: 0;
+    left: -100%;
+    width: 280px;
+    height: 100vh;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    z-index: 1000;
+    transition: left 0.3s ease;
+    box-shadow: 2px 0 15px rgba(0, 0, 0, 0.1);
+    padding: 80px 0 20px 0;
+    overflow-y: auto;
+}
+
+.mobile-sidebar.show {
+    left: 0;
+}
+
+.sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.sidebar-overlay.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.sidebar-nav {
+    padding: 20px 0;
+}
+
+.sidebar-nav-item {
+    display: flex;
+    align-items: center;
+    padding: 15px 25px;
+    text-decoration: none;
+    color: #333;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border-left: 4px solid transparent;
+    position: relative;
+}
+
+.sidebar-nav-item:hover,
+.sidebar-nav-item.active {
+    background: rgba(102, 126, 234, 0.1);
+    border-left-color: #667eea;
+    color: #667eea;
+}
+
+.sidebar-nav-item .nav-icon {
+    width: 24px;
+    height: 24px;
+    margin-right: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+}
+
+.sidebar-nav-item .notification-badge {
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    position: absolute;
+    background: linear-gradient(135deg, #ff4757, #ff3742);
+    color: white;
+    border-radius: 50%;
+    min-width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: bold;
+    box-shadow: 0 2px 6px rgba(255, 71, 87, 0.4);
+    border: 2px solid white;
+    z-index: 10;
+}
+
+/* Dark Mode Support for Mobile */
+body.dark-mode .mobile-sidebar {
+    background: rgba(44, 62, 80, 0.95);
+}
+
+body.dark-mode .sidebar-nav-item {
+    color: #ecf0f1;
+}
+
+body.dark-mode .sidebar-nav-item:hover,
+body.dark-mode .sidebar-nav-item.active {
+    background: rgba(116, 185, 255, 0.1);
+    border-left-color: #74b9ff;
+    color: #74b9ff;
+}
+
+/* Mobile Responsive Breakpoints */
+@media (max-width: 768px) {
+    .hamburger {
+        display: flex;
+    }
+
+    .nav-buttons {
+        display: none;
+    }
+
+    .logo {
+        font-size: 1.5rem;
+        margin-right: 0;
+    }
+
+    .user-details {
+        display: none;
+    }
+
+    .user-avatar {
+        width: 30px;
+        height: 30px;
+        font-size: 0.9rem;
+    }
+
+    .user-info {
+        padding: 0.4rem 0.8rem;
+    }
+
+    .user-dropdown {
+        min-width: 200px;
+        right: -10px;
+    }
+
+    .header-container {
+        position: relative;
+    }
+}
+
+/* Hide mobile elements on desktop */
+@media (min-width: 769px) {
+    .mobile-sidebar,
+    .sidebar-overlay {
+        display: none !important;
+    }
+
+    .hamburger {
+        display: none !important;
+    }
+}
+.notifications-nav {
+    position: relative;
+}
+
+.notification-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: linear-gradient(135deg, #ff4757, #ff3742);
+    color: white;
+    border-radius: 50%;
+    min-width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: bold;
+    box-shadow: 0 2px 6px rgba(255, 71, 87, 0.4);
+    border: 2px solid white;
+    z-index: 10;
+    animation: notificationPulse 2s infinite;
+}
+
+.notification-badge:empty {
+    display: none !important;
+}
+
+/* Badge animation */
+@keyframes notificationPulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 2px 6px rgba(255, 71, 87, 0.4), 0 0 0 0 rgba(255, 71, 87, 0.7);
+    }
+    70% {
+        transform: scale(1.05);
+        box-shadow: 0 2px 6px rgba(255, 71, 87, 0.4), 0 0 0 8px rgba(255, 71, 87, 0);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 2px 6px rgba(255, 71, 87, 0.4), 0 0 0 0 rgba(255, 71, 87, 0);
+    }
+}
+
+/* Adjust nav-button to accommodate the badge */
+.nav-button.notifications-nav {
+    position: relative;
+    padding: 8px 16px;
+}
+
+/* Optional: Different styles for different count ranges */
+.notification-badge[data-count="1"],
+.notification-badge[data-count="2"],
+.notification-badge[data-count="3"],
+.notification-badge[data-count="4"],
+.notification-badge[data-count="5"],
+.notification-badge[data-count="6"],
+.notification-badge[data-count="7"],
+.notification-badge[data-count="8"],
+.notification-badge[data-count="9"] {
+    min-width: 20px;
+    font-size: 11px;
+}
+
+/* For double digits */
+.notification-badge {
+    min-width: 22px;
+    padding: 0 4px;
+}
+
+/* When count is over 99, show 99+ */
+.notification-badge[data-count="99+"] {
+    min-width: 26px;
+    font-size: 10px;
+}
+
+/* Hover effect for notification nav */
+.nav-button.notifications-nav:hover .notification-badge {
+    transform: scale(1.1);
+    animation: none;
+}
+
+/* Active state adjustment */
+.nav-button.notifications-nav.active .notification-badge {
+    background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+}

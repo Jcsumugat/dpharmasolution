@@ -117,7 +117,7 @@
             </div>
 
             <div class="chat-modal-input">
-                <div class="attachment-preview" id="modalAttachmentPreview">
+                <div class="attachment-preview" id="modalAttachmentPreview" style="display: none; padding: 10px; background: #f8f9fa; border-radius: 8px; margin-bottom: 10px; border: 1px solid #e9ecef;">
                     <div class="attachment-item">
                         <span>No files selected</span>
                     </div>
@@ -125,7 +125,7 @@
 
                 <div class="modal-input-container">
                     <button class="modal-attachment-btn" onclick="document.getElementById('modalFileInput').click()" title="Attach File">
-                        📎
+                        📄
                     </button>
                     <textarea
                         class="modal-message-input"
@@ -262,7 +262,7 @@
                         </td>
                         <td>
                             <button class="chat-button" onclick="openChatModal('${customer.customer_id}')">
-                                Chat
+                                Send Message
                             </button>
                         </td>
                     </tr>
@@ -307,7 +307,7 @@
             selectedModalFiles = [];
 
             document.getElementById('modalMessageInput').value = '';
-            document.getElementById('modalAttachmentPreview').style.display = 'none';
+            document.getElementById('modalAttachmentPreview').classList.remove('show');
 
             if (modalPollingInterval) {
                 clearInterval(modalPollingInterval);
@@ -381,14 +381,15 @@
             } else {
                 messages.forEach(message => {
                     const messageClass = message.is_from_customer ? 'customer' : 'admin';
+                    const senderName = message.is_from_customer ? 'Customer' : 'You';
 
                     html += `
                         <div class="modal-message ${messageClass}">
                             <div class="modal-message-content">
-                                ${message.message}
-                                ${message.has_attachments ? '<div class="message-attachments">📎 Attachments</div>' : ''}
+                                ${message.message ? `<div>${message.message}</div>` : ''}
+                                ${message.has_attachments ? renderModalAttachments(message.attachments) : ''}
+                                <div class="modal-message-time">${message.time_ago} • ${senderName}</div>
                             </div>
-                            <div class="modal-message-time">${message.time_ago}</div>
                         </div>
                     `;
                 });
@@ -398,10 +399,53 @@
             container.scrollTop = container.scrollHeight;
         }
 
+        function renderModalAttachments(attachments) {
+            let html = '<div class="modal-message-attachments">';
+
+            attachments.forEach(attachment => {
+                const isImage = ['jpg', 'jpeg', 'png', 'gif'].includes(attachment.file_type.toLowerCase());
+
+                if (isImage) {
+                    html += `
+                        <div class="modal-attachment-item modal-image-attachment">
+                            <img src="/storage/${attachment.file_path}" alt="${attachment.file_name}"
+                                 style="max-width: 200px; max-height: 200px; border-radius: 8px; margin: 5px 0; cursor: pointer;"
+                                 onclick="window.open('/storage/${attachment.file_path}', '_blank')">
+                            <div class="modal-attachment-name">${attachment.file_name}</div>
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div class="modal-attachment-item modal-file-attachment">
+                            <div class="modal-file-icon">📄</div>
+                            <div class="modal-file-info">
+                                <div class="modal-file-name">${attachment.file_name}</div>
+                                <div class="modal-file-size">${formatFileSize(attachment.file_size)}</div>
+                            </div>
+                            <a href="/api/admin/chat/download/${attachment.id}"
+                               class="modal-download-btn" download="${attachment.file_name}">⬇️</a>
+                        </div>
+                    `;
+                }
+            });
+
+            html += '</div>';
+            return html;
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
         async function sendModalMessage() {
             const messageInput = document.getElementById('modalMessageInput');
             const message = messageInput.value.trim();
 
+            // Allow sending if there's either a message or files
             if (!message && selectedModalFiles.length === 0) return;
             if (!currentConversationId) return;
 
@@ -411,7 +455,9 @@
 
             try {
                 const formData = new FormData();
-                formData.append('message', message);
+
+                // Always append message, even if empty (for files-only messages)
+                formData.append('message', message || '');
                 formData.append('message_type', selectedModalFiles.length > 0 ? 'file' : 'text');
                 formData.append('is_internal_note', false);
 
@@ -432,7 +478,8 @@
 
                 messageInput.value = '';
                 selectedModalFiles = [];
-                document.getElementById('modalAttachmentPreview').style.display = 'none';
+                document.getElementById('modalAttachmentPreview').classList.remove('show');
+                document.getElementById('modalFileInput').value = '';
 
                 await loadModalMessages(currentConversationId);
 
@@ -449,11 +496,15 @@
             const messageInput = document.getElementById('modalMessageInput');
             const sendBtn = document.getElementById('modalSendBtn');
 
+            function updateSendButtonState() {
+                // Enable send button if there's text OR files selected
+                sendBtn.disabled = !messageInput.value.trim() && selectedModalFiles.length === 0;
+            }
+
             messageInput.addEventListener('input', function() {
                 this.style.height = 'auto';
                 this.style.height = Math.min(this.scrollHeight, 100) + 'px';
-
-                sendBtn.disabled = !this.value.trim() && selectedModalFiles.length === 0;
+                updateSendButtonState();
             });
 
             messageInput.addEventListener('keydown', function(e) {
@@ -470,7 +521,11 @@
             document.getElementById('modalFileInput').addEventListener('change', function(e) {
                 selectedModalFiles = Array.from(e.target.files);
                 displayModalAttachments();
-                document.getElementById('modalSendBtn').disabled = false;
+
+                // Update send button state when files are selected
+                const messageInput = document.getElementById('modalMessageInput');
+                const sendBtn = document.getElementById('modalSendBtn');
+                sendBtn.disabled = !messageInput.value.trim() && selectedModalFiles.length === 0;
             });
         }
 
@@ -484,10 +539,26 @@
 
             let html = '';
             selectedModalFiles.forEach((file, index) => {
+                const isImage = file.type.startsWith('image/');
+                const fileSize = formatFileSize(file.size);
+
                 html += `
-                    <div class="attachment-item">
-                        <span>${file.name}</span>
-                        <button onclick="removeModalAttachment(${index})" class="remove-attachment">✕</button>
+                    <div class="attachment-item" style="display: flex; align-items: center; gap: 10px; padding: 8px; background: #fff; border-radius: 6px; margin-bottom: 5px; border: 1px solid #ddd;">
+                        <div class="file-icon" style="font-size: 18px; width: 24px; text-align: center;">
+                            ${isImage ? '🖼️' : '📄'}
+                        </div>
+                        <div class="file-info" style="flex: 1; min-width: 0;">
+                            <div class="file-name" style="font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px;">
+                                ${file.name}
+                            </div>
+                            <div class="file-size" style="font-size: 12px; color: #666;">
+                                ${fileSize}
+                            </div>
+                        </div>
+                        <button onclick="removeModalAttachment(${index})" class="remove-attachment"
+                                style="background: #dc3545; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; line-height: 1;">
+                            ×
+                        </button>
                     </div>
                 `;
             });

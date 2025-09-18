@@ -121,71 +121,124 @@ class DashboardController extends Controller
         ];
     }
 
-    private function getOngoingActivities()
-    {
-        $expiringProducts = DB::table('products')
-            ->join('product_batches', 'products.id', '=', 'product_batches.product_id')
-            ->where('product_batches.expiration_date', '<=', Carbon::now()->addDays(30))
-            ->where('product_batches.expiration_date', '>=', Carbon::now())
-            ->where('product_batches.quantity_remaining', '>', 0)
-            ->distinct('products.id')
-            ->count('products.id');
+private function getOngoingActivities()
+{
+    $expiringProducts = DB::table('products')
+        ->join('product_batches', 'products.id', '=', 'product_batches.product_id')
+        ->where('product_batches.expiration_date', '<=', Carbon::now()->addDays(30))
+        ->where('product_batches.expiration_date', '>=', Carbon::now())
+        ->where('product_batches.quantity_remaining', '>', 0)
+        ->distinct('products.id')
+        ->count('products.id');
 
-        $pendingPrescriptions = DB::table('prescriptions')
-            ->where('status', 'pending')
-            ->count();
+    $pendingPrescriptions = DB::table('prescriptions')
+        ->where('status', 'pending')
+        ->count();
 
-        // Fixed: Only count products that have had batches
-        $lowStockProducts = DB::table('products')
-            ->join('product_batches', 'products.id', '=', 'product_batches.product_id') // INNER JOIN
-            ->select('products.id', 'products.reorder_level')
-            ->selectRaw('COALESCE(SUM(product_batches.quantity_remaining), 0) as total_stock')
-            ->groupBy('products.id', 'products.reorder_level')
-            ->having('total_stock', '>', 0)
-            ->havingRaw('total_stock <= CAST(products.reorder_level AS UNSIGNED)')
-            ->whereNotNull('products.reorder_level')
-            ->count();
+    // Fixed low stock query - now checks for stock BELOW or EQUAL to reorder level
+    $lowStockProducts = DB::table('products')
+        ->leftJoin('product_batches', 'products.id', '=', 'product_batches.product_id')
+        ->select('products.id', 'products.product_name', 'products.reorder_level')
+        ->selectRaw('COALESCE(SUM(product_batches.quantity_remaining), 0) as total_stock')
+        ->where(function($query) {
+            $query->whereNotNull('products.reorder_level')
+                  ->where('products.reorder_level', '>', 0);
+        })
+        ->groupBy('products.id', 'products.product_name', 'products.reorder_level')
+        ->get()
+        ->filter(function($product) {
+            // Log for debugging
+            \Log::info("Checking: {$product->product_name}, Stock: {$product->total_stock}, Reorder: {$product->reorder_level}");
 
-        // Fixed: Only count products that have had batches but are now out of stock
-        $outOfStockProducts = DB::table('products')
-            ->join('product_batches', 'products.id', '=', 'product_batches.product_id') // INNER JOIN
-            ->select('products.id')
-            ->selectRaw('COALESCE(SUM(product_batches.quantity_remaining), 0) as total_stock')
-            ->groupBy('products.id')
-            ->having('total_stock', '=', 0)
-            ->count();
+            // Alert when stock is AT OR BELOW reorder level (but not zero)
+            $isLowStock = $product->total_stock > 0 && $product->total_stock <= $product->reorder_level;
 
-        $newOrdersToday = DB::table('prescriptions')
-            ->whereDate('created_at', Carbon::today())
-            ->count();
+            if ($isLowStock) {
+                \Log::info("LOW STOCK ALERT: {$product->product_name}");
+            }
 
-        $completedOrdersToday = DB::table('sales')
-            ->whereDate('sale_date', Carbon::today())
-            ->where('status', 'completed')
-            ->count();
+            return $isLowStock;
+        })
+        ->count();
 
-        $todayRevenue = DB::table('sales')
-            ->whereDate('sale_date', Carbon::today())
-            ->where('status', 'completed')
-            ->sum('total_amount');
+    $outOfStockProducts = DB::table('products')
+        ->leftJoin('product_batches', 'products.id', '=', 'product_batches.product_id')
+        ->select('products.id')
+        ->selectRaw('COALESCE(SUM(product_batches.quantity_remaining), 0) as total_stock')
+        ->groupBy('products.id')
+        ->having('total_stock', '=', 0)
+        ->whereExists(function($query) {
+            $query->select(DB::raw(1))
+                  ->from('product_batches as pb2')
+                  ->whereRaw('pb2.product_id = products.id');
+        })
+        ->count();
 
-        $approvedOrdersToday = DB::table('prescriptions')
-            ->whereDate('updated_at', Carbon::today())
-            ->where('status', 'approved')
-            ->count();
+    $newOrdersToday = DB::table('prescriptions')
+        ->whereDate('created_at', Carbon::today())
+        ->count();
 
-        return [
-            'expiring_products' => $expiringProducts ?: 0,
-            'pending_prescriptions' => $pendingPrescriptions ?: 0,
-            'low_stock_products' => $lowStockProducts ?: 0,
-            'out_of_stock_products' => $outOfStockProducts ?: 0,
-            'new_orders' => $newOrdersToday ?: 0,
-            'completed_orders_today' => $completedOrdersToday ?: 0,
-            'today_revenue' => $todayRevenue ?: 0,
-            'approved_orders_today' => $approvedOrdersToday ?: 0,
-        ];
-    }
+    $completedOrdersToday = DB::table('sales')
+        ->whereDate('sale_date', Carbon::today())
+        ->where('status', 'completed')
+        ->count();
 
+    $todayRevenue = DB::table('sales')
+        ->whereDate('sale_date', Carbon::today())
+        ->where('status', 'completed')
+        ->sum('total_amount');
+
+    $approvedOrdersToday = DB::table('prescriptions')
+        ->whereDate('updated_at', Carbon::today())
+        ->where('status', 'approved')
+        ->count();
+
+    \Log::info("Final low stock count: {$lowStockProducts}");
+
+    return [
+        'expiring_products' => $expiringProducts ?: 0,
+        'pending_prescriptions' => $pendingPrescriptions ?: 0,
+        'low_stock_products' => $lowStockProducts ?: 0,
+        'out_of_stock_products' => $outOfStockProducts ?: 0,
+        'new_orders' => $newOrdersToday ?: 0,
+        'completed_orders_today' => $completedOrdersToday ?: 0,
+        'today_revenue' => $todayRevenue ?: 0,
+        'approved_orders_today' => $approvedOrdersToday ?: 0,
+    ];
+}
+
+// Method to manually set up test data for low stock alerts
+public function setupLowStockTest()
+{
+    // Option 1: Reduce stock quantity for one product
+    DB::table('product_batches')
+        ->where('product_id', 2) // Amoxicillin
+        ->limit(1)
+        ->update(['quantity_remaining' => 30]); // Below reorder level of 50
+
+    // Option 2: Increase reorder level to trigger alert
+    DB::table('products')
+        ->where('id', 1) // Paracetamol
+        ->update(['reorder_level' => 400]); // Above current stock of 395
+
+    return "Test data set up. Paracetamol should now show low stock alert.";
+}
+
+// Method to reset test data
+public function resetTestData()
+{
+    // Reset quantities
+    DB::table('product_batches')
+        ->where('product_id', 2)
+        ->update(['quantity_remaining' => 84]);
+
+    // Reset reorder levels
+    DB::table('products')
+        ->whereIn('id', [1, 2, 3])
+        ->update(['reorder_level' => 50]);
+
+    return "Test data reset to original values.";
+}
 
     private function getSalesChartData()
     {

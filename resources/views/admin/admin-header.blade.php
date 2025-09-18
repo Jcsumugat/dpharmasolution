@@ -21,18 +21,18 @@
             class="nav-button pos-button {{ request()->routeIs('pos.*') ? 'active' : '' }}">
             POS
         </a>
-        <a href="{{ route('suppliers.index') }}"
-            class="nav-button {{ request()->routeIs('suppliers.*') ? 'active' : '' }}">Suppliers</a>
+        <a href="{{ route('orders.index') }}"
+            class="nav-button {{ request()->routeIs('orders.*') ? 'active' : '' }}">Orders</a>
         <a href="{{ route('products.index') }}"
             class="nav-button {{ request()->routeIs('products.*') ? 'active' : '' }}">Products</a>
         <a href="{{ route('inventory.index') }}"
             class="nav-button {{ request()->routeIs('inventory.*') ? 'active' : '' }}">Inventory</a>
-        <a href="{{ route('orders.index') }}"
-            class="nav-button {{ request()->routeIs('orders.*') ? 'active' : '' }}">Orders</a>
         <a href="{{ route('sales.index') }}"
             class="nav-button {{ request()->routeIs('sales.*') ? 'active' : '' }}">Sales</a>
         <a href="{{ route('customer.index') }}"
             class="nav-button {{ request()->routeIs('customer.*') ? 'active' : '' }}">Customer</a>
+        <a href="{{ route('suppliers.index') }}"
+            class="nav-button {{ request()->routeIs('suppliers.*') ? 'active' : '' }}">Suppliers</a>
         <a href="{{ route('reports.index') }}"
             class="nav-button {{ request()->routeIs('reports.*') ? 'active' : '' }}">Reports</a>
         <div class="nav-button-wrapper">

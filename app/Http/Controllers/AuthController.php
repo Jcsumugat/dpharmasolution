@@ -3,12 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\User;
 use App\Models\CustomerChat;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+
 
 class AuthController extends Controller
 {
@@ -213,51 +215,47 @@ class AuthController extends Controller
         return view('client.home');
     }
 
-    public function logout(Request $request)
-    {
-        // Get the authenticated customer before logging out
-        $customer = Auth::guard('customer')->user();
+  public function logout(Request $request)
+{
+    // Get the authenticated customer before logging out
+    $customer = Auth::guard('customer')->user();
 
-        if ($customer) {
-            // UPDATE CUSTOMER CHAT STATUS TO OFFLINE
-            try {
-                Log::info('Attempting to update chat status to offline for customer', [
-                    'customer_id' => $customer->customer_id,
-                    'customer_name' => $customer->full_name
-                ]);
+    if ($customer) {
+        // UPDATE CUSTOMER CHAT STATUS TO OFFLINE
+        try {
+            Log::info('Attempting to update chat status to offline for customer', [
+                'customer_id' => $customer->customer_id,
+                'customer_name' => $customer->full_name
+            ]);
 
-                $updated = CustomerChat::where('customer_id', $customer->customer_id)->update([
-                    'is_online' => false,
-                    'last_active' => now(),
-                    'chat_status' => 'offline'
-                ]);
+            $updated = CustomerChat::where('customer_id', $customer->customer_id)->update([
+                'is_online' => false,
+                'last_active' => now(),
+                'chat_status' => 'offline'
+            ]);
 
-                Log::info('Customer chat status updated to offline', [
-                    'customer_id' => $customer->customer_id,
-                    'customer_name' => $customer->full_name,
-                    'rows_affected' => $updated,
-                    'logout_time' => now()
-                ]);
-            } catch (\Exception $e) {
-                Log::error('Failed to update customer chat status on logout', [
-                    'customer_id' => $customer->customer_id,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString()
-                ]);
-            }
+            Log::info('Customer chat status updated to offline', [
+                'customer_id' => $customer->customer_id,
+                'customer_name' => $customer->full_name,
+                'rows_affected' => $updated,
+                'logout_time' => now()
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to update customer chat status on logout', [
+                'customer_id' => $customer->customer_id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
         }
-
-        // Logout from customer guard
-        Auth::guard('customer')->logout();
-
-        // Clear session data
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-
-        // Redirect to customer login form
-        return redirect()->route('login.form')->with('success', 'You have been logged out successfully.');
     }
 
+    // Logout from customer guard only
+    Auth::guard('customer')->logout();
+    $request->session()->regenerateToken();
+
+    // Redirect to customer login form
+    return redirect()->route('login.form')->with('success', 'You have been logged out successfully.');
+}
     public function show()
     {
         $user = auth()->user();

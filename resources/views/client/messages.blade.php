@@ -5,387 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link rel="stylesheet" href="{{ asset('css/customer/messages.css') }}" />
     <title>Message the Store - MJ's Pharmacy</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f5f5f5;
-            min-height: 100vh;
-        }
-
-        .main-content {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        .chat-container {
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 900px;
-            height: 600px;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            margin: 0 auto;
-        }
-
-        .chat-header {
-            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
-            color: white;
-            padding: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .header-info h2 {
-            font-size: 24px;
-            margin-bottom: 5px;
-        }
-
-        .header-info p {
-            opacity: 0.9;
-            font-size: 14px;
-        }
-
-        .status-indicator {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .status-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #2ecc71;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0.5;
-            }
-
-            100% {
-                opacity: 1;
-            }
-        }
-
-        .chat-messages {
-            flex: 1;
-            padding: 20px;
-            overflow-y: auto;
-            background: #f8f9fa;
-        }
-
-        .message {
-            margin-bottom: 15px;
-            display: flex;
-            gap: 10px;
-        }
-
-        .message.customer {
-            justify-content: flex-end;
-        }
-
-        .message.admin {
-            justify-content: flex-start;
-        }
-
-        .message-bubble {
-            max-width: 70%;
-            padding: 12px 16px;
-            border-radius: 18px;
-            word-wrap: break-word;
-        }
-
-        .message.customer .message-bubble {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .message.admin .message-bubble {
-            background: #e9ecef;
-            color: #2c3e50;
-        }
-
-        .message-time {
-            font-size: 11px;
-            opacity: 0.7;
-            margin-top: 5px;
-        }
-
-        .message.customer .message-time {
-            text-align: right;
-        }
-
-        .typing-indicator {
-            display: none;
-            padding: 10px 20px;
-            font-style: italic;
-            color: #6c757d;
-        }
-
-        .typing-indicator.show {
-            display: block;
-        }
-
-        .chat-input {
-            padding: 20px;
-            background: white;
-            border-top: 1px solid #e9ecef;
-        }
-
-        .input-container {
-            display: flex;
-            gap: 10px;
-            align-items: flex-end;
-        }
-
-        .message-input {
-            flex: 1;
-            border: 2px solid #e9ecef;
-            border-radius: 25px;
-            padding: 12px 20px;
-            font-size: 14px;
-            resize: none;
-            min-height: 44px;
-            max-height: 120px;
-            outline: none;
-            transition: border-color 0.3s;
-        }
-
-        .message-input:focus {
-            border-color: #667eea;
-        }
-
-        .send-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: transform 0.2s;
-        }
-
-        .send-btn:hover:not(:disabled) {
-            transform: scale(1.1);
-        }
-
-        .send-btn:disabled {
-            background: #ced4da;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .attachment-btn {
-            background: #6c757d;
-            color: white;
-            border: none;
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background-color 0.3s;
-        }
-
-        .attachment-btn:hover {
-            background: #5a6268;
-        }
-
-        .attachment-preview {
-            display: none;
-            margin-bottom: 10px;
-            padding: 10px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            border: 1px solid #e9ecef;
-        }
-
-        .attachment-preview.show {
-            display: block;
-        }
-
-        .attachment-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 5px 0;
-        }
-
-        .attachment-item span {
-            font-size: 14px;
-            color: #495057;
-        }
-
-        .remove-attachment {
-            background: #dc3545;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-
-        .no-messages {
-            text-align: center;
-            color: #6c757d;
-            padding: 40px;
-            font-style: italic;
-        }
-
-        .loading-messages {
-            text-align: center;
-            padding: 40px;
-            color: #6c757d;
-        }
-
-        .loading-spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 2px solid #e9ecef;
-            border-radius: 50%;
-            border-top-color: #667eea;
-            animation: spin 1s ease-in-out infinite;
-            margin-bottom: 10px;
-        }
-
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
-        .error-message {
-            background: #f8d7da;
-            color: #721c24;
-            padding: 10px 20px;
-            border-radius: 5px;
-            margin-bottom: 10px;
-            text-align: center;
-        }
-
-        .success-message {
-            background: #d4edda;
-            color: #155724;
-            padding: 10px 20px;
-            border-radius: 5px;
-            margin-bottom: 10px;
-            text-align: center;
-        }
-
-        .message-attachments {
-            margin-top: 8px;
-        }
-
-        .attachment-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin: 5px 0;
-            padding: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-        }
-
-        .message.admin .attachment-item {
-            background: rgba(0, 0, 0, 0.05);
-        }
-
-        .image-attachment {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-
-        .image-attachment img {
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-
-        .image-attachment img:hover {
-            transform: scale(1.05);
-        }
-
-        .attachment-name {
-            font-size: 12px;
-            opacity: 0.8;
-            margin-top: 4px;
-        }
-
-        .file-attachment {
-            justify-content: space-between;
-        }
-
-        .file-icon {
-            font-size: 20px;
-        }
-
-        .file-info {
-            flex: 1;
-        }
-
-        .file-name {
-            font-size: 13px;
-            font-weight: 500;
-        }
-
-        .file-size {
-            font-size: 11px;
-            opacity: 0.7;
-        }
-
-        .download-btn {
-            text-decoration: none;
-            padding: 4px 8px;
-            border-radius: 4px;
-            background: rgba(255, 255, 255, 0.2);
-            transition: background-color 0.3s;
-        }
-
-        .download-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-        }
-
-        @media (max-width: 768px) {
-            .main-content {
-                padding: 10px;
-            }
-
-            .chat-container {
-                height: calc(100vh - 120px);
-            }
-
-            .message-bubble {
-                max-width: 85%;
-            }
-
-        }
-    </style>
 </head>
 
 <body>
@@ -419,7 +40,7 @@
             </div>
 
             <div class="chat-input">
-                <div class="attachment-preview" id="attachmentPreview">
+                <div class="attachment-preview" id="attachmentPreview" style="display: none; padding: 10px; background: #f8f9fa; border-radius: 8px; margin-bottom: 10px; border: 1px solid #e9ecef;">
                     <div class="attachment-item">
                         <span>No files selected</span>
                     </div>
@@ -428,7 +49,7 @@
                 <div class="input-container">
                     <button class="attachment-btn" onclick="document.getElementById('fileInput').click()"
                         title="Attach File">
-                        📎
+                        📄
                     </button>
                     <textarea class="message-input" id="messageInput" placeholder="Type your message..." rows="1"></textarea>
                     <button class="send-btn" id="sendBtn" onclick="sendMessage()" disabled>
@@ -617,7 +238,7 @@
 
             try {
                 const formData = new FormData();
-                formData.append('message', message);
+                formData.append('message', message || '');
                 formData.append('message_type', selectedFiles.length > 0 ? 'file' : 'text');
 
                 selectedFiles.forEach(file => {
@@ -637,7 +258,8 @@
 
                 messageInput.value = '';
                 selectedFiles = [];
-                document.getElementById('attachmentPreview').classList.remove('show');
+                document.getElementById('attachmentPreview').style.display = 'none';
+                document.getElementById('fileInput').value = '';
 
                 await loadMessages();
                 showSuccess('Message sent successfully');
@@ -655,11 +277,15 @@
             const messageInput = document.getElementById('messageInput');
             const sendBtn = document.getElementById('sendBtn');
 
+            function updateSendButtonState() {
+                sendBtn.disabled = !messageInput.value.trim() && selectedFiles.length === 0;
+            }
+
             messageInput.addEventListener('input', function() {
                 this.style.height = 'auto';
                 this.style.height = Math.min(this.scrollHeight, 120) + 'px';
 
-                sendBtn.disabled = !this.value.trim() && selectedFiles.length === 0;
+                updateSendButtonState();
 
                 if (this.value.trim() && !isTyping) {
                     updateTypingStatus(true);
@@ -688,7 +314,10 @@
             document.getElementById('fileInput').addEventListener('change', function(e) {
                 selectedFiles = Array.from(e.target.files);
                 displayAttachments();
-                document.getElementById('sendBtn').disabled = false;
+
+                const messageInput = document.getElementById('messageInput');
+                const sendBtn = document.getElementById('sendBtn');
+                sendBtn.disabled = !messageInput.value.trim() && selectedFiles.length === 0;
             });
         }
 
@@ -696,22 +325,38 @@
             const preview = document.getElementById('attachmentPreview');
 
             if (selectedFiles.length === 0) {
-                preview.classList.remove('show');
+                preview.style.display = 'none';
                 return;
             }
 
             let html = '';
             selectedFiles.forEach((file, index) => {
+                const isImage = file.type.startsWith('image/');
+                const fileSize = formatFileSize(file.size);
+
                 html += `
-                    <div class="attachment-item">
-                        <span>${file.name}</span>
-                        <button onclick="removeAttachment(${index})" class="remove-attachment">✕</button>
+                    <div class="attachment-item" style="display: flex; align-items: center; gap: 10px; padding: 8px; background: #fff; border-radius: 6px; margin-bottom: 5px; border: 1px solid #ddd;">
+                        <div class="file-icon" style="font-size: 18px; width: 24px; text-align: center;">
+                            ${isImage ? '🖼️' : '📄'}
+                        </div>
+                        <div class="file-info" style="flex: 1; min-width: 0;">
+                            <div class="file-name" style="font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px;">
+                                ${file.name}
+                            </div>
+                            <div class="file-size" style="font-size: 12px; color: #666;">
+                                ${fileSize}
+                            </div>
+                        </div>
+                        <button onclick="removeAttachment(${index})" class="remove-attachment"
+                                style="background: #dc3545; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; line-height: 1;">
+                            ×
+                        </button>
                     </div>
                 `;
             });
 
             preview.innerHTML = html;
-            preview.classList.add('show');
+            preview.style.display = 'block';
         }
 
         function removeAttachment(index) {

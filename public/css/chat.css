@@ -1183,6 +1183,7 @@ body {
     font-size: 0.75rem;
     cursor: pointer;
     transition: all var(--transition-fast);
+    padding: 1rem;
 }
 
 .chat-button:hover {

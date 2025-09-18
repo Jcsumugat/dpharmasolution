@@ -39,10 +39,11 @@ class ProductController extends Controller
 
     public function customerIndex()
     {
-        $products = Product::whereHas('batches', function ($query) {
-            $query->where('quantity_remaining', '>', 0)
-                ->where('expiration_date', '>', now());
-        })
+        $products = Product::where('product_type', '!=', 'Prescription')
+            ->whereHas('batches', function ($query) {
+                $query->where('quantity_remaining', '>', 0)
+                    ->where('expiration_date', '>', now());
+            })
             ->with(['batches' => function ($query) {
                 $query->where('quantity_remaining', '>', 0)
                     ->where('expiration_date', '>', now())
@@ -229,6 +230,7 @@ class ProductController extends Controller
                 ->withErrors(['error' => 'Failed to update product: ' . $e->getMessage()]);
         }
     }
+
     public function destroy($id)
     {
         $product = Product::findOrFail($id);
@@ -628,5 +630,115 @@ class ProductController extends Controller
         }, 'supplier'])->findOrFail($productId);
 
         return view('products.batches-modal', compact('product'));
+    }
+    public function processExpiredBatches(Request $request)
+    {
+        try {
+            DB::beginTransaction();
+
+            // Get all expired batches with remaining stock
+            $expiredBatches = ProductBatch::expired()
+                ->inStock()
+                ->with(['product'])
+                ->get();
+
+            if ($expiredBatches->isEmpty()) {
+                return redirect()->back()
+                    ->with('info', 'No expired batches found with remaining stock.');
+            }
+
+            $totalLoss = 0;
+            $totalQuantity = 0;
+            $processedProducts = [];
+
+            foreach ($expiredBatches as $batch) {
+                $quantity = $batch->quantity_remaining;
+                $lossValue = $quantity * $batch->unit_cost;
+                $daysExpired = now()->diffInDays($batch->expiration_date);
+
+                // Create expired stock movement
+                StockMovement::createExpiredMovement(
+                    $batch->product_id,
+                    $quantity,
+                    "Manually processed expired batch: {$batch->batch_number} (expired {$daysExpired} days ago)",
+                    $batch->id
+                );
+
+                // Zero out the batch
+                $batch->update(['quantity_remaining' => 0]);
+
+                $totalLoss += $lossValue;
+                $totalQuantity += $quantity;
+
+                // Track products for stock update
+                $processedProducts[$batch->product_id] = $batch->product;
+
+                Log::info('Expired batch manually processed', [
+                    'batch_id' => $batch->id,
+                    'batch_number' => $batch->batch_number,
+                    'product_id' => $batch->product_id,
+                    'expired_quantity' => $quantity,
+                    'loss_value' => $lossValue,
+                ]);
+            }
+
+            // Update stock quantities for affected products
+            foreach ($processedProducts as $product) {
+                $product->updateCachedFields();
+            }
+
+            DB::commit();
+
+            $message = "Successfully processed " . $expiredBatches->count() . " expired batches. " .
+                "Total quantity expired: " . number_format($totalQuantity) . " units. " .
+                "Total loss value: ₱" . number_format($totalLoss, 2);
+
+            return redirect()->back()->with('success', $message);
+        } catch (\Exception $e) {
+            DB::rollback();
+
+            Log::error('Failed to process expired batches manually', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->back()
+                ->with('error', 'Failed to process expired batches: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Get expired batches report
+     */
+    public function expiredBatchesReport()
+    {
+        $expiredBatches = ProductBatch::expired()
+            ->inStock()
+            ->with(['product', 'supplier'])
+            ->orderBy('expiration_date', 'asc')
+            ->get();
+
+        $summary = [
+            'total_batches' => $expiredBatches->count(),
+            'total_quantity' => $expiredBatches->sum('quantity_remaining'),
+            'total_loss_value' => $expiredBatches->sum(function ($batch) {
+                return $batch->quantity_remaining * $batch->unit_cost;
+            }),
+            'affected_products' => $expiredBatches->unique('product_id')->count(),
+        ];
+
+        $batchesByProduct = $expiredBatches->groupBy('product_id')->map(function ($batches) {
+            $product = $batches->first()->product;
+            return [
+                'product' => $product,
+                'batches' => $batches,
+                'total_expired_quantity' => $batches->sum('quantity_remaining'),
+                'total_loss_value' => $batches->sum(function ($batch) {
+                    return $batch->quantity_remaining * $batch->unit_cost;
+                })
+            ];
+        });
+
+        return view('products.expired-batches-report', compact('expiredBatches', 'summary', 'batchesByProduct'));
     }
 }

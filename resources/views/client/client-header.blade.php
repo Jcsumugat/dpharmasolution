@@ -1,6 +1,13 @@
 {{-- client-header.blade.php --}}
 <header>
     <div class="header-container">
+        <!-- Hamburger Menu (Mobile Only) -->
+        <div class="hamburger" onclick="toggleSidebar()">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+
         <div class="logo">MJ'S PHARMACY</div>
         <div class="user-profile">
             <div class="user-info" onclick="toggleUserDropdown()">
@@ -61,11 +68,6 @@
                         <span>My Orders</span>
                     </a>
 
-                    <a href="{{ url('/settings') }}" class="dropdown-item">
-                        <span class="dropdown-icon">⚙️</span>
-                        <span>Settings</span>
-                    </a>
-
                     <button class="dropdown-item logout" onclick="showLogoutModal()">
                         <span class="dropdown-icon">🚪</span>
                         <span>Logout</span>
@@ -94,7 +96,6 @@
         <a href="{{ url('/home/uploads') }}" class="nav-button {{ request()->is('home/uploads') ? 'active' : '' }}">Order</a>
         <a href="{{ url('/home/products') }}" class="nav-button {{ request()->is('home/products') ? 'active' : '' }}">Products</a>
 
-        {{-- Notifications button with badge --}}
         <a href="{{ url('/home/notifications') }}" class="nav-button notifications-nav {{ request()->is('home/notifications') ? 'active' : '' }}">
             Notifications
             @if(Auth::guard('customer')->check())
@@ -114,7 +115,45 @@
     </div>
 </nav>
 
-{{-- Logout Modal --}}
+<!-- Mobile Sidebar (Hidden on Desktop) -->
+<div class="sidebar-overlay" onclick="closeSidebar()"></div>
+<div class="mobile-sidebar" id="mobileSidebar">
+    <nav class="sidebar-nav">
+        <a href="{{ url('/home') }}" class="sidebar-nav-item {{ request()->is('home') ? 'active' : '' }}">
+            <div class="nav-icon">🏠</div>
+            <span>Home</span>
+        </a>
+        <a href="{{ url('/home/uploads') }}" class="sidebar-nav-item {{ request()->is('home/uploads') ? 'active' : '' }}">
+            <div class="nav-icon">📋</div>
+            <span>Order</span>
+        </a>
+        <a href="{{ url('/home/products') }}" class="sidebar-nav-item {{ request()->is('home/products') ? 'active' : '' }}">
+            <div class="nav-icon">💊</div>
+            <span>Products</span>
+        </a>
+        <a href="{{ url('/home/notifications') }}" class="sidebar-nav-item {{ request()->is('home/notifications') ? 'active' : '' }}">
+            <div class="nav-icon">🔔</div>
+            <span>Notifications</span>
+            @if(Auth::guard('customer')->check())
+                @php
+                    $unreadCount = \App\Models\CustomerNotification::getUnreadCountForCustomer(Auth::guard('customer')->id());
+                @endphp
+                @if($unreadCount > 0)
+                    <span class="notification-badge">{{ $unreadCount }}</span>
+                @endif
+            @endif
+        </a>
+        <a href="{{ url('/home/contact-us') }}" class="sidebar-nav-item {{ request()->is('home/contact-us') ? 'active' : '' }}">
+            <div class="nav-icon">📞</div>
+            <span>Contact us</span>
+        </a>
+        <a href="{{ url('/home/messages') }}" class="sidebar-nav-item {{ request()->is('home/messages') ? 'active' : '' }}">
+            <div class="nav-icon">💬</div>
+            <span>Messages</span>
+        </a>
+    </nav>
+</div>
+
 @if(Auth::guard('customer')->check())
 <div id="logoutModal" class="modal-overlay">
     <div class="modal-content">
@@ -131,100 +170,8 @@
 </div>
 @endif
 
-{{-- Additional CSS for notification badge --}}
-<style>
-/* Notification Badge Styles */
-.notifications-nav {
-    position: relative;
-}
-
-.notification-badge {
-    position: absolute;
-    top: -8px;
-    right: -8px;
-    background: linear-gradient(135deg, #ff4757, #ff3742);
-    color: white;
-    border-radius: 50%;
-    min-width: 20px;
-    height: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-    font-weight: bold;
-    box-shadow: 0 2px 6px rgba(255, 71, 87, 0.4);
-    border: 2px solid white;
-    z-index: 10;
-    animation: notificationPulse 2s infinite;
-}
-
-.notification-badge:empty {
-    display: none !important;
-}
-
-/* Badge animation */
-@keyframes notificationPulse {
-    0% {
-        transform: scale(1);
-        box-shadow: 0 2px 6px rgba(255, 71, 87, 0.4), 0 0 0 0 rgba(255, 71, 87, 0.7);
-    }
-    70% {
-        transform: scale(1.05);
-        box-shadow: 0 2px 6px rgba(255, 71, 87, 0.4), 0 0 0 8px rgba(255, 71, 87, 0);
-    }
-    100% {
-        transform: scale(1);
-        box-shadow: 0 2px 6px rgba(255, 71, 87, 0.4), 0 0 0 0 rgba(255, 71, 87, 0);
-    }
-}
-
-/* Adjust nav-button to accommodate the badge */
-.nav-button.notifications-nav {
-    position: relative;
-    padding: 8px 16px;
-}
-
-/* Optional: Different styles for different count ranges */
-.notification-badge[data-count="1"],
-.notification-badge[data-count="2"],
-.notification-badge[data-count="3"],
-.notification-badge[data-count="4"],
-.notification-badge[data-count="5"],
-.notification-badge[data-count="6"],
-.notification-badge[data-count="7"],
-.notification-badge[data-count="8"],
-.notification-badge[data-count="9"] {
-    min-width: 20px;
-    font-size: 11px;
-}
-
-/* For double digits */
-.notification-badge {
-    min-width: 22px;
-    padding: 0 4px;
-}
-
-/* When count is over 99, show 99+ */
-.notification-badge[data-count="99+"] {
-    min-width: 26px;
-    font-size: 10px;
-}
-
-/* Hover effect for notification nav */
-.nav-button.notifications-nav:hover .notification-badge {
-    transform: scale(1.1);
-    animation: none;
-}
-
-/* Active state adjustment */
-.nav-button.notifications-nav.active .notification-badge {
-    background: linear-gradient(135deg, #ff6b6b, #ee5a24);
-}
-</style>
-
 <script>
     (() => {
-        // Theme management
         const toggle = document.getElementById('themeToggle');
         const body = document.body;
 
@@ -236,7 +183,6 @@
             });
         }
 
-        // Initialize theme
         window.addEventListener('DOMContentLoaded', () => {
             if (localStorage.getItem('theme') === 'dark') {
                 body.classList.add('dark-mode');
@@ -244,7 +190,6 @@
             }
         });
 
-        // Settings dropdown toggle
         document.querySelector('.settings-toggle')?.addEventListener('click', (e) => {
             e.stopPropagation();
             const menu = document.getElementById('settingsMenu');
@@ -254,14 +199,12 @@
                 menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
             }
 
-            // Close user dropdown if open
             if (userDropdown) {
                 userDropdown.classList.remove('show');
                 document.querySelector('.user-info')?.classList.remove('active');
             }
         });
 
-        // User dropdown functions
         window.toggleUserDropdown = function(e) {
             if (e) e.stopPropagation();
 
@@ -279,7 +222,6 @@
                     userDropdown.classList.add('show');
                     userInfo.classList.add('active');
 
-                    // Close settings menu if open
                     if (settingsMenu) {
                         settingsMenu.style.display = 'none';
                     }
@@ -287,7 +229,6 @@
             }
         };
 
-        // Close dropdowns when clicking outside
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.settings-dropdown')) {
                 const settingsMenu = document.getElementById('settingsMenu');
@@ -302,12 +243,16 @@
                     userInfo.classList.remove('active');
                 }
             }
+
+            if (!e.target.closest('.mobile-sidebar') && !e.target.closest('.hamburger')) {
+                closeSidebar();
+            }
         });
 
-        // Logout modal functions
         window.showLogoutModal = function() {
             const modal = document.getElementById("logoutModal");
             if (modal) modal.classList.add("active");
+            closeSidebar();
         };
 
         window.hideLogoutModal = function() {
@@ -315,31 +260,57 @@
             if (modal) modal.classList.remove("active");
         };
 
-        // Close modal when clicking overlay
         document.getElementById('logoutModal')?.addEventListener('click', function(e) {
             if (e.target === this) {
                 hideLogoutModal();
             }
         });
 
-        // Function to update notification badge
         window.updateNotificationBadge = function(count) {
             const badge = document.getElementById('notificationBadge');
-            if (badge) {
-                if (count > 0) {
-                    // Show count, but if over 99, show 99+
-                    const displayCount = count > 99 ? '99+' : count.toString();
-                    badge.textContent = displayCount;
-                    badge.style.display = 'flex';
-                    badge.setAttribute('data-count', displayCount);
-                } else {
-                    badge.style.display = 'none';
-                    badge.textContent = '';
+            const sidebarBadges = document.querySelectorAll('.mobile-sidebar .notification-badge');
+
+            [badge, ...sidebarBadges].forEach(badgeEl => {
+                if (badgeEl) {
+                    if (count > 0) {
+                        const displayCount = count > 99 ? '99+' : count.toString();
+                        badgeEl.textContent = displayCount;
+                        badgeEl.style.display = 'flex';
+                        badgeEl.setAttribute('data-count', displayCount);
+                    } else {
+                        badgeEl.style.display = 'none';
+                        badgeEl.textContent = '';
+                    }
                 }
-            }
+            });
         };
 
-        // Optional: Periodic check for new notifications (every 30 seconds)
+        window.toggleSidebar = function() {
+            const sidebar = document.getElementById('mobileSidebar');
+            const overlay = document.querySelector('.sidebar-overlay');
+            const hamburger = document.querySelector('.hamburger');
+
+            sidebar.classList.toggle('show');
+            overlay.classList.toggle('show');
+            hamburger.classList.toggle('active');
+        };
+
+        window.closeSidebar = function() {
+            const sidebar = document.getElementById('mobileSidebar');
+            const overlay = document.querySelector('.sidebar-overlay');
+            const hamburger = document.querySelector('.hamburger');
+
+            sidebar.classList.remove('show');
+            overlay.classList.remove('show');
+            hamburger.classList.remove('active');
+        };
+
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 768) {
+                closeSidebar();
+            }
+        });
+
         setInterval(() => {
             fetch('/home/notifications/unread-count', {
                 method: 'GET',

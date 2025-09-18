@@ -12,7 +12,7 @@ class CleanNotificationsSeeder extends Seeder
     {
         // Clear all existing notifications
         Notification::truncate();
-        
+
         // Create sample pharmacy notifications
         $sampleNotifications = [
             [
@@ -23,7 +23,7 @@ class CleanNotificationsSeeder extends Seeder
             ],
             [
                 'user_id' => 1,
-                'title' => 'New Order Received', 
+                'title' => 'New Order Received',
                 'message' => 'New prescription order #P123 has been submitted and requires review.',
                 'is_read' => false
             ],
@@ -37,9 +37,6 @@ class CleanNotificationsSeeder extends Seeder
 
         foreach ($sampleNotifications as $notification) {
             Notification::create($notification);
-        }
-
-        // Generate automatic low stock notifications for existing products
-        NotificationService::createLowStockNotifications();
+        };
     }
 }

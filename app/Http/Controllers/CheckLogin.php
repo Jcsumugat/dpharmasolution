@@ -43,7 +43,7 @@ class CheckLogin extends Controller
 
     public function logout(Request $request)
     {
-        Auth::guard('web')->logout(); // or just Auth::logout() if using default guard
+        Auth::logout(); // or just Auth::logout() if using default guard
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
@@ -59,7 +59,7 @@ class CheckLogin extends Controller
         if (!Auth::check() || !Auth::user()->isAdmin()) {
             return redirect()->route('login')->with('error', 'Access denied.');
         }
-        
+
         return view('admin.admin-profile');
     }
 
@@ -71,7 +71,7 @@ class CheckLogin extends Controller
         if (!Auth::check() || !Auth::user()->isAdmin()) {
             return redirect()->route('login')->with('error', 'Access denied.');
         }
-        
+
         $admin = Auth::user();
         return view('admin.edit-profile', compact('admin'));
     }
@@ -84,7 +84,7 @@ class CheckLogin extends Controller
         if (!Auth::check() || !Auth::user()->isAdmin()) {
             return redirect()->route('login')->with('error', 'Access denied.');
         }
-        
+
         $admin = Auth::user();
 
         $validator = Validator::make($request->all(), [
@@ -114,7 +114,7 @@ class CheckLogin extends Controller
         if (!Auth::check() || !Auth::user()->isAdmin()) {
             return redirect()->route('login')->with('error', 'Access denied.');
         }
-        
+
         return view('admin.change-password');
     }
 
@@ -126,7 +126,7 @@ class CheckLogin extends Controller
         if (!Auth::check() || !Auth::user()->isAdmin()) {
             return redirect()->route('login')->with('error', 'Access denied.');
         }
-        
+
         $validator = Validator::make($request->all(), [
             'current_password' => 'required',
             'password' => 'required|confirmed|min:8',
@@ -157,7 +157,7 @@ class CheckLogin extends Controller
         if (!Auth::check() || !Auth::user()->isAdmin()) {
             return redirect()->route('login')->with('error', 'Access denied.');
         }
-        
+
         $admin = Auth::user();
         return view('admin.permissions', compact('admin'));
     }

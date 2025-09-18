@@ -28604,7 +28604,6 @@ namespace  {
     class View extends \Illuminate\Support\Facades\View {}
     class Vite extends \Illuminate\Support\Facades\Vite {}
     class PDF extends \Barryvdh\DomPDF\Facade\Pdf {}
-    class Pdf extends \Barryvdh\DomPDF\Facade\Pdf {}
     class Excel extends \Maatwebsite\Excel\Facades\Excel {}
     class QrCode extends \SimpleSoftwareIO\QrCode\Facades\QrCode {}
 }
