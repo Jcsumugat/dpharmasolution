@@ -16,7 +16,6 @@
     </header>
 
     <main class="pos-main">
-
         <div class="pos-content">
             <section class="left-panel">
                 <div class="card product-search">
@@ -31,6 +30,23 @@
                                 <option value="{{ $cat }}">{{ $cat }}</option>
                             @endforeach
                         </select>
+                        <select id="formFilter" class="filter-select">
+                            <option value="">All Forms</option>
+                            <option value="tablet">Tablet</option>
+                            <option value="capsule">Capsule</option>
+                            <option value="syrup">Syrup</option>
+                            <option value="injection">Injection</option>
+                            <option value="cream">Cream</option>
+                            <option value="ointment">Ointment</option>
+                            <option value="drops">Drops</option>
+                            <option value="spray">Spray</option>
+                            <option value="powder">Powder</option>
+                            <option value="solution">Solution</option>
+                        </select>
+                    </div>
+
+                    <div class="loading-indicator" id="loadingIndicator">
+                        Searching products...
                     </div>
 
                     <div class="product-list" id="productList">
@@ -38,7 +54,6 @@
                             <thead>
                                 <tr>
                                     <th>Product</th>
-                                    <th>Category</th>
                                     <th>Price</th>
                                     <th>Stock</th>
                                     <th>Action</th>
@@ -57,10 +72,6 @@
                                             @endif
                                         </td>
                                         <td>
-                                            <div class="product-category">
-                                                {{ $product->category->name ?? 'Uncategorized' }}</div>
-                                        </td>
-                                        <td>
                                             <div class="product-price">
                                                 ₱{{ number_format($product->batches->first()->sale_price ?? 0, 2) }}
                                             </div>
@@ -69,10 +80,17 @@
                                             <div class="product-stock">{{ $product->stock_quantity ?? 0 }}</div>
                                         </td>
                                         <td class="action-cell">
-                                            <button type="button" class="btn-add-to-cart"
-                                                onclick="addToCart({{ $product->id }})">
-                                                Add to Cart
-                                            </button>
+                                            <div class="action-buttons-group">
+                                                <button type="button" class="btn-add-to-cart"
+                                                    onclick="addToCart({{ $product->id }})">
+                                                    Add
+                                                </button>
+                                                <button type="button" class="btn-view-details"
+                                                    onclick="showProductDetails({{ $product->id }})">
+                                                    Details
+                                                </button>
+
+                                            </div>
                                         </td>
                                     </tr>
                                 @endforeach
@@ -181,9 +199,21 @@
         </div>
     </div>
 
+    <!-- Product Information Modal -->
+    <div class="modal-bg" id="productInfoModal">
+        <div class="modal fade-in product-info-modal">
+            <div class="modal-close" onclick="closeProductInfoModal()">&times;</div>
+            <div class="modal-header" id="productInfoTitle">Product Information</div>
+            <div class="product-info-grid" id="productInfoContent">
+                <!-- Content will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
     <script>
         let cart = [];
         let searchTimeout;
+        let cachedProducts = [];
+        let isSearching = false;
 
         function saveCartToStorage() {
             try {
@@ -274,17 +304,17 @@
         function showCartRecoveryNotification(itemCount) {
             const notification = document.createElement('div');
             notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: var(--color-success);
-        color: white;
-        padding: 10px 15px;
-        border-radius: var(--border-radius);
-        z-index: 1000;
-        font-size: 14px;
-        box-shadow: var(--shadow-medium);
-    `;
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: var(--color-success);
+                color: white;
+                padding: 10px 15px;
+                border-radius: var(--border-radius);
+                z-index: 1000;
+                font-size: 14px;
+                box-shadow: var(--shadow-medium);
+            `;
             notification.textContent = `Cart recovered with ${itemCount} items`;
             document.body.appendChild(notification);
 
@@ -299,8 +329,7 @@
             document.getElementById('productSearch').addEventListener('input', function() {
                 clearTimeout(searchTimeout);
                 const searchTerm = this.value.trim();
-
-                const delay = searchTerm.length < 3 ? 100 : 200;
+                const delay = searchTerm.length < 3 ? 300 : 500;
 
                 searchTimeout = setTimeout(() => {
                     searchProducts();
@@ -311,6 +340,10 @@
                 searchProducts();
             });
 
+            document.getElementById('formFilter').addEventListener('change', function() {
+                searchProducts();
+            });
+
             window.addEventListener('beforeunload', function() {
                 if (cart.length > 0) {
                     saveCartToStorage();
@@ -318,154 +351,107 @@
             });
         });
 
-        function searchProducts() {
-            const search = document.getElementById('productSearch').value;
-            const category = document.getElementById('categoryFilter').value;
+        async function searchProducts() {
+            if (isSearching) return;
 
-            fetch('/pos/search', {
+            isSearching = true;
+            const search = document.getElementById('productSearch').value.trim();
+            const category = document.getElementById('categoryFilter').value;
+            const form = document.getElementById('formFilter').value;
+            const loadingIndicator = document.getElementById('loadingIndicator');
+
+            if (search.length > 0 || category || form) {
+                loadingIndicator.style.display = 'block';
+            }
+
+            try {
+                const response = await fetch('/pos/search', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute(
+                            'content')
                     },
                     body: JSON.stringify({
-                        search,
-                        category,
+                        search: search,
+                        category: category,
+                        form: form,
                         fuzzy: true
                     })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        const filteredProducts = search ? filterProductsFuzzy(data.products, search) : data.products;
-                        displayProducts(filteredProducts);
-                    }
-                })
-                .catch(error => {
-                    console.error('Search error:', error);
                 });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    cachedProducts = data.products;
+                    displayProducts(data.products, search);
+                } else {
+                    console.error('Search failed:', data.message);
+                    displayProducts([], search);
+                }
+            } catch (error) {
+                console.error('Search error:', error);
+                displayProducts([], search);
+            } finally {
+                loadingIndicator.style.display = 'none';
+                isSearching = false;
+            }
         }
 
-        function filterProductsFuzzy(products, searchTerm) {
-            if (!searchTerm || searchTerm.length < 2) {
-                return products;
+        function displayProducts(products, searchTerm = '') {
+            const productList = document.getElementById('productList');
+
+            if (products.length === 0) {
+                productList.innerHTML = `
+                    <div class="no-results-message">
+                        No products found matching your criteria
+                    </div>
+                `;
+                return;
             }
 
-            const normalizedSearch = searchTerm.toLowerCase().trim();
+            const tableHTML = `
+                <table class="product-table">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Price</th>
+                            <th>Stock</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${products.map(product => `
+                                        <tr data-id="${product.id}">
+                                            <td>
+                                                <div class="product-name">${highlightMatch(product.product_name, searchTerm)}</div>
+                                                <div class="product-brand">${highlightMatch(product.brand_name, searchTerm)}</div>
+                                                ${product.batches && product.batches[0] && new Date(product.batches[0].expiration_date) <= new Date(Date.now() + 30*24*60*60*1000) ?
+                                                    `<div class="product-expiry">Expires: ${new Date(product.batches[0].expiration_date).toLocaleDateString()}</div>` : ''}
+                                            </td>
+                                            <td>
+                                                <div class="product-price">₱${parseFloat(product.unit_price || 0).toFixed(2)}</div>
+                                            </td>
+                                            <td>
+                                                <div class="product-stock">${product.total_stock || 0}</div>
+                                            </td>
+                                            <td class="action-cell">
+                                                <div class="action-buttons-group">
+                                                    <button type="button" class="btn-view-details" onclick="showProductDetails(${product.id})">
+                                                        Details
+                                                    </button>
+                                                    <button type="button" class="btn-add-to-cart" onclick="addToCart(${product.id})">
+                                                        Add
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                    </tbody>
+                </table>
+            `;
 
-            return products.filter(product => {
-                const searchableText = [
-                    product.product_name || '',
-                    product.brand_name || '',
-                    product.category?.name || ''
-                ].join(' ').toLowerCase();
-
-                const words = [
-                    product.product_name || '',
-                    product.brand_name || '',
-                    product.category?.name || ''
-                ];
-
-                return (
-                    // Exact substring match (highest priority)
-                    searchableText.includes(normalizedSearch) ||
-
-                    // Partial word matching
-                    containsPartialWords(searchableText, normalizedSearch) ||
-
-                    // Character sequence matching (original order)
-                    containsCharacterSequence(searchableText, normalizedSearch) ||
-
-                    // Scrambled letters matching (any order)
-                    containsScrambledLetters(searchableText, normalizedSearch) ||
-
-                    // Word similarity matching
-                    words.some(word => calculateWordSimilarity(word, normalizedSearch) >= 0.5) ||
-
-                    // Traditional fuzzy matching
-                    (normalizedSearch.split(' ').some(word =>
-                        word.length > 2 && fuzzyMatch(searchableText, word, 0.6)
-                    ))
-                );
-            }).sort((a, b) => {
-                const aText = [a.product_name || '', a.brand_name || ''].join(' ').toLowerCase();
-                const bText = [b.product_name || '', b.brand_name || ''].join(' ').toLowerCase();
-
-                // Calculate match scores for sorting
-                const aExact = aText.includes(normalizedSearch) ? 100 : 0;
-                const bExact = bText.includes(normalizedSearch) ? 100 : 0;
-
-                const aScrambled = containsScrambledLetters(aText, normalizedSearch) ? 80 : 0;
-                const bScrambled = containsScrambledLetters(bText, normalizedSearch) ? 80 : 0;
-
-                const aWords = [a.product_name || '', a.brand_name || ''];
-                const bWords = [b.product_name || '', b.brand_name || ''];
-
-                const aSimilarity = Math.max(...aWords.map(word => calculateWordSimilarity(word,
-                    normalizedSearch))) * 60;
-                const bSimilarity = Math.max(...bWords.map(word => calculateWordSimilarity(word,
-                    normalizedSearch))) * 60;
-
-                const aScore = Math.max(aExact, aScrambled, aSimilarity);
-                const bScore = Math.max(bExact, bScrambled, bSimilarity);
-
-                if (aScore !== bScore) {
-                    return bScore - aScore; // Higher score first
-                }
-
-                // Then by product name alphabetically
-                return (a.product_name || '').localeCompare(b.product_name || '');
-            });
-        }
-
-        function containsPartialWords(text, search) {
-            const words = search.split(' ').filter(word => word.length > 1);
-            return words.every(word =>
-                text.split(' ').some(textWord =>
-                    textWord.startsWith(word) || textWord.includes(word)
-                )
-            );
-        }
-
-        function containsCharacterSequence(text, search) {
-            if (search.length < 3) return false;
-
-            let textIndex = 0;
-            let searchIndex = 0;
-            let matches = 0;
-
-            while (textIndex < text.length && searchIndex < search.length) {
-                if (text[textIndex] === search[searchIndex]) {
-                    matches++;
-                    searchIndex++;
-                }
-                textIndex++;
-            }
-
-            return matches >= Math.ceil(search.length * 0.7);
-        }
-
-        function fuzzyMatch(text, pattern, threshold = 0.7) {
-            if (pattern.length < 3) return false;
-
-            const words = text.split(' ');
-
-            return words.some(word => {
-                if (word.length < pattern.length - 2) return false;
-
-                let matches = 0;
-                let patternIndex = 0;
-
-                for (let i = 0; i < word.length && patternIndex < pattern.length; i++) {
-                    if (word[i] === pattern[patternIndex]) {
-                        matches++;
-                        patternIndex++;
-                    }
-                }
-
-                const score = matches / pattern.length;
-                return score >= threshold;
-            });
+            productList.innerHTML = tableHTML;
         }
 
         function highlightMatch(text, searchTerm) {
@@ -481,57 +467,140 @@
             return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         }
 
-        function displayProducts(products) {
-            const productList = document.getElementById('productList');
-            const searchTerm = document.getElementById('productSearch').value.toLowerCase().trim();
+        async function showProductDetails(productId) {
+            const modal = document.getElementById('productInfoModal');
+            const title = document.getElementById('productInfoTitle');
+            const content = document.getElementById('productInfoContent');
 
-            if (products.length === 0) {
-                productList.innerHTML =
-                    '<table class="product-table"><tbody><tr><td colspan="5" class="no-products-row">No products found</td></tr></tbody></table>';
-                return;
+            title.textContent = 'Product Information';
+            content.innerHTML =
+                '<div style="text-align: center; padding: 40px; color: #64748b;">Loading product details...</div>';
+            modal.style.display = 'flex';
+
+            try {
+                const response = await fetch(`/pos/product/${productId}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    const product = data.product;
+                    title.textContent = `${product.product_name} - Product Information`;
+
+                    content.innerHTML = `
+                <div class="info-section">
+                    <h3>Basic Information</h3>
+                    <div class="info-item">
+                        <span class="info-label">Product Code</span>
+                        <span class="info-value">${product.product_code || '-'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Product Name</span>
+                        <span class="info-value">${product.product_name || '-'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Generic Name</span>
+                        <span class="info-value">${product.generic_name || '-'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Brand Name</span>
+                        <span class="info-value">${product.brand_name || '-'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Manufacturer</span>
+                        <span class="info-value">${product.manufacturer || '-'}</span>
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <h3>Classification</h3>
+                    <div class="info-item">
+                        <span class="info-label">Product Type</span>
+                        <span class="info-value">${product.product_type || '-'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Category</span>
+                        <span class="info-value">${product.category ? product.category.name : '-'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Classification</span>
+                        <span class="info-value">${product.classification || '-'}</span>
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <h3>Dosage & Form</h3>
+                    <div class="info-item">
+                        <span class="info-label">Form Type</span>
+                        <span class="info-value">${product.form_type || '-'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Dosage Strength</span>
+                        <span class="info-value">${product.dosage_strength || '-'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Dosage Unit</span>
+                        <span class="info-value">${product.dosage_unit || '-'}</span>
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <h3>Pricing & Stock</h3>
+                    <div class="info-item">
+                        <span class="info-label">Unit Price</span>
+                        <span class="info-value">₱${parseFloat(product.unit_price || 0).toFixed(2)}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Total Stock</span>
+                        <span class="info-value">${product.total_stock || 0} units</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Reorder Level</span>
+                        <span class="info-value">${product.reorder_level ? product.reorder_level + ' units' : '-'}</span>
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <h3>Storage & Supply</h3>
+                    <div class="info-item">
+                        <span class="info-label">Storage Requirements</span>
+                        <span class="info-value">${product.storage_requirements || '-'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Supplier</span>
+                        <span class="info-value">${product.supplier ? product.supplier.name : '-'}</span>
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <h3>System Information</h3>
+                    <div class="info-item">
+                        <span class="info-label">Created</span>
+                        <span class="info-value">${formatDate(product.created_at)}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Last Updated</span>
+                        <span class="info-value">${formatDate(product.updated_at)}</span>
+                    </div>
+                </div>
+            `;
+                } else {
+                    content.innerHTML =
+                        '<div style="text-align: center; padding: 40px; color: #ef4444;">Failed to load product details.</div>';
+                }
+            } catch (error) {
+                console.error('Error fetching product details:', error);
+                content.innerHTML =
+                    '<div style="text-align: center; padding: 40px; color: #ef4444;">Error loading product details.</div>';
             }
+        }
 
-            const tableHTML = `
-        <table class="product-table">
-            <thead>
-                <tr>
-                    <th>Product</th>
-                    <th>Category</th>
-                    <th>Price</th>
-                    <th>Stock</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${products.map(product => `
-                                    <tr data-id="${product.id}">
-                                        <td>
-                                            <div class="product-name">${highlightMatch(product.product_name, searchTerm)}</div>
-                                            <div class="product-brand">${highlightMatch(product.brand_name, searchTerm)}</div>
-                                            ${product.batches && product.batches[0] && new Date(product.batches[0].expiration_date) <= new Date(Date.now() + 30*24*60*60*1000) ?
-                                                `<div class="product-expiry">Expires: ${new Date(product.batches[0].expiration_date).toLocaleDateString()}</div>` : ''}
-                                        </td>
-                                        <td>
-                                            <div class="product-category">${highlightMatch(product.category ? product.category.name : 'Uncategorized', searchTerm)}</div>
-                                        </td>
-                                        <td>
-                                            <div class="product-price">₱${parseFloat(product.unit_price || 0).toFixed(2)}</div>
-                                        </td>
-                                        <td>
-                                            <div class="product-stock">${product.total_stock || 0}</div>
-                                        </td>
-                                        <td class="action-cell">
-                                            <button type="button" class="btn-add-to-cart" onclick="addToCart(${product.id})">
-                                                Add to Cart
-                                            </button>
-                                        </td>
-                                    </tr>
-                                `).join('')}
-            </tbody>
-        </table>
-    `;
+        function closeProductInfoModal() {
+            document.getElementById('productInfoModal').style.display = 'none';
+        }
 
-            productList.innerHTML = tableHTML;
+        function formatDate(dateString) {
+            if (!dateString) return '-';
+            const date = new Date(dateString);
+            return date.toLocaleString();
         }
 
         function addToCart(productId) {
@@ -610,22 +679,22 @@
             }
 
             cartItemsContainer.innerHTML = cart.map(item => `
-        <div class="cart-item">
-            <div class="item-info">
-                <h5>${item.name}</h5>
-                <p class="brand">${item.brand}</p>
-                <p class="price">₱${item.price.toFixed(2)} each</p>
-            </div>
-            <div class="item-controls">
-                <button class="btn-quantity" onclick="updateQuantity(${item.id}, ${item.quantity - 1})">-</button>
-                <input type="number" value="${item.quantity}" min="1" max="${item.maxStock}"
-                       data-id="${item.id}" onchange="updateQuantity(${item.id}, parseInt(this.value))">
-                <button class="btn-quantity" onclick="updateQuantity(${item.id}, ${item.quantity + 1})">+</button>
-                <button class="btn-remove" onclick="removeFromCart(${item.id})">✕</button>
-            </div>
-            <div class="item-total">₱${(item.price * item.quantity).toFixed(2)}</div>
-        </div>
-    `).join('');
+                <div class="cart-item">
+                    <div class="item-info">
+                        <h5>${item.name}</h5>
+                        <p class="brand">${item.brand}</p>
+                        <p class="price">₱${item.price.toFixed(2)} each</p>
+                    </div>
+                    <div class="item-controls">
+                        <button class="btn-quantity" onclick="updateQuantity(${item.id}, ${item.quantity - 1})">-</button>
+                        <input type="number" value="${item.quantity}" min="1" max="${item.maxStock}"
+                               data-id="${item.id}" onchange="updateQuantity(${item.id}, parseInt(this.value))">
+                        <button class="btn-quantity" onclick="updateQuantity(${item.id}, ${item.quantity + 1})">+</button>
+                        <button class="btn-remove" onclick="removeFromCart(${item.id})">✕</button>
+                    </div>
+                    <div class="item-total">₱${(item.price * item.quantity).toFixed(2)}</div>
+                </div>
+            `).join('');
             cartSummary.style.display = 'block';
             paymentSection.style.display = 'block';
 
@@ -746,76 +815,76 @@
             const receiptContent = document.getElementById('receiptContent');
 
             receiptContent.innerHTML = `
-        <div class="receipt">
-            <div class="receipt-business-info">
-                <h3>MJ's Pharmacy</h3>
-                <p>Your Trusted Healthcare Partner</p>
-            </div>
+                <div class="receipt">
+                    <div class="receipt-business-info">
+                        <h3>MJ's Pharmacy</h3>
+                        <p>Your Trusted Healthcare Partner</p>
+                    </div>
 
-            <div class="receipt-transaction-info">
-                <p><strong>Transaction ID:</strong> ${transaction.transaction_id}</p>
-                <p><strong>Date:</strong> ${new Date().toLocaleString()}</p>
-                ${transaction.customer_name ? `<p><strong>Customer:</strong> ${transaction.customer_name}</p>` : ''}
-                <p><strong>Payment:</strong> ${transaction.payment_method.toUpperCase()}</p>
-            </div>
+                    <div class="receipt-transaction-info">
+                        <p><strong>Transaction ID:</strong> ${transaction.transaction_id}</p>
+                        <p><strong>Date:</strong> ${new Date().toLocaleString()}</p>
+                        ${transaction.customer_name ? `<p><strong>Customer:</strong> ${transaction.customer_name}</p>` : ''}
+                        <p><strong>Payment:</strong> ${transaction.payment_method.toUpperCase()}</p>
+                    </div>
 
-            <div class="receipt-items">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Item</th>
-                            <th>Qty</th>
-                            <th>Price</th>
-                            <th>Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${transaction.items.map(item => `
-                                            <tr>
-                                                <td>
-                                                    <div class="item-name">${item.product_name}</div>
-                                                    <div class="item-brand">${item.brand_name}</div>
-                                                </td>
-                                                <td>${item.quantity}</td>
-                                                <td>₱${parseFloat(item.unit_price).toFixed(2)}</td>
-                                                <td>₱${parseFloat(item.total_price).toFixed(2)}</td>
-                                            </tr>
-                                        `).join('')}
-                    </tbody>
-                </table>
-            </div>
+                    <div class="receipt-items">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Qty</th>
+                                    <th>Price</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${transaction.items.map(item => `
+                                                <tr>
+                                                    <td>
+                                                        <div class="item-name">${item.product_name}</div>
+                                                        <div class="item-brand">${item.brand_name}</div>
+                                                    </td>
+                                                    <td>${item.quantity}</td>
+                                                    <td>₱${parseFloat(item.unit_price).toFixed(2)}</td>
+                                                    <td>₱${parseFloat(item.total_price).toFixed(2)}</td>
+                                                </tr>
+                                            `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
 
-            <div class="receipt-summary">
-                <div class="summary-line">
-                    <span>Subtotal:</span>
-                    <span>₱${parseFloat(transaction.subtotal).toFixed(2)}</span>
-                </div>
-                ${parseFloat(transaction.discount_amount) > 0 ? `
-                                    <div class="summary-line">
-                                        <span>Discount:</span>
-                                        <span>-₱${parseFloat(transaction.discount_amount).toFixed(2)}</span>
-                                    </div>
-                                ` : ''}
-                <div class="summary-line total-line">
-                    <span><strong>Total:</strong></span>
-                    <span><strong>₱${parseFloat(transaction.total_amount).toFixed(2)}</strong></span>
-                </div>
-                <div class="summary-line">
-                    <span>Amount Paid:</span>
-                    <span>₱${parseFloat(transaction.amount_paid).toFixed(2)}</span>
-                </div>
-                <div class="summary-line">
-                    <span>Change:</span>
-                    <span>₱${parseFloat(transaction.change_amount).toFixed(2)}</span>
-                </div>
-            </div>
+                    <div class="receipt-summary">
+                        <div class="summary-line">
+                            <span>Subtotal:</span>
+                            <span>₱${parseFloat(transaction.subtotal).toFixed(2)}</span>
+                        </div>
+                        ${parseFloat(transaction.discount_amount) > 0 ? `
+                                        <div class="summary-line">
+                                            <span>Discount:</span>
+                                            <span>-₱${parseFloat(transaction.discount_amount).toFixed(2)}</span>
+                                        </div>
+                                    ` : ''}
+                        <div class="summary-line total-line">
+                            <span><strong>Total:</strong></span>
+                            <span><strong>₱${parseFloat(transaction.total_amount).toFixed(2)}</strong></span>
+                        </div>
+                        <div class="summary-line">
+                            <span>Amount Paid:</span>
+                            <span>₱${parseFloat(transaction.amount_paid).toFixed(2)}</span>
+                        </div>
+                        <div class="summary-line">
+                            <span>Change:</span>
+                            <span>₱${parseFloat(transaction.change_amount).toFixed(2)}</span>
+                        </div>
+                    </div>
 
-            <div class="receipt-footer">
-                <p>Thank you for choosing MJ's Pharmacy!</p>
-                <p>Please keep this receipt for your records</p>
-            </div>
-        </div>
-    `;
+                    <div class="receipt-footer">
+                        <p>Thank you for choosing MJ's Pharmacy!</p>
+                        <p>Please keep this receipt for your records</p>
+                    </div>
+                </div>
+            `;
 
             document.getElementById('receiptModal').classList.add('active');
         }
@@ -829,28 +898,28 @@
             const printWindow = window.open('', '_blank');
 
             printWindow.document.write(`
-        <html>
-        <head>
-            <title>Receipt - MJ's Pharmacy</title>
-            <style>
-                body { font-family: Arial, sans-serif; max-width: 300px; margin: 0 auto;}
-                .receipt { padding: 20px; }
-                .receipt-business-info { text-align: center; margin-bottom: 20px; }
-                .receipt-business-info h3 { margin: 0; font-size: 18px; }
-                .receipt-transaction-info p { margin: 5px 0; font-size: 12px; }
-                .receipt-items table { width: 100%; border-collapse: collapse; font-size: 12px; }
-                .receipt-items th, .receipt-items td { padding: 5px; border-bottom: 1px solid #ddd; }
-                .receipt-items th { text-align: left; background: #f5f5f5; }
-                .item-brand { font-size: 10px; color: #666; }
-                .receipt-summary { margin-top: 15px; font-size: 12px; }
-                .summary-line { display: flex; justify-content: space-between; margin: 3px 0; }
-                .total-line { border-top: 2px solid #000; padding-top: 5px; font-weight: bold; }
-                .receipt-footer { text-align: center; margin-top: 20px; font-size: 10px; }
-            </style>
-        </head>
-        <body>${receiptContent}</body>
-        </html>
-    `);
+                <html>
+                <head>
+                    <title>Receipt - MJ's Pharmacy</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; max-width: 300px; margin: 0 auto;}
+                        .receipt { padding: 20px; }
+                        .receipt-business-info { text-align: center; margin-bottom: 20px; }
+                        .receipt-business-info h3 { margin: 0; font-size: 18px; }
+                        .receipt-transaction-info p { margin: 5px 0; font-size: 12px; }
+                        .receipt-items table { width: 100%; border-collapse: collapse; font-size: 12px; }
+                        .receipt-items th, .receipt-items td { padding: 5px; border-bottom: 1px solid #ddd; }
+                        .receipt-items th { text-align: left; background: #f5f5f5; }
+                        .item-brand { font-size: 10px; color: #666; }
+                        .receipt-summary { margin-top: 15px; font-size: 12px; }
+                        .summary-line { display: flex; justify-content: space-between; margin: 3px 0; }
+                        .total-line { border-top: 2px solid #000; padding-top: 5px; font-weight: bold; }
+                        .receipt-footer { text-align: center; margin-top: 20px; font-size: 10px; }
+                    </style>
+                </head>
+                <body>${receiptContent}</body>
+                </html>
+            `);
 
             printWindow.document.close();
             printWindow.print();

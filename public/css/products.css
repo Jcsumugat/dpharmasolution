@@ -867,36 +867,3 @@ button:focus-visible,
     text-align: right;
     word-break: break-word;
 }
-
-/* Responsive adjustments for product info modal */
-@media (max-width: 768px) {
-    .product-info-modal {
-        max-width: 95%;
-        margin: 10px;
-    }
-
-    .product-info-grid {
-        grid-template-columns: 1fr;
-        gap: 15px;
-        padding: 0 15px 15px 15px;
-    }
-
-    .info-section {
-        padding: 15px;
-    }
-
-    .info-item {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 4px;
-    }
-
-    .info-label {
-        min-width: auto;
-    }
-
-    .info-value {
-        text-align: left;
-        font-weight: 400;
-    }
-}

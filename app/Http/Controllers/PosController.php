@@ -48,47 +48,53 @@ class PosController extends Controller
         return view('pos.pos', compact('products', 'categories', 'search', 'category'));
     }
 
-    public function searchProducts(Request $request)
-    {
-        $search = $request->get('search');
-        $category = $request->get('category');
+   public function searchProducts(Request $request)
+{
+    $search = $request->input('search');
+    $category = $request->input('category');
+    $form = $request->input('form');
 
-        $products = Product::whereHas('batches', function ($query) {
-            $query->where('quantity_remaining', '>', 0)
-                ->where('expiration_date', '>', now());
-        })
-            ->with(['batches' => function ($query) {
-                $query->where('quantity_remaining', '>', 0)
-                    ->where('expiration_date', '>', now())
-                    ->orderBy('expiration_date', 'asc');
-            }])
-            ->when($search, function ($query, $search) {
-                return $query->where(function ($q) use ($search) {
-                    $q->where('product_name', 'LIKE', "%{$search}%")
-                        ->orWhere('brand_name', 'LIKE', "%{$search}%");
-                });
-            })
-            ->when($category, function ($query, $category) {
-                return $query->whereHas('category', function ($q) use ($category) {
-                    $q->where('name', $category);
-                });
-            })
-            ->orderBy('product_name')
-            ->limit(20)
-            ->get();
+    $query = Product::query();
 
-        // Add calculated fields for frontend
-        $products = $products->map(function ($product) {
-            $product->total_stock = $product->batches->sum('quantity_remaining');
-            $product->unit_price = $product->batches->first()->sale_price ?? 0;
-            return $product;
+    if ($search) {
+        $query->where(function ($q) use ($search) {
+            $q->where('product_name', 'LIKE', "%{$search}%")
+                ->orWhere('brand_name', 'LIKE', "%{$search}%")
+                ->orWhere('generic_name', 'LIKE', "%{$search}%");
         });
-
-        return response()->json([
-            'success' => true,
-            'products' => $products
-        ]);
     }
+
+    if ($category) {
+        $query->whereHas('category', function ($q) use ($category) {
+            $q->where('name', $category);
+        });
+    }
+
+    if ($form) {
+        $query->where('form_type', 'LIKE', "%{$form}%");
+    }
+
+    $products = $query->with(['category', 'batches'])->get();
+
+    // Transform the data to match frontend expectations
+    $transformedProducts = $products->map(function ($product) {
+        return [
+            'id' => $product->id,
+            'product_name' => $product->product_name,
+            'brand_name' => $product->brand_name,
+            'generic_name' => $product->generic_name,
+            'unit_price' => $product->batches->first()->sale_price ?? 0, // Get price from first batch
+            'total_stock' => $product->stock_quantity ?? 0,
+            'batches' => $product->batches,
+            'category' => $product->category,
+        ];
+    });
+
+    return response()->json([
+        'success' => true,
+        'products' => $transformedProducts
+    ]);
+}
 
     public function getProduct($id)
     {
