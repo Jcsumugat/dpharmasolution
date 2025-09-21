@@ -12,6 +12,7 @@
 <body>
     @include('admin.admin-header')
 
+
     @if ($errors->any())
         <div style="color: red;">
             <ul>

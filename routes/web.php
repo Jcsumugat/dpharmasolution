@@ -153,9 +153,6 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/debug/prescription/{id}', [AdminOrderController::class, 'debugPrescription']);
     Route::get('/admin/sales', [AdminOrderController::class, 'sales'])->name('sales.index');
     Route::get('/admin/sales/{id}/details', [AdminOrderController::class, 'getSaleDetails']);
-    Route::get('/admin/orders/{prescription}/messages', [AdminOrderController::class, 'getMessages'])->name('admin.prescription.messages');
-    Route::post('/admin/orders/{prescription}/messages', [AdminOrderController::class, 'sendMessage'])->name('admin.prescription.send-message');
-    Route::post('/admin/orders/{prescription}/messages/mark-read', [AdminOrderController::class, 'markMessagesRead'])->name('admin.prescription.mark-read');
     Route::get('/admin/products', [AdminOrderController::class, 'getProducts'])->name('admin.products.index');
 });
 
@@ -207,6 +204,7 @@ Route::middleware('auth:customer')->group(function () {
     Route::get('/upload-prescription', [ClientUpload::class, 'showUploadForm'])->name('prescription.upload.form');
     Route::post('/upload-prescription', [ClientUpload::class, 'handleUpload'])->name('prescription.upload');
     Route::get('/preorder/status/{token}', [ClientUpload::class, 'viewStatus']);
+    Route::get('/prescription/document/{id}', [ClientUpload::class, 'viewDocument'])->name('prescription.document');
     Route::get('/preorder/validate/{token}', [ClientUpload::class, 'validatePreorder'])->name('preorder.validate');
     Route::get('/prescription/qr/{id}', [ClientUpload::class, 'showQrCode'])->name('prescription.qr');
     Route::get('/my-orders/{prescription}/messages', [ClientUpload::class, 'getCustomerMessages'])->name('customer.prescription.messages');

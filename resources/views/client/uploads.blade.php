@@ -6,6 +6,355 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Order | MJ's Pharmacy</title>
     <link rel="stylesheet" href="{{ asset('css/customer/uploads.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* Order History Table Styles */
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .history-table th,
+        .history-table td {
+            padding: 16px;
+            text-align: center;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .history-table th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: #475569;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .history-table tr:hover {
+            background: #f8fafc;
+        }
+
+        .history-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .order-id-cell {
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .order-type-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .order-type-badge.prescription {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .order-type-badge.online_order {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .status-badge.completed {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status-badge.cancelled {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .status-badge.pending {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        .action-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .action-btn:hover {
+            background: #5a67d8;
+            transform: translateY(-1px);
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            width: 95% !important;
+            max-width: 800px !important;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            animation: slideIn 0.3s ease;
+        }
+
+        .modal-header {
+            padding: 24px 24px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #e2e8f0;
+            margin-bottom: 24px;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #64748b;
+            padding: 8px;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .modal-close:hover {
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+
+        .modal-body {
+            padding: 0 24px 24px;
+        }
+
+        .detail-section {
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .detail-row {
+            display: flex;
+            margin-bottom: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: #64748b;
+            width: 140px;
+            flex-shrink: 0;
+        }
+
+        .detail-value {
+            color: #1e293b;
+            flex: 1;
+        }
+
+        .admin-message-section {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            border: 1px solid #ffc258;
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .admin-message-text {
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #ffd059;
+            font-style: italic;
+        }
+
+        .file-info {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .file-icon {
+            font-size: 2rem;
+            color: #667eea;
+        }
+
+        .security-badge {
+            background: #dcfce7;
+            color: #166534;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            padding-top: 16px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #475569;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            background: #e2e8f0;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary:hover {
+            background: #5a67d8;
+        }
+
+        /* Responsive table */
+        @media (max-width: 768px) {
+            .history-table {
+                font-size: 0.875rem;
+            }
+
+            .history-table th,
+            .history-table td {
+                padding: 12px 8px;
+            }
+
+            .order-type-badge,
+            .status-badge {
+                font-size: 0.625rem;
+                padding: 3px 8px;
+            }
+
+            .action-btn {
+                padding: 6px 12px;
+                font-size: 0.75rem;
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* Hide table when no results */
+        .table-container.hidden {
+            display: none;
+        }
+    </style>
 </head>
 
 <body>
@@ -15,130 +364,371 @@
     <div class="main-container">
 
         <div class="panel">
-            <h2>Upload Your Document</h2>
+            <h2><i class="fas fa-upload"></i> Upload Your Document</h2>
 
             @php $prescriptions = $prescriptions ?? collect(); @endphp
 
-            @if(session('success'))
-            <div class="alert-success">{{ session('success') }}</div>
-            <div class="success-message">
-                <p><strong>Scan this QR code at the pharmacy:</strong></p>
-                @if(session('qr_image'))
-                <img src="{{ session('qr_image') }}" alt="QR Code for pre-order" style="max-width: 250px;">
-                @endif
-                <p><strong>Your order link:</strong></p>
-                <p><a href="{{ session('qr_link') }}" target="_blank">{{ session('qr_link') }}</a></p>
-            </div>
+            @if (session('success'))
+                <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        showTemporarySuccess({
+                            message: `{{ session('success') }}`,
+                            qrImage: `{{ session('qr_image') }}`,
+                            qrLink: `{{ session('qr_link') }}`
+                        });
+                    });
+                </script>
             @endif
 
             @if ($errors->any())
-            <div class="error-list">
-                <ul>
-                    @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
+                <div class="error-list">
+                    <ul>
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
             @endif
 
-            <form action="{{ route('prescription.upload') }}" method="POST" enctype="multipart/form-data" class="upload-form">
+            <form action="{{ route('prescription.upload') }}" method="POST" enctype="multipart/form-data"
+                class="upload-form">
                 @csrf
 
                 <div class="form-section">
                     <div class="section-title">Order Type</div>
                     <div class="order-type-selector">
                         <label class="order-type-option" for="prescription">
-                            <input type="radio" id="prescription" name="order_type" value="prescription" {{ old('order_type', 'prescription') === 'prescription' ? 'checked' : '' }}>
+                            <input type="radio" id="prescription" name="order_type" value="prescription"
+                                {{ old('order_type', 'prescription') === 'prescription' ? 'checked' : '' }}>
+                            <div class="order-type-icon"></div>
                             <div class="order-type-title">Prescription Upload</div>
-                            <div class="order-type-description">Upload a doctor's prescription for validation and processing</div>
+                            <div class="order-type-description">Upload a doctor's prescription for validation and
+                                processing</div>
                         </label>
 
                         <label class="order-type-option" for="online_order">
-                            <input type="radio" id="online_order" name="order_type" value="online_order" {{ old('order_type') === 'online_order' ? 'checked' : '' }}>
-                            <div class="order-type-title">Non Prescription Upload</div>
-                            <div class="order-type-description">Upload a list of medicines you want to order directly</div>
+                            <input type="radio" id="online_order" name="order_type" value="online_order"
+                                {{ old('order_type') === 'online_order' ? 'checked' : '' }}>
+                            <div class="order-type-icon"></div>
+                            <div class="order-type-title">Medicine List</div>
+                            <div class="order-type-description">Upload a list of medicines you want to order directly
+                            </div>
                         </label>
                     </div>
                 </div>
 
                 <div class="form-section">
-                    <div class="section-title">Order Details</div>
+                    <div class="section-title"> Order Details</div>
                     <div class="form-group">
                         <label for="mobile_number">Mobile Number</label>
-                        <input type="text" id="mobile_number" name="mobile_number" required placeholder="e.g. 09123456789" value="{{ old('mobile_number') }}" />
+                        <input type="text" id="mobile_number" name="mobile_number" required
+                            placeholder="e.g. 09123456789" value="{{ old('mobile_number') }}" />
                     </div>
 
                     <div class="form-group">
-                        <label for="notes">Notes (Optional)</label>
+                        <label for="notes"> Notes (Optional)</label>
                         <textarea id="notes" name="notes" rows="3" placeholder="Any additional information...">{{ old('notes') }}</textarea>
                     </div>
 
                     <div class="form-group">
-                        <label for="prescription_file" id="file-label">Upload Document (JPG, PNG, PDF)</label>
+                        <label for="prescription_file" id="file-label"><i class="fas fa-file-upload"></i> Upload
+                            Document (JPG, PNG, PDF)</label>
                         <div class="file-input-wrapper">
-                            <input type="file" id="prescription_file" name="prescription_file" accept=".jpg,.jpeg,.png,.pdf" required />
+                            <input type="file" id="prescription_file" name="prescription_file"
+                                accept=".jpg,.jpeg,.png,.pdf" required />
                         </div>
                         <small id="file-security-note" style="color: #666; margin-top: 4px; display: block;">
-                            Your document will be securely encrypted and can only be viewed by authorized pharmacy staff.
+                            <i class="fas fa-shield-alt"></i> Your document will be securely encrypted and can only be
+                            viewed by authorized pharmacy staff.
                         </small>
                         <div class="file-info-dynamic" id="file-info"></div>
                     </div>
                 </div>
 
-                <button type="submit" class="btn-submit">Submit Order</button>
+                <button type="submit" class="btn-submit">
+                    <i class="fas fa-paper-plane"></i> Submit Order
+                </button>
             </form>
         </div>
 
         <div class="panel">
-            <h3>Your Order History</h3>
-
-            <div id="preorder-history">
-                @forelse ($prescriptions as $prescription)
-                <div class="history-card">
-                    <div class="history-info">
-                        <strong>Order ID:</strong> {{ $prescription->order->order_id ?? 'N/A' }}
-                        <span class="order-type-badge {{ $prescription->order_type ?? 'prescription' }}">
-                            {{ $prescription->order_type === 'online_order' ? 'Medicine List' : 'Prescription' }}
-                        </span><br>
-                        <strong>Status:</strong>
-                        <span class="status-badge {{ strtolower($prescription->status ?? 'pending') }}">
-                            {{ ucfirst($prescription->status ?? 'Pending') }}
-                        </span><br>
-                        <strong>Uploaded:</strong> {{ $prescription->created_at->format('M d, Y h:i A') }}<br>
-                        <strong>Notes:</strong> {{ $prescription->notes ?? '—' }}<br>
-
-                        @if($prescription->is_encrypted && $prescription->original_filename)
-                        <div class="encrypted-file-info">
-                            <strong>Your Document:</strong> {{ $prescription->original_filename }}
-                            <span class="security-badge">ENCRYPTED</span>
-                            @if($prescription->file_size)
-                            <div class="file-size">Size: {{ number_format($prescription->file_size / 1024, 1) }} KB</div>
-                            @endif
-                            <div style="font-size: 0.8em; color: #666; margin-top: 4px;">
-                                File securely encrypted. Only pharmacy staff can view this document.
-                            </div>
-                        </div>
-                        @elseif($prescription->file_path)
-                        <strong>Your Document:</strong>
-                        <a href="{{ asset('storage/' . $prescription->file_path) }}" target="_blank">View Document</a><br>
-                        @endif
-
-                        @if ($prescription->qr_code_path)
-                        <strong>QR Code:</strong>
-                        <a href="{{ route('prescription.qr', $prescription->id) }}" target="_blank">View QR Code</a><br>
-                        @endif
-
+            <div class="history-header">
+                <h3><i class="fas fa-history"></i> Your Order History</h3>
+                <div class="order-stats">
+                    <div class="stat-item">
+                        <span class="stat-number">{{ $prescriptions->count() }}</span>
+                        <span class="stat-label">Total Orders</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">{{ $prescriptions->where('status', 'completed')->count() }}</span>
+                        <span class="stat-label">Completed</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">{{ $prescriptions->where('status', 'cancelled')->count() }}</span>
+                        <span class="stat-label">Cancelled</span>
                     </div>
                 </div>
-                @empty
-                <p class="no-history">No orders uploaded yet.</p>
-                @endforelse
             </div>
+
+            <div class="filters-section">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label for="status-filter"><i class="fas fa-filter"></i> Filter by Status:</label>
+                        <select id="status-filter" class="filter-select">
+                            <option value="all">All Status</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="type-filter"><i class="fas fa-tags"></i> Filter by Type:</label>
+                        <select id="type-filter" class="filter-select">
+                            <option value="all">All Types</option>
+                            <option value="prescription">Prescription</option>
+                            <option value="online_order">Medicine List</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="date-filter"><i class="fas fa-calendar"></i> Date Range:</label>
+                        <select id="date-filter" class="filter-select">
+                            <option value="all">All Time</option>
+                            <option value="today">Today</option>
+                            <option value="week">This Week</option>
+                            <option value="month">This Month</option>
+                            <option value="3months">Last 3 Months</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="search-row">
+                    <div class="search-group">
+                        <i class="fas fa-search search-icon"></i>
+                        <input type="text" id="order-search" class="search-input"
+                            placeholder="Search by Order ID or notes...">
+                    </div>
+                    <button class="clear-filters-btn" id="clear-filters">
+                        <i class="fas fa-times"></i> Clear Filters
+                    </button>
+                </div>
+            </div>
+
+            <div class="table-container" id="table-container">
+                @if ($prescriptions->count() > 0)
+                    <table class="history-table" id="history-table">
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Date</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($prescriptions as $prescription)
+                                <tr class="history-row"
+                                    data-status="{{ strtolower($prescription->status ?? 'completed') }}"
+                                    data-type="{{ $prescription->order_type ?? 'prescription' }}"
+                                    data-date="{{ $prescription->created_at->format('Y-m-d') }}"
+                                    data-search="{{ strtolower(($prescription->order->order_id ?? 'N/A') . ' ' . ($prescription->notes ?? '')) }}">
+                                    <td class="order-id-cell">{{ $prescription->order->order_id ?? 'N/A' }}</td>
+                                    <td>{{ $prescription->created_at->format('M d, Y') }}</td>
+                                    <td>
+                                        <button class="action-btn"
+                                            onclick="viewOrderDetails('{{ $prescription->id }}')">
+                                            <i class="fas fa-eye"></i> View Details
+                                        </button>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                @endif
+            </div>
+
+            <div id="no-results" class="no-history" style="display: none;">
+                <div class="no-history-icon"><i class="fas fa-search"></i></div>
+                <h4>No orders match your filters</h4>
+                <p>Try adjusting your search criteria or clear all filters to see all orders.</p>
+            </div>
+
+            @if ($prescriptions->count() === 0)
+                <div class="no-history">
+                    <div class="no-history-icon"><i class="fas fa-clipboard-list"></i></div>
+                    <h4>No orders found</h4>
+                    <p>You haven't uploaded any orders yet. Upload your first prescription or medicine list above!</p>
+                </div>
+            @endif
         </div>
 
     </div>
 
+    <!-- Order Details Modal -->
+    <div id="orderModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">
+                    Order Details
+                </h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-body-content">
+                <!-- Content will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
     <script>
+        // Store prescription data for modal display
+        const prescriptionsData = {
+            @foreach ($prescriptions as $prescription)
+                '{{ $prescription->id }}': {
+                    id: '{{ $prescription->id }}',
+                    orderId: '{{ $prescription->order->order_id ?? 'N/A' }}',
+                    orderType: '{{ $prescription->order_type ?? 'prescription' }}',
+                    status: '{{ $prescription->status ?? 'completed' }}',
+                    createdAt: '{{ $prescription->created_at->format('M d, Y') }}',
+                    createdAtTime: '{{ $prescription->created_at->format('h:i A') }}',
+                    timeAgo: '{{ $prescription->created_at->diffForHumans() }}',
+                    notes: {!! json_encode($prescription->notes ?? '') !!},
+                    adminMessage: {!! json_encode($prescription->admin_message ?? '') !!},
+                    originalFilename: {!! json_encode($prescription->original_filename ?? '') !!},
+                    fileSize: '{{ $prescription->file_size ? number_format($prescription->file_size / 1024, 1) . ' KB' : '' }}',
+                    isEncrypted: {{ $prescription->is_encrypted ? 'true' : 'false' }},
+                    hasFile: {{ $prescription->file_path || ($prescription->is_encrypted && $prescription->original_filename) ? 'true' : 'false' }},
+                    hasQrCode: {{ $prescription->qr_code_path ? 'true' : 'false' }}
+                },
+            @endforeach
+        };
+
+        // View order details in modal
+        function viewOrderDetails(prescriptionId) {
+            const data = prescriptionsData[prescriptionId];
+            if (!data) return;
+
+            const orderTypeLabel = data.orderType === 'online_order' ? 'Medicine List' : 'Prescription';
+            const orderTypeIcon = data.orderType === 'online_order' ? 'fas fa-list' : 'fas fa-prescription-bottle-alt';
+            const statusIcon = data.status === 'completed' ? 'fas fa-check-circle' :
+                data.status === 'cancelled' ? 'fas fa-times-circle' : 'fas fa-clock';
+
+            let modalContent = `
+                <div class="detail-section">
+                    <h4 class="section-title"><i class="fas fa-info-circle"></i> Order Information</h4>
+                    <div class="detail-row">
+                        <div class="detail-label">Order ID:</div>
+                        <div class="detail-value"><strong>${data.orderId}</strong></div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Order Type:</div>
+                        <div class="detail-value">
+                            <span class="order-type-badge ${data.orderType}">
+                                <i class="${orderTypeIcon}"></i> ${orderTypeLabel}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Status:</div>
+                        <div class="detail-value">
+                            <span class="status-badge ${data.status}">
+                                <i class="${statusIcon}"></i> ${data.status.charAt(0).toUpperCase() + data.status.slice(1)}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Date Uploaded:</div>
+                        <div class="detail-value">${data.createdAt} at ${data.createdAtTime}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Time Ago:</div>
+                        <div class="detail-value">${data.timeAgo}</div>
+                    </div>
+                </div>
+            `;
+
+            if (data.notes) {
+                modalContent += `
+                    <div class="detail-section">
+                        <h4 class="section-title"><i class="fas fa-sticky-note"></i> Notes</h4>
+                        <div class="detail-row">
+                            <div class="detail-value" style="width: 100%;">${data.notes}</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (data.adminMessage) {
+                modalContent += `
+                    <div class="detail-section">
+                        <div class="admin-message-section">
+                            <h4 class="section-title" style="margin-bottom: 12px;">
+                                <i class="fas fa-comment-medical" style="color: #f59e0b;"></i> Pharmacy Message
+                            </h4>
+                            <div class="admin-message-text">${data.adminMessage}</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (data.hasFile) {
+                modalContent += `
+                    <div class="detail-section">
+                        <h4 class="section-title"><i class="fas fa-file"></i> Document</h4>
+                        <div class="file-info">
+                            <div class="file-icon">
+                                <i class="fas fa-file-alt"></i>
+                            </div>
+                            <div>
+                                <div><strong>${data.originalFilename || 'Document uploaded'}</strong></div>
+                                ${data.fileSize ? `<div style="color: #64748b; font-size: 0.875rem;">Size: ${data.fileSize}</div>` : ''}
+                                ${data.isEncrypted ? '<div class="security-badge"><i class="fas fa-shield-alt"></i> Encrypted</div>' : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Add action buttons
+            let actionButtons = '';
+            if (data.hasFile) {
+                actionButtons += `<button class="btn-primary" onclick="viewDocument('${data.id}')">
+                    <i class="fas fa-eye"></i> View Document
+                </button>`;
+            }
+            if (data.hasQrCode) {
+                actionButtons += `<button class="btn-primary" onclick="viewQR('${data.id}')">
+                    <i class="fas fa-qrcode"></i> View QR Code
+                </button>`;
+            }
+
+            if (actionButtons) {
+                modalContent += `
+                    <div class="modal-actions">
+                        <button class="btn-secondary" onclick="closeModal()">Close</button>
+                        ${actionButtons}
+                    </div>
+                `;
+            } else {
+                modalContent += `
+                    <div class="modal-actions">
+                        <button class="btn-secondary" onclick="closeModal()">Close</button>
+                    </div>
+                `;
+            }
+
+            document.getElementById('modal-body-content').innerHTML = modalContent;
+            document.getElementById('orderModal').classList.add('show');
+        }
+
+        // Close modal
+        function closeModal() {
+            document.getElementById('orderModal').classList.remove('show');
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('orderModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+
         // Update UI based on selected order type
         function updateOrderTypeUI() {
             const prescriptionRadio = document.getElementById('prescription');
@@ -153,13 +743,111 @@
 
             if (prescriptionRadio.checked) {
                 prescriptionRadio.closest('.order-type-option').classList.add('selected');
-                fileLabel.textContent = 'Upload Prescription (JPG, PNG, PDF)';
-                securityNote.textContent = 'Your prescription will be securely encrypted and can only be viewed by authorized pharmacy staff.';
+                fileLabel.innerHTML = '<i class="fas fa-file-upload"></i> Upload Prescription (JPG, PNG, PDF)';
+                securityNote.innerHTML =
+                    '<i class="fas fa-shield-alt"></i> Your prescription will be securely encrypted and can only be viewed by authorized pharmacy staff.';
             } else if (onlineOrderRadio.checked) {
                 onlineOrderRadio.closest('.order-type-option').classList.add('selected');
-                fileLabel.textContent = 'Upload Medicine List (JPG, PNG, PDF)';
-                securityNote.textContent = 'Your medicine list will be securely encrypted and processed by our pharmacy staff.';
+                fileLabel.innerHTML = '<i class="fas fa-file-upload"></i> Upload Medicine List (JPG, PNG, PDF)';
+                securityNote.innerHTML =
+                    '<i class="fas fa-shield-alt"></i> Your medicine list will be securely encrypted and processed by our pharmacy staff.';
             }
+        }
+
+        // Filter functionality
+        function filterOrders() {
+            const statusFilter = document.getElementById('status-filter').value;
+            const typeFilter = document.getElementById('type-filter').value;
+            const dateFilter = document.getElementById('date-filter').value;
+            const searchTerm = document.getElementById('order-search').value.toLowerCase();
+            const rows = document.querySelectorAll('.history-row');
+            let visibleCount = 0;
+
+            rows.forEach(row => {
+                const rowStatus = row.dataset.status;
+                const rowType = row.dataset.type;
+                const rowDate = new Date(row.dataset.date);
+                const rowSearch = row.dataset.search;
+                const today = new Date();
+
+                let showRow = true;
+
+                // Status filter
+                if (statusFilter !== 'all' && rowStatus !== statusFilter) {
+                    showRow = false;
+                }
+
+                // Type filter
+                if (typeFilter !== 'all' && rowType !== typeFilter) {
+                    showRow = false;
+                }
+
+                // Date filter
+                if (dateFilter !== 'all') {
+                    const daysDiff = Math.floor((today - rowDate) / (1000 * 60 * 60 * 24));
+
+                    switch (dateFilter) {
+                        case 'today':
+                            if (daysDiff > 0) showRow = false;
+                            break;
+                        case 'week':
+                            if (daysDiff > 7) showRow = false;
+                            break;
+                        case 'month':
+                            if (daysDiff > 30) showRow = false;
+                            break;
+                        case '3months':
+                            if (daysDiff > 90) showRow = false;
+                            break;
+                    }
+                }
+
+                // Search filter
+                if (searchTerm && !rowSearch.includes(searchTerm)) {
+                    showRow = false;
+                }
+
+                if (showRow) {
+                    row.style.display = 'table-row';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            // Show/hide no results message and table
+            const noResults = document.getElementById('no-results');
+            const tableContainer = document.getElementById('table-container');
+            const hasRows = rows.length > 0;
+
+            if (visibleCount === 0 && hasRows) {
+                noResults.style.display = 'block';
+                tableContainer.classList.add('hidden');
+            } else {
+                noResults.style.display = 'none';
+                tableContainer.classList.remove('hidden');
+            }
+        }
+
+        // Clear all filters
+        function clearFilters() {
+            document.getElementById('status-filter').value = 'all';
+            document.getElementById('type-filter').value = 'all';
+            document.getElementById('date-filter').value = 'all';
+            document.getElementById('order-search').value = '';
+            filterOrders();
+        }
+
+        // View document function
+        function viewDocument(prescriptionId) {
+            // Open the document in a new tab/window
+            const documentUrl = `{{ url('/prescription/document/') }}/${prescriptionId}`;
+            window.open(documentUrl, '_blank');
+        }
+
+        // View QR function
+        function viewQR(prescriptionId) {
+            window.open(`{{ url('/prescription/qr/') }}/${prescriptionId}`, '_blank');
         }
 
         // Initialize UI on page load
@@ -169,6 +857,20 @@
             // Add event listeners for order type changes
             document.querySelectorAll('input[name="order_type"]').forEach(radio => {
                 radio.addEventListener('change', updateOrderTypeUI);
+            });
+
+            // Add event listeners for filters
+            document.getElementById('status-filter').addEventListener('change', filterOrders);
+            document.getElementById('type-filter').addEventListener('change', filterOrders);
+            document.getElementById('date-filter').addEventListener('change', filterOrders);
+            document.getElementById('order-search').addEventListener('input', filterOrders);
+            document.getElementById('clear-filters').addEventListener('click', clearFilters);
+
+            // Close modal with Escape key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeModal();
+                }
             });
         });
 
@@ -200,15 +902,52 @@
                 const fileSizeKB = (fileSize / 1024).toFixed(1);
 
                 fileInfo.innerHTML = `
-                    <strong>Selected:</strong> ${fileName}<br>
-                    <strong>Size:</strong> ${fileSizeKB} KB<br>
-                    <strong>Type:</strong> ${file.type}
+                    <div class="file-preview">
+                        <i class="fas fa-file-alt file-icon"></i>
+                        <div class="file-details">
+                            <strong>Selected:</strong> ${fileName}<br>
+                            <strong>Size:</strong> ${fileSizeKB} KB<br>
+                            <strong>Type:</strong> ${file.type}
+                        </div>
+                    </div>
                 `;
                 fileInfo.style.display = 'block';
             } else {
                 fileInfo.style.display = 'none';
             }
         });
+
+        function showTemporarySuccess(data) {
+            const tempMessage = document.createElement('div');
+            tempMessage.className = 'success-message-temp';
+
+            let content = `<h3><i class="fas fa-check-circle"></i> ${data.message}</h3>`;
+
+            if (data.qrImage) {
+                content += `
+            <p><strong>Scan this QR code at the pharmacy:</strong></p>
+            <img src="${data.qrImage}" alt="QR Code" style="max-width: 200px; margin: 10px 0;">
+        `;
+            }
+
+            if (data.qrLink) {
+                content += `
+            <p><strong>Order link:</strong></p>
+            <p><a href="${data.qrLink}" target="_blank" style="color: #a7f3d0; text-decoration: underline;">${data.qrLink}</a></p>
+        `;
+            }
+
+            tempMessage.innerHTML = content;
+            document.body.appendChild(tempMessage);
+
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                tempMessage.classList.add('fade-out');
+                setTimeout(() => {
+                    tempMessage.remove();
+                }, 500);
+            }, 5000);
+        }
 
         // Auto-format mobile number input
         document.getElementById('mobile_number').addEventListener('input', function(e) {
@@ -220,7 +959,6 @@
 
             e.target.value = value;
         });
-
     </script>
 
     @stack('scripts')

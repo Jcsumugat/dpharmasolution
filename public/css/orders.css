@@ -305,6 +305,7 @@ tbody tr:nth-child(even):hover {
     }
 }
 
+
 .prescription-file-info {
     background: var(--color-bg-tertiary);
     border: 1px solid var(--color-border-light);
@@ -941,8 +942,7 @@ tbody tr:nth-child(even):hover {
 .order-type-filters {
     display: flex;
     gap: 10px;
-    align-items: center;
-    margin-left: 35rem;
+    margin-left: auto;
 }
 
 .filter-btn {
@@ -1610,7 +1610,7 @@ textarea#reasonMessage::placeholder {
     background: white;
     border-radius: 12px;
     border: 1px solid #e2e8f0;
-    overflow: hidden;
+    overflow: scroll;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
@@ -1647,11 +1647,12 @@ textarea#reasonMessage::placeholder {
     padding: 20px;
     display: flex;
     flex-direction: column;
+    overflow: scroll;
 }
 
 .available-products-section {
     border-right: 1px solid #e2e8f0;
-    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
 }
 
 .selected-products-section {
@@ -1684,236 +1685,12 @@ textarea#reasonMessage::placeholder {
     content: "✅";
 }
 
-/* Product Lists */
-.product-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
+.product-list-container {
     flex: 1;
     overflow-y: auto;
-    max-height: 350px;
-}
-/* Product display styles with batch support */
-.product-details {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 0.85em;
-    color: #666;
-    margin: 2px 0;
-    flex-wrap: wrap;
-}
-
-.product-form {
-    background-color: #e8f5e8;
-    color: #2e7d32;
-    padding: 2px 6px;
-    border-radius: 3px;
-    font-size: 0.8em;
-    font-weight: 500;
-}
-
-.product-dosage {
-    background-color: #fff3e0;
-    color: #ef6c00;
-    padding: 2px 6px;
-    border-radius: 3px;
-    font-size: 0.8em;
-    font-weight: 500;
-}
-
-.batch-info {
-    background-color: #f3e5f5;
-    color: #7b1fa2;
-    padding: 2px 6px;
-    border-radius: 3px;
-    font-size: 0.75em;
-    font-weight: 500;
-}
-
-.separator {
-    color: #ccc;
-    margin: 0 2px;
-}
-
-/* Expiration date styles */
-.expiration-info {
-    margin-top: 2px;
-    display: block;
-}
-
-.expiry-date {
-    font-size: 0.75em;
-    padding: 1px 4px;
-    border-radius: 2px;
-    font-weight: 500;
-}
-
-.expiry-date.expired {
-    background-color: #ffebee;
-    color: #c62828;
-}
-
-.expiry-date.expiring-soon {
-    background-color: #fff3e0;
-    color: #f57c00;
-}
-
-.expiry-date.expiring-moderate {
-    background-color: #f9fbe7;
-    color: #689f38;
-}
-
-.expiry-date.expiring-safe {
-    background-color: #e8f5e8;
-    color: #388e3c;
-}
-
-/* Stock status styles */
-.product-stock.out-of-stock {
-    background-color: #ffebee;
-    color: #c62828;
-    padding: 2px 6px;
-    border-radius: 3px;
-    font-size: 0.8em;
-    font-weight: 500;
-}
-
-.product-stock.low-stock {
-    background-color: #fff3e0;
-    color: #f57c00;
-    padding: 2px 6px;
-    border-radius: 3px;
-    font-size: 0.8em;
-    font-weight: 500;
-}
-
-.product-stock.in-stock {
-    background-color: #e8f5e8;
-    color: #388e3c;
-    padding: 2px 6px;
-    border-radius: 3px;
-    font-size: 0.8em;
-    font-weight: 500;
-}
-
-/* Product display styles with batch support */
-.product-details {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 0.85em;
-    color: #666;
-    margin: 2px 0;
-    flex-wrap: wrap;
-}
-
-.product-form {
-    background-color: #e8f5e8;
-    color: #2e7d32;
-    padding: 2px 6px;
-    border-radius: 3px;
-    font-size: 0.8em;
-    font-weight: 500;
-}
-
-.product-dosage {
-    background-color: #fff3e0;
-    color: #ef6c00;
-    padding: 2px 6px;
-    border-radius: 3px;
-    font-size: 0.8em;
-    font-weight: 500;
-}
-
-.manufacturer {
-    background-color: #f5f5f5;
-    color: #616161;
-    padding: 2px 6px;
-    border-radius: 3px;
-    font-size: 0.75em;
-    font-weight: 500;
-}
-
-.separator {
-    color: #ccc;
-    margin: 0 2px;
-}
-
-/* Batch info styles */
-.batch-info {
-    margin-top: 2px;
-    display: block;
-}
-
-.next-batch {
-    font-size: 0.75em;
-    color: #7b1fa2;
-    background-color: #f3e5f5;
-    padding: 1px 4px;
-    border-radius: 2px;
-    font-weight: 500;
-}
-
-/* Expiration date styles */
-.expiration-info {
-    margin-top: 2px;
-    display: block;
-}
-
-.expiry-date {
-    font-size: 0.75em;
-    padding: 1px 4px;
-    border-radius: 2px;
-    font-weight: 500;
-}
-
-.expiry-date.expired {
-    background-color: #ffebee;
-    color: #c62828;
-}
-
-.expiry-date.expiring-soon {
-    background-color: #fff3e0;
-    color: #f57c00;
-}
-
-.expiry-date.expiring-moderate {
-    background-color: #f9fbe7;
-    color: #689f38;
-}
-
-.expiry-date.expiring-safe {
-    background-color: #e8f5e8;
-    color: #388e3c;
-}
-
-/* Stock status styles */
-.product-stock.out-of-stock {
-    background-color: #ffebee;
-    color: #c62828;
-    padding: 2px 6px;
-    border-radius: 3px;
-    font-size: 0.8em;
-    font-weight: 500;
-}
-
-.product-stock.low-stock {
-    background-color: #fff3e0;
-    color: #f57c00;
-    padding: 2px 6px;
-    border-radius: 3px;
-    font-size: 0.8em;
-    font-weight: 500;
-}
-
-.product-stock.in-stock {
-    background-color: #e8f5e8;
-    color: #388e3c;
-    padding: 2px 6px;
-    border-radius: 3px;
-    font-size: 0.8em;
-    font-weight: 500;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: white;
 }
 
 /* Product display styles with batch support */
@@ -2085,6 +1862,7 @@ textarea#reasonMessage::placeholder {
     background-color: #fafafa;
     border-color: #e0e0e0;
 }
+
 .product-list::-webkit-scrollbar {
     width: 6px;
 }
@@ -2240,42 +2018,6 @@ textarea#reasonMessage::placeholder {
     }
 }
 
-/* Responsive Design */
-@media (max-width: 1200px) {
-    .manage-order-content {
-        width: 95vw;
-        max-width: 95vw;
-    }
-
-    .product-management-container {
-        grid-template-columns: 1fr;
-        gap: 1px;
-    }
-
-    .available-products-section {
-        border-right: none;
-        border-bottom: 1px solid #e2e8f0;
-    }
-}
-
-@media (max-width: 768px) {
-    .manage-order-body {
-        padding: 16px;
-        gap: 16px;
-    }
-
-    .prescription-reference-header {
-        flex-direction: column;
-        gap: 12px;
-        align-items: stretch;
-    }
-
-    .prescription-toggle-controls {
-        justify-content: center;
-    }
-}
-
-
 /* Modal overlay styles */
 #completeOrderModal.modal-overlay {
     position: fixed;
@@ -2296,11 +2038,13 @@ textarea#reasonMessage::placeholder {
     border-radius: 8px;
     width: 90%;
     max-width: 600px;
-    max-height: 90vh; /* Limit height to 90% of viewport */
+    max-height: 90vh;
+    /* Limit height to 90% of viewport */
     display: flex;
     flex-direction: column;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-    overflow: hidden; /* Prevent overflow on the container */
+    overflow: hidden;
+    /* Prevent overflow on the container */
 }
 
 /* Modal header */
@@ -2310,7 +2054,8 @@ textarea#reasonMessage::placeholder {
     border-bottom: 1px solid #e9ecef;
     font-size: 1.25rem;
     font-weight: 600;
-    flex-shrink: 0; /* Don't shrink the header */
+    flex-shrink: 0;
+    /* Don't shrink the header */
 }
 
 /* Scrollable order summary section */
@@ -2318,7 +2063,8 @@ textarea#reasonMessage::placeholder {
     flex: 1;
     overflow-y: auto;
     padding: 24px;
-    min-height: 0; /* Important for flexbox scrolling */
+    min-height: 0;
+    /* Important for flexbox scrolling */
 }
 
 /* Order items styling */
@@ -2407,7 +2153,8 @@ textarea#reasonMessage::placeholder {
 
 /* Fixed buttons at bottom */
 #completeOrderModal .modal-buttons {
-    flex-shrink: 0; /* Don't shrink the buttons */
+    flex-shrink: 0;
+    /* Don't shrink the buttons */
     padding: 20px 24px;
     border-top: 1px solid #e9ecef;
     display: flex;
@@ -2468,14 +2215,16 @@ textarea#reasonMessage::placeholder {
 #completeOrderModal #orderSummary::-webkit-scrollbar-thumb:hover {
     background: #a1a1a1;
 }
+
 .prescription-image-container {
     position: relative;
     background: linear-gradient(45deg, #f0f0f0 25%, transparent 25%),
-                linear-gradient(-45deg, #f0f0f0 25%, transparent 25%),
-                linear-gradient(45deg, transparent 75%, #f0f0f0 75%),
-                linear-gradient(-45deg, transparent 75%, #f0f0f0 75%);
+        linear-gradient(-45deg, #f0f0f0 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #f0f0f0 75%),
+        linear-gradient(-45deg, transparent 75%, #f0f0f0 75%);
     background-size: 20px 20px;
     background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    overflow: scroll;
 }
 
 .prescription-viewer-content {
@@ -2518,8 +2267,13 @@ textarea#reasonMessage::placeholder {
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 /* Product management enhancements */
@@ -2560,4 +2314,19 @@ textarea#reasonMessage::placeholder {
 
 .expiry-date.expiring-safe {
     color: #28a745;
+}
+.cancel-order-content .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.cancel-order-content select:focus,
+.cancel-order-content textarea:focus {
+    border-color: #2196f3;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+}
+
+.cancel-order-content .form-group label {
+    user-select: none;
 }

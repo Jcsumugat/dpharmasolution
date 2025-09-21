@@ -264,7 +264,8 @@
 
             if (invalidItems.length > 0) {
                 alert(
-                    `The following items were removed from your cart due to stock changes:\n${invalidItems.join(', ')}`);
+                    `The following items were removed from your cart due to stock changes:\n${invalidItems.join(', ')}`
+                );
             }
 
             updateCartDisplay();
@@ -503,29 +504,29 @@
             </thead>
             <tbody>
                 ${products.map(product => `
-                        <tr data-id="${product.id}">
-                            <td>
-                                <div class="product-name">${highlightMatch(product.product_name, searchTerm)}</div>
-                                <div class="product-brand">${highlightMatch(product.brand_name, searchTerm)}</div>
-                                ${product.batches && product.batches[0] && new Date(product.batches[0].expiration_date) <= new Date(Date.now() + 30*24*60*60*1000) ?
-                                    `<div class="product-expiry">Expires: ${new Date(product.batches[0].expiration_date).toLocaleDateString()}</div>` : ''}
-                            </td>
-                            <td>
-                                <div class="product-category">${highlightMatch(product.category ? product.category.name : 'Uncategorized', searchTerm)}</div>
-                            </td>
-                            <td>
-                                <div class="product-price">₱${parseFloat(product.unit_price || 0).toFixed(2)}</div>
-                            </td>
-                            <td>
-                                <div class="product-stock">${product.total_stock || 0}</div>
-                            </td>
-                            <td class="action-cell">
-                                <button type="button" class="btn-add-to-cart" onclick="addToCart(${product.id})">
-                                    Add to Cart
-                                </button>
-                            </td>
-                        </tr>
-                    `).join('')}
+                                    <tr data-id="${product.id}">
+                                        <td>
+                                            <div class="product-name">${highlightMatch(product.product_name, searchTerm)}</div>
+                                            <div class="product-brand">${highlightMatch(product.brand_name, searchTerm)}</div>
+                                            ${product.batches && product.batches[0] && new Date(product.batches[0].expiration_date) <= new Date(Date.now() + 30*24*60*60*1000) ?
+                                                `<div class="product-expiry">Expires: ${new Date(product.batches[0].expiration_date).toLocaleDateString()}</div>` : ''}
+                                        </td>
+                                        <td>
+                                            <div class="product-category">${highlightMatch(product.category ? product.category.name : 'Uncategorized', searchTerm)}</div>
+                                        </td>
+                                        <td>
+                                            <div class="product-price">₱${parseFloat(product.unit_price || 0).toFixed(2)}</div>
+                                        </td>
+                                        <td>
+                                            <div class="product-stock">${product.total_stock || 0}</div>
+                                        </td>
+                                        <td class="action-cell">
+                                            <button type="button" class="btn-add-to-cart" onclick="addToCart(${product.id})">
+                                                Add to Cart
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
             </tbody>
         </table>
     `;
@@ -625,7 +626,6 @@
             <div class="item-total">₱${(item.price * item.quantity).toFixed(2)}</div>
         </div>
     `).join('');
-
             cartSummary.style.display = 'block';
             paymentSection.style.display = 'block';
 
@@ -771,16 +771,16 @@
                     </thead>
                     <tbody>
                         ${transaction.items.map(item => `
-                                <tr>
-                                    <td>
-                                        <div class="item-name">${item.product_name}</div>
-                                        <div class="item-brand">${item.brand_name}</div>
-                                    </td>
-                                    <td>${item.quantity}</td>
-                                    <td>₱${parseFloat(item.unit_price).toFixed(2)}</td>
-                                    <td>₱${parseFloat(item.total_price).toFixed(2)}</td>
-                                </tr>
-                            `).join('')}
+                                            <tr>
+                                                <td>
+                                                    <div class="item-name">${item.product_name}</div>
+                                                    <div class="item-brand">${item.brand_name}</div>
+                                                </td>
+                                                <td>${item.quantity}</td>
+                                                <td>₱${parseFloat(item.unit_price).toFixed(2)}</td>
+                                                <td>₱${parseFloat(item.total_price).toFixed(2)}</td>
+                                            </tr>
+                                        `).join('')}
                     </tbody>
                 </table>
             </div>
@@ -791,11 +791,11 @@
                     <span>₱${parseFloat(transaction.subtotal).toFixed(2)}</span>
                 </div>
                 ${parseFloat(transaction.discount_amount) > 0 ? `
-                        <div class="summary-line">
-                            <span>Discount:</span>
-                            <span>-₱${parseFloat(transaction.discount_amount).toFixed(2)}</span>
-                        </div>
-                    ` : ''}
+                                    <div class="summary-line">
+                                        <span>Discount:</span>
+                                        <span>-₱${parseFloat(transaction.discount_amount).toFixed(2)}</span>
+                                    </div>
+                                ` : ''}
                 <div class="summary-line total-line">
                     <span><strong>Total:</strong></span>
                     <span><strong>₱${parseFloat(transaction.total_amount).toFixed(2)}</strong></span>

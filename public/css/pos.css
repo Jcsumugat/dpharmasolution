@@ -99,6 +99,7 @@ body {
         opacity: 0;
         transform: translateY(20px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -133,18 +134,19 @@ body {
 
 .pos-content {
     display: grid;
-    grid-template-columns: 1.7fr 1fr;
+    grid-template-columns: 1.8fr 2fr;
     gap: var(--spacing-xl);
     min-height: calc(100vh - 200px);
 }
 
-.left-panel,
 .right-panel {
-    min-width: 0;
-}
-
-.right-panel {
-    min-width: 350px;
+    background: var(--color-bg-primary);
+    border-radius: var(--border-radius-xl);
+    padding: var(--spacing-2xl);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--color-border-light);
+    width: 100%;
+    height: fit-content;
 }
 
 /* ===== CARD COMPONENT ===== */
@@ -911,13 +913,14 @@ body {
         font-size: var(--font-size-2xl);
     }
 
-    .pos-content {
-        grid-template-columns: 1fr;
-        gap: var(--spacing-lg);
-    }
+.pos-content {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--spacing-xl);
+    min-height: calc(100vh - 200px);
+}
 
     .right-panel {
-        min-width: auto;
         order: -1;
     }
 
@@ -1041,6 +1044,7 @@ body {
 
 /* ===== ACCESSIBILITY IMPROVEMENTS ===== */
 @media (prefers-reduced-motion: reduce) {
+
     *,
     *::before,
     *::after {

@@ -89,7 +89,7 @@ class NotificationService
                 return null;
             }
 
-            $message = "Your order has been received and is being reviewed by our pharmacists. You will receive updates on the status of your order.";
+            $message = "Your order has been received and is being reviewed. You will receive updates on the status of your order.";
 
             return self::createCustomerNotification(
                 $prescription->customer_id,

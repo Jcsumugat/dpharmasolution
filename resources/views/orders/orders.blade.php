@@ -224,33 +224,6 @@
             </table>
         </div>
 
-        <!-- Rest of your modals remain the same -->
-        <div id="manageStatusModal" class="modal">
-            <div class="modal-content">
-                <h3>Manage Order Status</h3>
-                <form id="statusForm" method="POST">
-                    @csrf
-                    <input type="hidden" name="id" id="statusPrescriptionId" />
-
-                    <label for="statusSelect">Status:</label>
-                    <select id="statusSelect" name="status" class="dropdown" required>
-                        <option value="">-- Select Status --</option>
-                        <option value="approve">Approve Order</option>
-                        <option value="cancel">Cancel Order</option>
-                    </select>
-
-                    <label for="reasonMessage">Reason/Message:</label>
-                    <textarea id="reasonMessage" name="message" rows="4" placeholder="Enter reason or message for the customer..."
-                        required></textarea>
-
-                    <div class="modal-actions">
-                        <button type="button" id="cancelStatusModal" class="btn btn-secondary">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Submit</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
         <div id="manageOrderModal" class="modal">
             <div class="modal-content manage-order-content">
                 <div class="modal-header">
@@ -546,6 +519,7 @@
                 });
             }
 
+            // OPTIMIZED PRODUCT MANAGEMENT - This replaces your existing bindProductManagement method
             bindProductManagement() {
                 if (this.elements.productSearchInput) {
                     this.elements.productSearchInput.addEventListener('input',
@@ -553,33 +527,213 @@
                     );
                 }
 
-                // Event delegation for product lists
+                // Improved event delegation for available products
                 if (this.elements.availableList) {
-                    this.elements.availableList.addEventListener('click', (e) => this.handleAvailableProductClick(e));
+                    this.elements.availableList.addEventListener('click', (e) => {
+                        // Find the closest LI element (handles clicks on child elements)
+                        const productLi = e.target.closest('li.product-item');
+
+                        if (productLi && !productLi.classList.contains('no-search-results') &&
+                            !productLi.classList.contains('loading-item') &&
+                            !productLi.classList.contains('error-item')) {
+
+                            e.preventDefault();
+                            e.stopPropagation();
+                            this.handleProductSelection(productLi);
+                        }
+                    });
+
+                    // Add keyboard support for accessibility
+                    this.elements.availableList.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            const productLi = e.target.closest('li.product-item');
+                            if (productLi) {
+                                e.preventDefault();
+                                this.handleProductSelection(productLi);
+                            }
+                        }
+                    });
                 }
 
+                // Improved event delegation for selected products
                 if (this.elements.selectedList) {
-                    this.elements.selectedList.addEventListener('click', (e) => this.handleSelectedProductClick(e));
+                    this.elements.selectedList.addEventListener('click', (e) => {
+                        const removeBtn = e.target.closest('.remove-btn');
+                        if (removeBtn) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            this.handleProductRemoval(removeBtn);
+                        }
+                    });
                 }
 
-                // Quantity controls
-                const qtyControls = [
+                // Bind other controls
+                this.bindQuantityControls();
+                this.bindModalControls();
+            }
+
+            // New optimized product selection handler
+            handleProductSelection(productLi) {
+                const stockLevel = parseInt(productLi.dataset.stock) || 0;
+
+                if (stockLevel <= 0) {
+                    this.showStockMessage('This product is out of stock.', 'error');
+                    return;
+                }
+
+                // Check if already selected
+                const productId = productLi.dataset.id;
+                const selectedProducts = this.state.selectedProductsByOrder[this.state.currentPrescriptionId] || [];
+                const alreadySelected = selectedProducts.find(p => p.id.toString() === productId.toString());
+
+                if (alreadySelected) {
+                    this.showStockMessage('This product is already selected. Remove it first to reselect.', 'warning');
+                    return;
+                }
+
+                // Store reference and show quantity modal
+                this.state.selectedProductLi = productLi;
+                this.openQuantityModal(productLi, stockLevel);
+            }
+
+            // Separate product removal handler
+            handleProductRemoval(removeBtn) {
+                const productId = removeBtn.dataset.id;
+                const productLi = removeBtn.closest('li');
+                const productName = productLi?.querySelector('.selected-product-name')?.textContent || 'this product';
+
+                if (confirm(`Remove "${productName}" from selection?`)) {
+                    this.removeSelectedProduct(productId);
+                }
+            }
+
+            // Optimized quantity modal opening
+            openQuantityModal(productLi, stockLevel) {
+                if (this.elements.qtyInput) {
+                    this.elements.qtyInput.value = 1;
+                    this.elements.qtyInput.max = stockLevel;
+                    this.elements.qtyInput.min = 1;
+                }
+
+                if (this.elements.productModalName) {
+                    this.elements.productModalName.textContent = productLi.dataset.product || 'Product';
+                }
+
+                if (this.elements.qtyModal) {
+                    this.elements.qtyModal.style.display = 'flex';
+                    // Focus on quantity input for better UX
+                    setTimeout(() => {
+                        if (this.elements.qtyInput) {
+                            this.elements.qtyInput.focus();
+                            this.elements.qtyInput.select();
+                        }
+                    }, 100);
+                }
+            }
+
+            // Improved stock message display
+            showStockMessage(message, type = 'info') {
+                // Remove existing messages
+                const existingMessage = document.querySelector('.stock-message');
+                if (existingMessage) {
+                    existingMessage.remove();
+                }
+
+                const messageElement = document.createElement('div');
+                messageElement.className = `stock-message stock-message-${type}`;
+                messageElement.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: ${type === 'error' ? '#f44336' : type === 'warning' ? '#ff9800' : '#2196f3'};
+            color: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 10000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            max-width: 300px;
+            text-align: center;
+            animation: fadeInOut 3s ease-in-out forwards;
+        `;
+                messageElement.textContent = message;
+
+                // Add CSS animation if not exists
+                if (!document.querySelector('#stockMessageStyles')) {
+                    const style = document.createElement('style');
+                    style.id = 'stockMessageStyles';
+                    style.textContent = `
+                @keyframes fadeInOut {
+                    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+                    15% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+                    85% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+                    100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+                }
+            `;
+                    document.head.appendChild(style);
+                }
+
+                document.body.appendChild(messageElement);
+
+                setTimeout(() => {
+                    messageElement.remove();
+                }, 3000);
+            }
+
+            // Separate quantity controls binding for clarity
+            bindQuantityControls() {
+                const controls = [
                     ['#increaseQty', () => this.increaseQuantity()],
                     ['#decreaseQty', () => this.decreaseQuantity()],
                     ['#confirmQtyModal', () => this.confirmQuantitySelection()],
+                    ['#cancelQtyModal', () => this.closeQtyModal()]
+                ];
+
+                controls.forEach(([selector, handler]) => {
+                    const element = document.querySelector(selector);
+                    if (element) {
+                        // Remove existing listeners to prevent duplicates
+                        const newHandler = handler.bind(this);
+                        element.removeEventListener('click', newHandler);
+                        element.addEventListener('click', newHandler);
+                    }
+                });
+
+                if (this.elements.qtyInput) {
+                    const inputHandler = () => this.validateQuantityInput();
+                    this.elements.qtyInput.removeEventListener('input', inputHandler);
+                    this.elements.qtyInput.addEventListener('input', inputHandler);
+
+                    // Add enter key support
+                    const keyHandler = (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            this.confirmQuantitySelection();
+                        }
+                    };
+                    this.elements.qtyInput.removeEventListener('keydown', keyHandler);
+                    this.elements.qtyInput.addEventListener('keydown', keyHandler);
+                }
+            }
+
+            // Separate modal controls binding
+            bindModalControls() {
+                const modalControls = [
                     ['#saveSelection', (e) => this.saveAndCompleteOrder(e)],
                     ['#togglePrescriptionBtn', () => this.togglePrescriptionViewer()],
                     ['#refreshPrescriptionBtn', () => this.loadPrescriptionReference()]
                 ];
 
-                qtyControls.forEach(([selector, handler]) => {
+                modalControls.forEach(([selector, handler]) => {
                     const element = document.querySelector(selector);
-                    if (element) element.addEventListener('click', handler);
+                    if (element) {
+                        const boundHandler = handler.bind(this);
+                        element.removeEventListener('click', boundHandler);
+                        element.addEventListener('click', boundHandler);
+                    }
                 });
-
-                if (this.elements.qtyInput) {
-                    this.elements.qtyInput.addEventListener('input', () => this.validateQuantityInput());
-                }
             }
 
             bindPrescriptionViewer() {
@@ -897,14 +1051,281 @@
 
                 this.closeAllDropdowns();
 
-                const reason = prompt("Please provide a reason for cancelling this order:");
-                if (!reason?.trim()) return;
+                // Get order information for modal title
+                const orderRow = document.querySelector(`[data-id="${prescriptionId}"]`)?.closest('.order-row');
+                const orderIdElement = orderRow?.querySelector('strong');
+                const orderId = orderIdElement?.textContent || `Order ${prescriptionId}`;
 
-                if (!confirm("Are you sure you want to cancel this order? This action cannot be undone.")) {
+                this.showCancelOrderModal(prescriptionId, orderId);
+            }
+
+            showCancelOrderModal(prescriptionId, orderId) {
+                // Create modal if it doesn't exist
+                let cancelModal = document.getElementById('cancelOrderModal');
+                if (!cancelModal) {
+                    cancelModal = this.createCancelOrderModal();
+                    document.body.appendChild(cancelModal);
+                }
+
+                // Update modal title and show
+                const modalTitle = cancelModal.querySelector('.cancel-modal-title');
+                if (modalTitle) {
+                    modalTitle.textContent = `Cancel Order - ${orderId}`;
+                }
+
+                // Reset form
+                const reasonSelect = cancelModal.querySelector('#cancelReason');
+                const additionalMessage = cancelModal.querySelector('#additionalMessage');
+                if (reasonSelect) reasonSelect.value = '';
+                if (additionalMessage) additionalMessage.value = '';
+
+                // Store prescription ID for later use
+                cancelModal.dataset.prescriptionId = prescriptionId;
+
+                // Show modal
+                cancelModal.style.display = 'flex';
+
+                // Focus on reason dropdown
+                setTimeout(() => reasonSelect?.focus(), 100);
+            }
+
+            createCancelOrderModal() {
+                const modal = document.createElement('div');
+                modal.id = 'cancelOrderModal';
+                modal.className = 'modal';
+                modal.style.cssText = `
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        `;
+
+                modal.innerHTML = `
+            <div class="modal-content cancel-order-content" style="
+                background: white;
+                border-radius: 8px;
+                width: 90%;
+                max-width: 500px;
+                max-height: 80vh;
+                overflow-y: auto;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            ">
+                <div class="modal-header" style="
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 20px;
+                    border-bottom: 1px solid #eee;
+                ">
+                    <h3 class="cancel-modal-title" style="margin: 0; color: #d32f2f;">Cancel Order</h3>
+                    <button class="modal-close cancel-modal-close" style="
+                        background: none;
+                        border: none;
+                        font-size: 24px;
+                        cursor: pointer;
+                        color: #666;
+                        padding: 0;
+                        width: 30px;
+                        height: 30px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                    ">&times;</button>
+                </div>
+
+                <div class="modal-body" style="padding: 20px;">
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label for="cancelReason" style="
+                            display: block;
+                            margin-bottom: 8px;
+                            font-weight: 600;
+                            color: #333;
+                        ">Reason for Cancellation <span style="color: #d32f2f;">*</span></label>
+                        <select id="cancelReason" required style="
+                            width: 100%;
+                            padding: 10px;
+                            border: 2px solid #ddd;
+                            border-radius: 4px;
+                            font-size: 14px;
+                            background: white;
+                        ">
+                            <option value="">Select a reason...</option>
+                            <option value="products_shortage">Products Shortage/Unavailability</option>
+                            <option value="order_expired">Order has been received 24+ hours ago</option>
+                            <option value="customer_cannot_afford">Customer can't afford the order</option>
+                            <option value="customer_request">Customer requested cancellation</option>
+                            <option value="pharmacy_error">Pharmacy processing error</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label for="additionalMessage" style="
+                            display: block;
+                            margin-bottom: 8px;
+                            font-weight: 600;
+                            color: #333;
+                        ">Additional Message <span style="color: #666; font-weight: normal;">(Optional)</span></label>
+                        <textarea id="additionalMessage" rows="4" placeholder="Provide additional details about the cancellation..." style="
+                            width: 100%;
+                            padding: 10px;
+                            border: 2px solid #ddd;
+                            border-radius: 4px;
+                            font-size: 14px;
+                            resize: vertical;
+                            font-family: inherit;
+                        "></textarea>
+                    </div>
+
+                    <div class="cancellation-warning" style="
+                        background: #fff3e0;
+                        border: 1px solid #ffcc02;
+                        border-radius: 4px;
+                        padding: 12px;
+                        margin-bottom: 20px;
+                    ">
+                        <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                            <span style="color: #f57c00; margin-right: 8px; font-size: 18px;">⚠️</span>
+                            <strong style="color: #e65100;">Warning</strong>
+                        </div>
+                        <p style="margin: 0; color: #bf360c; font-size: 14px;">
+                            This action cannot be undone. The order will be permanently cancelled and the customer will be notified.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="modal-footer" style="
+                    display: flex;
+                    justify-content: flex-end;
+                    gap: 10px;
+                    padding: 20px;
+                    border-top: 1px solid #eee;
+                    background: #f9f9f9;
+                ">
+                    <button class="btn btn-secondary cancel-order-cancel" style="
+                        padding: 10px 20px;
+                        border: 2px solid #666;
+                        background: white;
+                        color: #666;
+                        border-radius: 4px;
+                        cursor: pointer;
+                        font-weight: 500;
+                    ">Cancel</button>
+                    <button class="btn btn-danger confirm-cancel-order" style="
+                        padding: 10px 20px;
+                        border: 2px solid #d32f2f;
+                        background: #d32f2f;
+                        color: white;
+                        border-radius: 4px;
+                        cursor: pointer;
+                        font-weight: 500;
+                    ">Confirm Cancellation</button>
+                </div>
+            </div>
+        `;
+
+                // Bind events for the modal
+                this.bindCancelModalEvents(modal);
+
+                return modal;
+            }
+
+            bindCancelModalEvents(modal) {
+                // Close modal events
+                const closeBtn = modal.querySelector('.cancel-modal-close');
+                const cancelBtn = modal.querySelector('.cancel-order-cancel');
+
+                const closeModal = () => {
+                    modal.style.display = 'none';
+                };
+
+                if (closeBtn) closeBtn.addEventListener('click', closeModal);
+                if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+                // Click outside to close
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        closeModal();
+                    }
+                });
+
+                // Confirm cancellation
+                const confirmBtn = modal.querySelector('.confirm-cancel-order');
+                if (confirmBtn) {
+                    confirmBtn.addEventListener('click', () => this.processCancelOrder(modal));
+                }
+
+                // Escape key to close
+                modal.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') {
+                        closeModal();
+                    }
+                });
+
+                // Form validation
+                const reasonSelect = modal.querySelector('#cancelReason');
+                if (reasonSelect) {
+                    reasonSelect.addEventListener('change', () => {
+                        this.validateCancelForm(modal);
+                    });
+                }
+            }
+
+            validateCancelForm(modal) {
+                const reasonSelect = modal.querySelector('#cancelReason');
+                const confirmBtn = modal.querySelector('.confirm-cancel-order');
+
+                const isValid = reasonSelect?.value?.trim() !== '';
+
+                if (confirmBtn) {
+                    confirmBtn.disabled = !isValid;
+                    confirmBtn.style.opacity = isValid ? '1' : '0.6';
+                    confirmBtn.style.cursor = isValid ? 'pointer' : 'not-allowed';
+                }
+
+                return isValid;
+            }
+
+            async processCancelOrder(modal) {
+                if (!this.validateCancelForm(modal)) {
+                    alert('Please select a reason for cancellation.');
+                    return;
+                }
+
+                if (this.state.isLoading) return;
+
+                const prescriptionId = modal.dataset.prescriptionId;
+                const reasonSelect = modal.querySelector('#cancelReason');
+                const additionalMessage = modal.querySelector('#additionalMessage');
+
+                const reason = reasonSelect.value;
+                const message = additionalMessage.value.trim();
+
+                // Get readable reason text
+                const reasonText = this.getCancellationReasonText(reason);
+
+                // Final confirmation
+                const confirmationMessage =
+                    `Are you sure you want to cancel this order?\n\nReason: ${reasonText}${message ? `\nAdditional details: ${message}` : ''}`;
+
+                if (!confirm(confirmationMessage)) {
                     return;
                 }
 
                 this.state.isLoading = true;
+                const confirmBtn = modal.querySelector('.confirm-cancel-order');
+                const originalText = confirmBtn?.textContent || 'Confirm Cancellation';
+
+                if (confirmBtn) {
+                    confirmBtn.textContent = 'Cancelling...';
+                    confirmBtn.disabled = true;
+                }
 
                 try {
                     const response = await fetch(`/admin/orders/${prescriptionId}/cancel`, {
@@ -915,7 +1336,8 @@
                             'Accept': 'application/json'
                         },
                         body: JSON.stringify({
-                            message: reason.trim()
+                            reason: reason,
+                            message: message || null
                         })
                     });
 
@@ -927,6 +1349,10 @@
 
                     if (data.success) {
                         this.showSuccessMessage(data.message || 'Order cancelled successfully!');
+
+                        // Close modal
+                        modal.style.display = 'none';
+
                         // Update UI instead of full page reload
                         this.updateOrderRowStatus(prescriptionId, 'cancelled');
                         setTimeout(() => window.location.reload(), 1500);
@@ -939,7 +1365,24 @@
                     alert('Failed to cancel order: ' + error.message);
                 } finally {
                     this.state.isLoading = false;
+                    if (confirmBtn) {
+                        confirmBtn.textContent = originalText;
+                        confirmBtn.disabled = false;
+                    }
                 }
+            }
+
+            getCancellationReasonText(reason) {
+                const reasonMap = {
+                    'products_shortage': 'Products Shortage/Unavailability.',
+                    'order_expired': 'Order has been received 24+ hours ago.',
+                    'customer_cannot_afford': 'Customer can\'t afford the order.',
+                    'customer_request': 'Customer requested cancellation.',
+                    'pharmacy_error': 'Pharmacy processing error.',
+                    'other': 'Other.'
+                };
+
+                return reasonMap[reason] || reason;
             }
 
             updateOrderRowStatus(prescriptionId, newStatus) {
@@ -984,83 +1427,90 @@
                 this.state.currentPrescriptionId = null;
             }
 
+            // OPTIMIZED SEARCH - Enhanced search with better performance
             handleProductSearch() {
-                const searchTerm = this.elements.productSearchInput.value.toLowerCase();
+                const searchTerm = this.elements.productSearchInput.value.toLowerCase().trim();
                 const selectedProductIds = new Set(
-                    (this.state.selectedProductsByOrder[this.state.currentPrescriptionId] || []).map(p => p.id)
+                    (this.state.selectedProductsByOrder[this.state.currentPrescriptionId] || []).map(p => p.id
+                        .toString())
                 );
 
-                document.querySelectorAll('#availableProducts li').forEach(li => {
-                    const productName = (li.dataset.name || '').toLowerCase();
-                    const isSelected = selectedProductIds.has(li.dataset.id);
+                let visibleCount = 0;
+                const productItems = document.querySelectorAll('#availableProducts .product-item');
 
-                    const matchesSearch = !searchTerm || productName.includes(searchTerm);
-                    li.style.display = (matchesSearch && !isSelected) ? 'block' : 'none';
+                // Use requestAnimationFrame for smooth UI updates
+                requestAnimationFrame(() => {
+                    productItems.forEach(li => {
+                        const productName = (li.dataset.name || '').toLowerCase();
+                        const isSelected = selectedProductIds.has(li.dataset.id);
+
+                        const matchesSearch = !searchTerm || productName.includes(searchTerm);
+                        const shouldShow = matchesSearch && !isSelected;
+
+                        li.style.display = shouldShow ? 'block' : 'none';
+                        if (shouldShow) visibleCount++;
+                    });
+
+                    this.showProductSearchResults(searchTerm, visibleCount);
                 });
-
-                // Show "no results" message if needed
-                this.showProductSearchResults(searchTerm);
             }
 
-            showProductSearchResults(searchTerm) {
-                const visibleProducts = document.querySelectorAll(
-                    '#availableProducts li[style*="block"], #availableProducts li:not([style*="none"])').length;
-
+            // Enhanced search results display
+            showProductSearchResults(searchTerm, visibleCount) {
                 let noResultsMsg = document.querySelector('.no-search-results');
 
-                if (searchTerm && visibleProducts === 0) {
+                if (searchTerm && visibleCount === 0) {
                     if (!noResultsMsg) {
                         noResultsMsg = document.createElement('li');
                         noResultsMsg.className = 'no-search-results';
-                        noResultsMsg.style.cssText =
-                            'text-align: center; padding: 20px; color: #666; font-style: italic;';
-                        noResultsMsg.textContent = `No products found for "${searchTerm}"`;
+                        noResultsMsg.style.cssText = `
+                    text-align: center;
+                    padding: 20px;
+                    color: #666;
+                    font-style: italic;
+                    border: 2px dashed #ddd;
+                    margin: 10px 0;
+                    border-radius: 8px;
+                `;
+                        noResultsMsg.innerHTML = `
+                    <div>No products found for "<strong>${searchTerm}</strong>"</div>
+                    <small>Try a different search term</small>
+                `;
                         this.elements.availableList.appendChild(noResultsMsg);
                     }
                 } else if (noResultsMsg) {
                     noResultsMsg.remove();
                 }
+
+                // Update search results counter
+                this.updateSearchCounter(searchTerm, visibleCount);
             }
 
-            handleAvailableProductClick(e) {
-                if (e.target.tagName === 'LI' && !e.target.classList.contains('no-search-results')) {
-                    const stockLevel = parseInt(e.target.dataset.stock) || 0;
+            // Add search counter for better UX
+            updateSearchCounter(searchTerm, visibleCount) {
+                let counter = document.querySelector('.search-results-counter');
 
-                    if (stockLevel <= 0) {
-                        alert('This product is out of stock.');
-                        return;
-                    }
+                if (!counter) {
+                    counter = document.createElement('div');
+                    counter.className = 'search-results-counter';
+                    counter.style.cssText = `
+                font-size: 0.85em;
+                color: #666;
+                margin: 5px 0;
+                text-align: center;
+            `;
 
-                    this.state.selectedProductLi = e.target;
-
-                    if (this.elements.qtyInput) {
-                        this.elements.qtyInput.value = 1;
-                        this.elements.qtyInput.max = stockLevel;
-                    }
-
-                    if (this.elements.productModalName) {
-                        this.elements.productModalName.textContent = this.state.selectedProductLi.dataset.product || '';
-                    }
-
-                    if (this.elements.qtyModal) {
-                        this.elements.qtyModal.style.display = 'flex';
-                        // Focus on quantity input for better UX
-                        setTimeout(() => this.elements.qtyInput?.focus(), 100);
+                    const searchContainer = this.elements.productSearchInput.parentNode;
+                    if (searchContainer) {
+                        searchContainer.appendChild(counter);
                     }
                 }
-            }
 
-            handleSelectedProductClick(e) {
-                if (e.target.classList.contains('remove-btn')) {
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    const productId = e.target.dataset.id;
-                    const productName = e.target.closest('li')?.textContent?.split(' — ')[0];
-
-                    if (confirm(`Remove "${productName}" from selection?`)) {
-                        this.removeSelectedProduct(productId);
-                    }
+                if (searchTerm) {
+                    counter.textContent = `Found ${visibleCount} product${visibleCount !== 1 ? 's' : ''}`;
+                    counter.style.display = 'block';
+                } else {
+                    counter.style.display = 'none';
                 }
             }
 
@@ -1128,8 +1578,18 @@
 
                 notification = document.createElement('div');
                 notification.className = 'stock-limit-notification';
-                notification.style.cssText =
-                    'position: absolute; top: -30px; left: 50%; transform: translateX(-50%); background: #ff9800; color: white; padding: 5px 10px; border-radius: 4px; font-size: 12px; z-index: 1000;';
+                notification.style.cssText = `
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #ff9800;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 1000;
+        `;
                 notification.textContent = message;
 
                 const qtyControls = document.querySelector('.quantity-controls');
@@ -1257,24 +1717,39 @@
         `;
             }
 
+            // OPTIMIZED PRODUCT LIST CREATION - with better event handling
             createProductListItem(product) {
                 const li = document.createElement('li');
-                li.dataset.id = product.id;
-                li.dataset.product = product.name || product.product_name;
-                li.dataset.name = (product.name || product.product_name || '').toLowerCase();
-                li.dataset.price = parseFloat(product.price || product.sale_price || product.selling_price || 0)
-                    .toFixed(2);
+                li.className = 'product-item';
+                li.setAttribute('tabindex', '0'); // Make focusable for keyboard navigation
+                li.setAttribute('role', 'button');
+                li.setAttribute('aria-label', `Select ${product.product_name || product.name}`);
 
-                const totalQuantity = this.getTotalQuantity(product);
-                li.dataset.stock = totalQuantity;
+                // Store data efficiently
+                Object.assign(li.dataset, {
+                    id: product.id,
+                    product: product.name || product.product_name,
+                    name: (product.name || product.product_name || '').toLowerCase(),
+                    price: parseFloat(product.price || product.sale_price || product.selling_price || 0)
+                        .toFixed(2),
+                    stock: this.getTotalQuantity(product).toString()
+                });
 
                 const stockClass = this.getStockClass(product);
-                li.className = `product-item ${stockClass}`;
+                li.classList.add(stockClass);
 
-                li.innerHTML = `
+                // Use template for consistent structure
+                li.innerHTML = this.getProductItemTemplate(product, li.dataset.price, stockClass);
+
+                return li;
+            }
+
+            // Template method for consistent HTML structure
+            getProductItemTemplate(product, price, stockClass) {
+                return `
             <div class="product-main">
                 <span class="product-name">${product.product_name || product.name}</span>
-                <span class="product-price">₱${li.dataset.price}</span>
+                <span class="product-price">₱${price}</span>
             </div>
             <div class="product-details">
                 ${product.form_type ? `<span class="product-form">${product.form_type}</span>` : ''}
@@ -1282,9 +1757,8 @@
                 ${product.manufacturer ? `<span class="manufacturer">${product.manufacturer}</span>` : ''}
             </div>
             <div class="product-stock ${stockClass}">${this.getStockText(product)}</div>
+            ${stockClass === 'out-of-stock' ? '<div class="stock-overlay">Out of Stock</div>' : ''}
         `;
-
-                return li;
             }
 
             getTotalQuantity(product) {

@@ -17,17 +17,18 @@ use App\Services\NotificationService;
 use App\Models\SaleItem;
 use App\Models\StockMovement;
 use App\Models\ProductBatch;
-use App\Models\PrescriptionMessage;
+use App\Models\CancelledOrder;
 use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
+use Notification;
 
 class AdminOrderController extends Controller
 {
     public function index()
     {
         $prescriptions = Prescription::with('order')
-            ->whereIn('status', ['pending', 'approved', 'partially_approved', 'cancelled'])
-            ->whereNotIn('status', ['completed'])
+            ->whereIn('status', ['pending', 'approved', 'partially_approved'])
+            ->whereNotIn('status', ['completed', 'cancelled'])
             ->latest()
             ->get();
 
@@ -39,6 +40,7 @@ class AdminOrderController extends Controller
 
         return view('orders.orders', compact('prescriptions', 'products'));
     }
+
     public function getProducts(Request $request)
     {
         try {
@@ -454,21 +456,24 @@ class AdminOrderController extends Controller
         }
     }
 
+    // Updated cancel method to handle customer_id properly
     public function cancel(Request $request, $id)
     {
         $request->validate([
-            'message' => 'required|string',
-            'custom_message' => 'nullable|string|max:500',
+            'reason' => 'required|string',
+            'message' => 'nullable|string|max:500',
         ]);
+
         try {
             DB::beginTransaction();
 
             $prescription = Prescription::with('order')->findOrFail($id);
 
+            // Create or update the order
             if (!$prescription->order) {
                 $order = new Order([
-                    'customer_id' => $prescription->customer_id,
-                    'status' => 'cancelled', // orders table uses 'cancelled'
+                    'customer_id' => $prescription->customer_id, // This might be VARCHAR
+                    'status' => 'cancelled',
                     'order_id' => 'ORD-' . $prescription->id,
                     'prescription_id' => $prescription->id,
                 ]);
@@ -477,17 +482,42 @@ class AdminOrderController extends Controller
                 $prescription->order->update(['status' => 'cancelled']);
             }
 
-            $adminMessage = $request->message;
-            if ($request->custom_message) {
-                $adminMessage .= "\n\nAdditional notes: " . $request->custom_message;
+            // Get the actual customer record to get the BIGINT id
+            $customer = null;
+            if ($prescription->customer_id) {
+                // If customer_id in prescriptions is a string, find by customer_id field
+                $customer = DB::table('customers')
+                    ->where('customer_id', $prescription->customer_id)
+                    ->orWhere('id', $prescription->customer_id)
+                    ->first();
             }
 
+            // Prepare admin message
+            $adminMessage = $this->getCancellationReasonText($request->reason);
+            if ($request->message) {
+                $adminMessage .= "\n\n Additional Information: " . $request->message;
+            }
+
+            // Update prescription
             $prescription->update([
                 'status' => 'cancelled',
                 'admin_message' => $adminMessage,
                 'updated_at' => now()
             ]);
 
+            // Store in cancelled_orders table
+            DB::table('cancelled_orders')->insert([
+                'prescription_id' => $prescription->id,
+                'order_id' => $prescription->order ? $prescription->order->id : null,
+                'customer_id' => $customer ? $customer->id : null,
+                'cancelled_by' => auth()->id(),
+                'cancellation_reason' => $request->reason,
+                'additional_message' => $request->message,
+                'cancelled_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+            NotificationService::notifyCustomerOrderCancelled($prescription);
             DB::commit();
 
             return response()->json([
@@ -507,6 +537,20 @@ class AdminOrderController extends Controller
                 'message' => 'Failed to cancel order: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    private function getCancellationReasonText($reason)
+    {
+        $reasonMap = [
+            'products_shortage' => 'Products Shortage/Unavailability',
+            'order_expired' => 'Order has been received 24+ hours ago',
+            'customer_cannot_afford' => 'Customer can\'t afford the order',
+            'customer_request' => 'Customer requested cancellation',
+            'pharmacy_error' => 'Pharmacy processing error',
+            'other' => 'Other'
+        ];
+
+        return $reasonMap[$reason] ?? $reason;
     }
 
     public function storePrescriptionItems(Request $request, $prescriptionId)
@@ -959,66 +1003,5 @@ class AdminOrderController extends Controller
                 'message' => $e->getMessage()
             ], 500);
         }
-    }
-    
-    public function getMessages(Prescription $prescription)
-    {
-        $messages = $prescription->messages()->with('sender')->get();
-
-        // Mark admin messages as read when customer views
-        $prescription->messages()
-            ->where('sender_type', 'admin')
-            ->where('is_read', false)
-            ->update(['is_read' => true]);
-
-        return response()->json([
-            'success' => true,
-            'messages' => $messages->map(function ($message) {
-                return [
-                    'id' => $message->id,
-                    'message' => $message->message,
-                    'sender_type' => $message->sender_type,
-                    'sender_name' => $message->sender_type === 'admin' ? 'Pharmacy Admin' : 'Customer',
-                    'created_at' => $message->created_at->format('M d, Y H:i'),
-                    'is_read' => $message->is_read
-                ];
-            })
-        ]);
-    }
-
-    public function sendMessage(Request $request, Prescription $prescription)
-    {
-        $request->validate([
-            'message' => 'required|string|max:1000'
-        ]);
-
-        $message = PrescriptionMessage::create([
-            'prescription_id' => $prescription->id,
-            'sender_type' => 'admin',
-            'sender_id' => auth()->id(),
-            'message' => $request->message,
-            'is_read' => false
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => [
-                'id' => $message->id,
-                'message' => $message->message,
-                'sender_type' => 'admin',
-                'sender_name' => 'Pharmacy Admin',
-                'created_at' => $message->created_at->format('M d, Y H:i')
-            ]
-        ]);
-    }
-
-    public function markMessagesRead(Prescription $prescription)
-    {
-        $prescription->messages()
-            ->where('sender_type', 'customer')
-            ->where('is_read', false)
-            ->update(['is_read' => true]);
-
-        return response()->json(['success' => true]);
     }
 }

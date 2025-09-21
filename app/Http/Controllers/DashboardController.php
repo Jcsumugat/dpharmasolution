@@ -9,21 +9,24 @@ use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $stats = $this->getDashboardStats();
+        $filter = $request->get('filter', 'all');
+        $stats = $this->getDashboardStats($filter);
         $activities = $this->getOngoingActivities();
-        $salesChartData = $this->getSalesChartData();
+        $salesChartData = $this->getSalesChartData($filter);
 
         return view('dashboard.dashboard', compact('stats', 'activities', 'salesChartData'));
     }
 
-    public function getStats()
+    public function getStats(Request $request)
     {
+        $filter = $request->get('filter', 'all');
+
         return response()->json([
-            'stats' => $this->getDashboardStats(),
+            'stats' => $this->getDashboardStats($filter),
             'activities' => $this->getOngoingActivities(),
-            'salesChart' => $this->getSalesChartData(),
+            'salesChart' => $this->getSalesChartData($filter),
             'timestamp' => now()->toISOString()
         ]);
     }
@@ -52,7 +55,7 @@ class DashboardController extends Controller
     public function getLowStockProducts()
     {
         $products = DB::table('products')
-            ->join('product_batches', 'products.id', '=', 'product_batches.product_id') // Use INNER JOIN instead of LEFT JOIN
+            ->join('product_batches', 'products.id', '=', 'product_batches.product_id')
             ->select(
                 'products.id as product_id',
                 'products.product_name',
@@ -73,7 +76,7 @@ class DashboardController extends Controller
     public function getOutOfStockProducts()
     {
         $products = DB::table('products')
-            ->join('product_batches', 'products.id', '=', 'product_batches.product_id') // Use INNER JOIN - only products with batches
+            ->join('product_batches', 'products.id', '=', 'product_batches.product_id')
             ->select(
                 'products.id as product_id',
                 'products.product_name',
@@ -83,164 +86,169 @@ class DashboardController extends Controller
             )
             ->selectRaw('COALESCE(SUM(product_batches.quantity_remaining), 0) as current_stock')
             ->groupBy('products.id', 'products.product_name', 'products.product_code', 'products.updated_at', 'products.reorder_level')
-            ->having('current_stock', '=', 0) // Products that had stock but now have 0
+            ->having('current_stock', '=', 0)
             ->orderBy('products.updated_at', 'desc')
             ->get();
 
         return response()->json($products);
     }
-    private function getDashboardStats()
+
+    private function getDashboardStats($filter = 'all')
     {
-        $totalSales = DB::table('sales')
-            ->where('status', 'completed')
-            ->sum('total_amount');
+        $totalSales = 0;
+        $totalRevenue = 0;
+        $totalCostOfGoodsSold = 0;
+
+        switch ($filter) {
+            case 'online':
+                $totalSales = DB::table('sales')
+                    ->where('status', 'completed')
+                    ->sum('total_amount');
+
+                $totalRevenue = DB::table('sale_items')
+                    ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+                    ->where('sales.status', 'completed')
+                    ->sum('sale_items.subtotal');
+
+                $totalCostOfGoodsSold = DB::table('sale_items')
+                    ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+                    ->join(DB::raw('(SELECT product_id, AVG(unit_cost) as avg_unit_cost FROM product_batches GROUP BY product_id) as avg_costs'), 'sale_items.product_id', '=', 'avg_costs.product_id')
+                    ->where('sales.status', 'completed')
+                    ->sum(DB::raw('sale_items.quantity * avg_costs.avg_unit_cost'));
+                break;
+
+            case 'pos':
+                $totalSales = DB::table('pos_transactions')
+                    ->where('status', 'completed')
+                    ->sum('total_amount');
+
+                $totalRevenue = $totalSales;
+                $totalCostOfGoodsSold = 0;
+                break;
+
+            default:
+                $onlineSales = DB::table('sales')
+                    ->where('status', 'completed')
+                    ->sum('total_amount');
+
+                $posSales = DB::table('pos_transactions')
+                    ->where('status', 'completed')
+                    ->sum('total_amount');
+
+                $totalSales = $onlineSales + $posSales;
+
+                $onlineRevenue = DB::table('sale_items')
+                    ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+                    ->where('sales.status', 'completed')
+                    ->sum('sale_items.subtotal');
+
+                $totalRevenue = $onlineRevenue + $posSales;
+
+                $totalCostOfGoodsSold = DB::table('sale_items')
+                    ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+                    ->join(DB::raw('(SELECT product_id, AVG(unit_cost) as avg_unit_cost FROM product_batches GROUP BY product_id) as avg_costs'), 'sale_items.product_id', '=', 'avg_costs.product_id')
+                    ->where('sales.status', 'completed')
+                    ->sum(DB::raw('sale_items.quantity * avg_costs.avg_unit_cost'));
+                break;
+        }
 
         $totalProducts = DB::table('products')->count();
-
-        $capitalSpend = DB::table('product_batches')
-            ->sum(DB::raw('quantity_received * unit_cost'));
-
-        $totalRevenue = DB::table('sale_items')
-            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
-            ->where('sales.status', 'completed')
-            ->sum('sale_items.subtotal');
-
-        $totalCostOfGoodsSold = DB::table('sale_items')
-            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
-            ->join(DB::raw('(SELECT product_id, AVG(unit_cost) as avg_unit_cost FROM product_batches GROUP BY product_id) as avg_costs'), 'sale_items.product_id', '=', 'avg_costs.product_id')
-            ->where('sales.status', 'completed')
-            ->sum(DB::raw('sale_items.quantity * avg_costs.avg_unit_cost'));
-
         $totalProfit = $totalRevenue - $totalCostOfGoodsSold;
 
         return [
             'total_sales' => $totalSales ?: 0,
             'total_products' => $totalProducts ?: 0,
-            'capital_spend' => $capitalSpend ?: 0,
             'total_profit' => $totalProfit ?: 0,
         ];
     }
 
-private function getOngoingActivities()
-{
-    $expiringProducts = DB::table('products')
-        ->join('product_batches', 'products.id', '=', 'product_batches.product_id')
-        ->where('product_batches.expiration_date', '<=', Carbon::now()->addDays(30))
-        ->where('product_batches.expiration_date', '>=', Carbon::now())
-        ->where('product_batches.quantity_remaining', '>', 0)
-        ->distinct('products.id')
-        ->count('products.id');
+    private function getOngoingActivities()
+    {
+        $expiringProducts = DB::table('products')
+            ->join('product_batches', 'products.id', '=', 'product_batches.product_id')
+            ->where('product_batches.expiration_date', '<=', Carbon::now()->addDays(30))
+            ->where('product_batches.expiration_date', '>=', Carbon::now())
+            ->where('product_batches.quantity_remaining', '>', 0)
+            ->distinct('products.id')
+            ->count('products.id');
 
-    $pendingPrescriptions = DB::table('prescriptions')
-        ->where('status', 'pending')
-        ->count();
+        $pendingPrescriptions = DB::table('prescriptions')
+            ->where('status', 'pending')
+            ->count();
 
-    // Fixed low stock query - now checks for stock BELOW or EQUAL to reorder level
-    $lowStockProducts = DB::table('products')
-        ->leftJoin('product_batches', 'products.id', '=', 'product_batches.product_id')
-        ->select('products.id', 'products.product_name', 'products.reorder_level')
-        ->selectRaw('COALESCE(SUM(product_batches.quantity_remaining), 0) as total_stock')
-        ->where(function($query) {
-            $query->whereNotNull('products.reorder_level')
-                  ->where('products.reorder_level', '>', 0);
-        })
-        ->groupBy('products.id', 'products.product_name', 'products.reorder_level')
-        ->get()
-        ->filter(function($product) {
-            // Log for debugging
-            \Log::info("Checking: {$product->product_name}, Stock: {$product->total_stock}, Reorder: {$product->reorder_level}");
+        $lowStockProducts = DB::table('products')
+            ->leftJoin('product_batches', 'products.id', '=', 'product_batches.product_id')
+            ->select('products.id', 'products.product_name', 'products.reorder_level')
+            ->selectRaw('COALESCE(SUM(product_batches.quantity_remaining), 0) as total_stock')
+            ->where(function($query) {
+                $query->whereNotNull('products.reorder_level')
+                      ->where('products.reorder_level', '>', 0);
+            })
+            ->groupBy('products.id', 'products.product_name', 'products.reorder_level')
+            ->get()
+            ->filter(function($product) {
+                return $product->total_stock > 0 && $product->total_stock <= $product->reorder_level;
+            })
+            ->count();
 
-            // Alert when stock is AT OR BELOW reorder level (but not zero)
-            $isLowStock = $product->total_stock > 0 && $product->total_stock <= $product->reorder_level;
+        $outOfStockProducts = DB::table('products')
+            ->leftJoin('product_batches', 'products.id', '=', 'product_batches.product_id')
+            ->select('products.id')
+            ->selectRaw('COALESCE(SUM(product_batches.quantity_remaining), 0) as total_stock')
+            ->groupBy('products.id')
+            ->having('total_stock', '=', 0)
+            ->whereExists(function($query) {
+                $query->select(DB::raw(1))
+                      ->from('product_batches as pb2')
+                      ->whereRaw('pb2.product_id = products.id');
+            })
+            ->count();
 
-            if ($isLowStock) {
-                \Log::info("LOW STOCK ALERT: {$product->product_name}");
-            }
+        $newOrdersToday = DB::table('prescriptions')
+            ->whereDate('created_at', Carbon::today())
+            ->count();
 
-            return $isLowStock;
-        })
-        ->count();
+        $completedOrdersToday = DB::table('sales')
+            ->whereDate('sale_date', Carbon::today())
+            ->where('status', 'completed')
+            ->count();
 
-    $outOfStockProducts = DB::table('products')
-        ->leftJoin('product_batches', 'products.id', '=', 'product_batches.product_id')
-        ->select('products.id')
-        ->selectRaw('COALESCE(SUM(product_batches.quantity_remaining), 0) as total_stock')
-        ->groupBy('products.id')
-        ->having('total_stock', '=', 0)
-        ->whereExists(function($query) {
-            $query->select(DB::raw(1))
-                  ->from('product_batches as pb2')
-                  ->whereRaw('pb2.product_id = products.id');
-        })
-        ->count();
+        $posTransactionsToday = DB::table('pos_transactions')
+            ->whereDate('created_at', Carbon::today())
+            ->where('status', 'completed')
+            ->count();
 
-    $newOrdersToday = DB::table('prescriptions')
-        ->whereDate('created_at', Carbon::today())
-        ->count();
+        $onlineRevenue = DB::table('sales')
+            ->whereDate('sale_date', Carbon::today())
+            ->where('status', 'completed')
+            ->sum('total_amount');
 
-    $completedOrdersToday = DB::table('sales')
-        ->whereDate('sale_date', Carbon::today())
-        ->where('status', 'completed')
-        ->count();
+        $posRevenue = DB::table('pos_transactions')
+            ->whereDate('created_at', Carbon::today())
+            ->where('status', 'completed')
+            ->sum('total_amount');
 
-    $todayRevenue = DB::table('sales')
-        ->whereDate('sale_date', Carbon::today())
-        ->where('status', 'completed')
-        ->sum('total_amount');
+        $todayRevenue = $onlineRevenue + $posRevenue;
 
-    $approvedOrdersToday = DB::table('prescriptions')
-        ->whereDate('updated_at', Carbon::today())
-        ->where('status', 'approved')
-        ->count();
+        $approvedOrdersToday = DB::table('prescriptions')
+            ->whereDate('updated_at', Carbon::today())
+            ->where('status', 'approved')
+            ->count();
 
-    \Log::info("Final low stock count: {$lowStockProducts}");
+        return [
+            'expiring_products' => $expiringProducts ?: 0,
+            'pending_prescriptions' => $pendingPrescriptions ?: 0,
+            'low_stock_products' => $lowStockProducts ?: 0,
+            'out_of_stock_products' => $outOfStockProducts ?: 0,
+            'new_orders' => $newOrdersToday ?: 0,
+            'completed_orders_today' => $completedOrdersToday ?: 0,
+            'pos_transactions_today' => $posTransactionsToday ?: 0,
+            'today_revenue' => $todayRevenue ?: 0,
+            'approved_orders_today' => $approvedOrdersToday ?: 0,
+        ];
+    }
 
-    return [
-        'expiring_products' => $expiringProducts ?: 0,
-        'pending_prescriptions' => $pendingPrescriptions ?: 0,
-        'low_stock_products' => $lowStockProducts ?: 0,
-        'out_of_stock_products' => $outOfStockProducts ?: 0,
-        'new_orders' => $newOrdersToday ?: 0,
-        'completed_orders_today' => $completedOrdersToday ?: 0,
-        'today_revenue' => $todayRevenue ?: 0,
-        'approved_orders_today' => $approvedOrdersToday ?: 0,
-    ];
-}
-
-// Method to manually set up test data for low stock alerts
-public function setupLowStockTest()
-{
-    // Option 1: Reduce stock quantity for one product
-    DB::table('product_batches')
-        ->where('product_id', 2) // Amoxicillin
-        ->limit(1)
-        ->update(['quantity_remaining' => 30]); // Below reorder level of 50
-
-    // Option 2: Increase reorder level to trigger alert
-    DB::table('products')
-        ->where('id', 1) // Paracetamol
-        ->update(['reorder_level' => 400]); // Above current stock of 395
-
-    return "Test data set up. Paracetamol should now show low stock alert.";
-}
-
-// Method to reset test data
-public function resetTestData()
-{
-    // Reset quantities
-    DB::table('product_batches')
-        ->where('product_id', 2)
-        ->update(['quantity_remaining' => 84]);
-
-    // Reset reorder levels
-    DB::table('products')
-        ->whereIn('id', [1, 2, 3])
-        ->update(['reorder_level' => 50]);
-
-    return "Test data reset to original values.";
-}
-
-    private function getSalesChartData()
+    private function getSalesChartData($filter = 'all')
     {
         $salesData = [];
         $labels = [];
@@ -250,11 +258,41 @@ public function resetTestData()
             $monthYear = $date->format('M Y');
             $labels[] = $monthYear;
 
-            $monthlySales = DB::table('sales')
-                ->where('status', 'completed')
-                ->whereYear('sale_date', $date->year)
-                ->whereMonth('sale_date', $date->month)
-                ->sum('total_amount');
+            $monthlySales = 0;
+
+            switch ($filter) {
+                case 'online':
+                    $monthlySales = DB::table('sales')
+                        ->where('status', 'completed')
+                        ->whereYear('sale_date', $date->year)
+                        ->whereMonth('sale_date', $date->month)
+                        ->sum('total_amount');
+                    break;
+
+                case 'pos':
+                    $monthlySales = DB::table('pos_transactions')
+                        ->where('status', 'completed')
+                        ->whereYear('created_at', $date->year)
+                        ->whereMonth('created_at', $date->month)
+                        ->sum('total_amount');
+                    break;
+
+                default:
+                    $onlineMonthlySales = DB::table('sales')
+                        ->where('status', 'completed')
+                        ->whereYear('sale_date', $date->year)
+                        ->whereMonth('sale_date', $date->month)
+                        ->sum('total_amount');
+
+                    $posMonthlySales = DB::table('pos_transactions')
+                        ->where('status', 'completed')
+                        ->whereYear('created_at', $date->year)
+                        ->whereMonth('created_at', $date->month)
+                        ->sum('total_amount');
+
+                    $monthlySales = $onlineMonthlySales + $posMonthlySales;
+                    break;
+            }
 
             $salesData[] = $monthlySales ?: 0;
         }
@@ -294,9 +332,24 @@ public function resetTestData()
             ->limit(5)
             ->get();
 
+        $recentPosTransactions = DB::table('pos_transactions')
+            ->select(
+                'id',
+                'transaction_id',
+                'customer_name',
+                'total_amount',
+                'payment_method',
+                'created_at'
+            )
+            ->where('status', 'completed')
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
+
         return response()->json([
             'recent_sales' => $recentSales,
-            'recent_prescriptions' => $recentPrescriptions
+            'recent_prescriptions' => $recentPrescriptions,
+            'recent_pos_transactions' => $recentPosTransactions
         ]);
     }
 
@@ -346,9 +399,8 @@ public function resetTestData()
             ];
         }
 
-        // Fixed: Only check products that have had batches
         $zeroStockCriticalProducts = DB::table('products')
-            ->join('product_batches', 'products.id', '=', 'product_batches.product_id') // INNER JOIN
+            ->join('product_batches', 'products.id', '=', 'product_batches.product_id')
             ->select('products.product_name', 'products.product_code')
             ->selectRaw('COALESCE(SUM(product_batches.quantity_remaining), 0) as total_stock')
             ->where('products.product_type', 'essential')
@@ -387,15 +439,29 @@ public function resetTestData()
         $weekStart = Carbon::now()->startOfWeek();
         $weekEnd = Carbon::now()->endOfWeek();
 
-        $weeklySales = DB::table('sales')
+        $onlineWeeklySales = DB::table('sales')
             ->where('status', 'completed')
             ->whereBetween('sale_date', [$weekStart, $weekEnd])
             ->sum('total_amount');
 
-        $weeklyOrders = DB::table('sales')
+        $posWeeklySales = DB::table('pos_transactions')
+            ->where('status', 'completed')
+            ->whereBetween('created_at', [$weekStart, $weekEnd])
+            ->sum('total_amount');
+
+        $weeklySales = $onlineWeeklySales + $posWeeklySales;
+
+        $weeklyOnlineOrders = DB::table('sales')
             ->where('status', 'completed')
             ->whereBetween('sale_date', [$weekStart, $weekEnd])
             ->count();
+
+        $weeklyPosOrders = DB::table('pos_transactions')
+            ->where('status', 'completed')
+            ->whereBetween('created_at', [$weekStart, $weekEnd])
+            ->count();
+
+        $weeklyOrders = $weeklyOnlineOrders + $weeklyPosOrders;
 
         $weeklyPrescriptions = DB::table('prescriptions')
             ->whereBetween('created_at', [$weekStart, $weekEnd])
@@ -420,9 +486,8 @@ public function resetTestData()
     public function checkInventoryAlerts()
     {
         try {
-            // Fixed: Only count products that have had batches
             $lowStockCount = DB::table('products')
-                ->join('product_batches', 'products.id', '=', 'product_batches.product_id') // INNER JOIN
+                ->join('product_batches', 'products.id', '=', 'product_batches.product_id')
                 ->select('products.id', 'products.reorder_level')
                 ->selectRaw('COALESCE(SUM(product_batches.quantity_remaining), 0) as total_stock')
                 ->groupBy('products.id', 'products.reorder_level')
@@ -431,9 +496,8 @@ public function resetTestData()
                 ->whereNotNull('products.reorder_level')
                 ->count();
 
-            // Fixed: Only count products that have had batches but are now out of stock
             $outOfStockCount = DB::table('products')
-                ->join('product_batches', 'products.id', '=', 'product_batches.product_id') // INNER JOIN
+                ->join('product_batches', 'products.id', '=', 'product_batches.product_id')
                 ->select('products.id')
                 ->selectRaw('COALESCE(SUM(product_batches.quantity_remaining), 0) as total_stock')
                 ->groupBy('products.id')
@@ -481,7 +545,6 @@ public function resetTestData()
         }
     }
 
-
     public function getProductStockDetails($productId)
     {
         $stockDetails = DB::table('product_batches')
@@ -515,9 +578,8 @@ public function resetTestData()
             ->orderBy('product_batches.expiration_date', 'asc')
             ->get();
 
-        // Fixed: Only show products that have had batches but are now out of stock
         $outOfStock = DB::table('products')
-            ->join('product_batches', 'products.id', '=', 'product_batches.product_id') // INNER JOIN
+            ->join('product_batches', 'products.id', '=', 'product_batches.product_id')
             ->select(
                 'products.product_name',
                 'products.product_code',
@@ -532,40 +594,6 @@ public function resetTestData()
             'urgent_expiring' => $urgentExpiring,
             'out_of_stock' => $outOfStock
         ]);
-    }
-
-    private function getAlternateProfitCalculation()
-    {
-        $totalRevenue = DB::table('sale_items')
-            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
-            ->where('sales.status', 'completed')
-            ->sum('sale_items.subtotal');
-
-        $weightedCosts = DB::table('product_batches')
-            ->select('product_id')
-            ->selectRaw('SUM(quantity_received * unit_cost) / SUM(quantity_received) as weighted_avg_cost')
-            ->groupBy('product_id')
-            ->get()
-            ->keyBy('product_id');
-
-        $totalCOGS = 0;
-        $salesWithCosts = DB::table('sale_items')
-            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
-            ->where('sales.status', 'completed')
-            ->select('sale_items.product_id', 'sale_items.quantity')
-            ->get();
-
-        foreach ($salesWithCosts as $sale) {
-            if (isset($weightedCosts[$sale->product_id])) {
-                $totalCOGS += $sale->quantity * $weightedCosts[$sale->product_id]->weighted_avg_cost;
-            }
-        }
-
-        return [
-            'revenue' => $totalRevenue,
-            'cogs' => $totalCOGS,
-            'profit' => $totalRevenue - $totalCOGS
-        ];
     }
 
     public function getInventoryMetrics()

@@ -10,7 +10,7 @@
 
 <body>
   @include('client.client-header')
-  
+
   <!-- Contact Hero Section -->
   <section class="contact-hero">
     <div class="container">
@@ -30,7 +30,7 @@
           <div class="contact-info">
             <h2>Contact Information</h2>
             <p>Find us easily and stay connected. We're committed to providing excellent service and support.</p>
-            
+
             <div class="info-item">
               <div class="info-icon">🏪</div>
               <div class="info-content">
@@ -67,7 +67,7 @@
           <!-- Interactive Section -->
           <div class="interactive-section">
             <h2>Quick Actions</h2>
-            
+
             <div class="action-cards">
               <div class="action-card">
                 <img src="{{ asset('image/image.png') }}" alt="QR Code" class="qr-image" />
@@ -79,7 +79,7 @@
                 <div class="feedback-icon">✉️</div>
                 <h3>Share Your Feedback</h3>
                 <p>Your opinion matters to us. Help us improve our services by sharing your experience.</p>
-                <a href="/feedback" class="feedback-link">Write Feedback</a>
+                <a href="/home/messages" class="feedback-link">Click Here</a>
               </div>
             </div>
           </div>

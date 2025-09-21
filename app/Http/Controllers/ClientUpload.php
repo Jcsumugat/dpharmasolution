@@ -127,6 +127,27 @@ class ClientUpload extends Controller
         }
     }
 
+    public function viewDocument($id)
+    {
+        $prescription = Prescription::findOrFail($id);
+
+        // Check if user owns this prescription (add your auth logic here)
+        // if ($prescription->user_id !== auth()->id()) { abort(403); }
+
+        if (!$prescription->file_path || !file_exists(storage_path('app/' . $prescription->file_path))) {
+            abort(404, 'Document not found');
+        }
+
+        $filePath = storage_path('app/' . $prescription->file_path);
+        $mimeType = $prescription->file_mime_type ?? 'application/octet-stream';
+
+        return response()->file($filePath, [
+            'Content-Type' => $mimeType,
+            'Content-Disposition' => 'inline; filename="' . ($prescription->original_filename ?? 'document') . '"'
+        ]);
+    }
+
+
     public function showUploadForm()
     {
         if (!Auth::guard('customer')->check()) {
