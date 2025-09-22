@@ -10,206 +10,189 @@
 
 <body>
   @include('client.client-header')
-  
-  <div class="container">
-    <h2 class="page-title">Our Products</h2>  
 
-    <div class="search-section">
-      <input type="text" class="search-bar" placeholder="Search for medicines, supplements, or health products..." id="searchInput">
-    </div>
-
-    <!-- Enhanced controls section -->
-    <div class="controls-section">
-      <div class="filter-controls">
-        <button class="filter-btn active" data-filter="all">All Products</button>
-        <button class="filter-btn" data-filter="tablet">Tablets</button>
-        <button class="filter-btn" data-filter="capsule">Capsules</button>
-        <button class="filter-btn" data-filter="syrup">Syrups</button>
-        <button class="filter-btn" data-filter="cream">Creams & Ointments</button>
-      </div>
-      
-      <div class="results-info">
-        <span class="results-count" id="resultsCount">
-          {{ count($products) }} products found
-        </span>
-        <div class="view-toggle">
-          <button class="view-btn active" data-view="grid" title="Grid View">⚏</button>
-          <button class="view-btn" data-view="list" title="List View">☰</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="product-grid" id="productGrid">
-      @forelse ($products as $product)
-        @php
-          // Get the batch with the lowest price for display
-          $lowestPriceBatch = $product->batches->sortBy('sale_price')->first();
-          $highestPriceBatch = $product->batches->sortByDesc('sale_price')->first();
-          
-          // Determine if we should show a price range or single price
-          $showPriceRange = $product->batches->count() > 1 && 
-                           $lowestPriceBatch->sale_price != $highestPriceBatch->sale_price;
-        @endphp
-        
-        <div class="product-box" 
-             data-category="{{ strtolower($product->form_type) }}" 
-             data-name="{{ strtolower($product->product_name) }}"
-             data-price="{{ $lowestPriceBatch->sale_price }}">
-          
-          <!-- Stock status indicator -->
-          <div class="stock-status stock-available">
-            In Stock
-          </div>
-
-          <div class="product-info">
-            <p class="product-name">{{ $product->product_name }}</p>
-            <p class="product-desc">{{ $product->form_type }}</p>
-            
-            <!-- Updated price display -->
-            <p class="product-price">
-              @if($showPriceRange)
-                ₱{{ number_format($lowestPriceBatch->sale_price, 2) }} - ₱{{ number_format($highestPriceBatch->sale_price, 2) }}
-              @else
-                ₱{{ number_format($lowestPriceBatch->sale_price, 2) }}
-              @endif
-            </p>
-            
-            <!-- Show available batches count if multiple -->
-            @if($product->batches->count() > 1)
-            <p class="product-batches">
-              <small>{{ $product->batches->count() }} batches available</small>
-            </p>
-            @endif
-
-            <!-- Additional product details -->
-            @if(isset($product->generic_name))
-            <p class="product-generic">
-              <small>Generic: {{ $product->generic_name }}</small>
-            </p>
-            @endif
-
-            @if(isset($product->dosage))
-            <p class="product-dosage">
-              <small>Dosage: {{ $product->dosage }}</small>
-            </p>
-            @endif
-            
-            <!-- Show expiration info for the earliest expiring batch -->
-            @php
-              $earliestBatch = $product->batches->sortBy('expiration_date')->first();
-            @endphp
-            @if($earliestBatch)
-            <p class="product-expiry">
-              <small>Expires: {{ \Carbon\Carbon::parse($earliestBatch->expiration_date)->format('M Y') }}</small>
-            </p>
-            @endif
+  <div class="main-wrapper">
+    <div class="container">
+      <div class="hero-section">
+        <div class="search-container">
+          <div class="search-wrapper">
+            <span class="search-icon">🔍</span>
+            <input type="text" class="search-bar" placeholder="Search for medicines, supplements, or health products..." id="searchInput">
           </div>
         </div>
-      @empty
-      <div class="no-products-message">
-        <p>No available products found.</p>
-        <p><small>Please check back later or contact us for specific medicine inquiries.</small></p>
       </div>
-      @endforelse
-    </div>
 
-    <!-- Pagination if needed -->
-    @if(isset($products) && method_exists($products, 'links'))
-      <div class="pagination-wrapper">
-        {{ $products->links() }}
+      <div class="filters-section">
+        <div class="filters-header">
+          <div class="filter-buttons">
+            <button class="filter-btn active" data-filter="all">All Products</button>
+            <button class="filter-btn" data-filter="tablet">Tablets</button>
+            <button class="filter-btn" data-filter="capsule">Capsules</button>
+            <button class="filter-btn" data-filter="syrup">Syrups</button>
+            <button class="filter-btn" data-filter="cream">Creams & Ointments</button>
+          </div>
+
+          <div class="results-info">
+            <span class="results-count" id="resultsCount">
+              {{ count($products) }} products found
+            </span>
+            <div class="view-toggle">
+              <button class="view-btn active" data-view="grid" title="Grid View">⚏</button>
+              <button class="view-btn" data-view="list" title="List View">☰</button>
+            </div>
+          </div>
+        </div>
       </div>
-    @endif
+
+      <div class="products-grid" id="productsGrid">
+        @forelse ($products as $product)
+          @php
+            $lowestPriceBatch = $product->batches->sortBy('sale_price')->first();
+            $highestPriceBatch = $product->batches->sortByDesc('sale_price')->first();
+            $showPriceRange = $product->batches->count() > 1 &&
+                             $lowestPriceBatch->sale_price != $highestPriceBatch->sale_price;
+          @endphp
+
+          <div class="product-card"
+               data-category="{{ strtolower($product->form_type) }}"
+               data-name="{{ strtolower($product->product_name) }}"
+               data-price="{{ $lowestPriceBatch->sale_price }}">
+
+            <div class="product-header">
+              <div class="stock-badge stock-available">In Stock</div>
+            </div>
+
+            <div class="product-content">
+              <h3 class="product-name">{{ $product->product_name }}</h3>
+              <p class="product-form">{{ $product->form_type }}</p>
+
+              <p class="product-price">
+                @if($showPriceRange)
+                  ₱{{ number_format($lowestPriceBatch->sale_price, 2) }} - ₱{{ number_format($highestPriceBatch->sale_price, 2) }}
+                @else
+                  ₱{{ number_format($lowestPriceBatch->sale_price, 2) }}
+                @endif
+              </p>
+
+              <div class="product-details">
+                @if($product->batches->count() > 1)
+                <div class="product-detail product-batches">
+                  <span class="product-detail-label">Batches:</span> {{ $product->batches->count() }} available
+                </div>
+                @endif
+
+                @if(isset($product->generic_name))
+                <div class="product-detail">
+                  <span class="product-detail-label">Generic:</span> {{ $product->generic_name }}
+                </div>
+                @endif
+
+                @if(isset($product->dosage))
+                <div class="product-detail">
+                  <span class="product-detail-label">Dosage:</span> {{ $product->dosage }}
+                </div>
+                @endif
+
+                @php
+                  $earliestBatch = $product->batches->sortBy('expiration_date')->first();
+                @endphp
+                @if($earliestBatch)
+                <div class="product-detail product-expiry">
+                  <span class="product-detail-label">Expires:</span> {{ \Carbon\Carbon::parse($earliestBatch->expiration_date)->format('M Y') }}
+                </div>
+                @endif
+              </div>
+            </div>
+          </div>
+        @empty
+        <div class="no-products">
+          <h3>No available products found</h3>
+          <p>Please check back later or contact us for specific medicine inquiries.</p>
+        </div>
+        @endforelse
+      </div>
+
+      @if(isset($products) && method_exists($products, 'links'))
+        <div class="pagination-wrapper">
+          {{ $products->links() }}
+        </div>
+      @endif
+    </div>
+  </div>
+
+  <div class="floating-action">
+    <button class="scroll-top" id="scrollTop">↑</button>
   </div>
 
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       const searchInput = document.getElementById('searchInput');
-      const productGrid = document.getElementById('productGrid');
+      const productsGrid = document.getElementById('productsGrid');
       const resultsCount = document.getElementById('resultsCount');
       const filterBtns = document.querySelectorAll('.filter-btn');
       const viewBtns = document.querySelectorAll('.view-btn');
-      const productBoxes = document.querySelectorAll('.product-box');
+      const productCards = document.querySelectorAll('.product-card');
+      const scrollTopBtn = document.getElementById('scrollTop');
 
       let currentFilter = 'all';
       let currentView = 'grid';
 
-      // Enhanced search functionality with highlighting
       function performSearch() {
         const query = searchInput.value.toLowerCase().trim();
         let visibleCount = 0;
 
-        productBoxes.forEach(box => {
-          const name = box.dataset.name;
-          const category = box.dataset.category;
-          const nameElement = box.querySelector('.product-name');
+        productCards.forEach(card => {
+          const name = card.dataset.name;
+          const category = card.dataset.category;
+          const nameElement = card.querySelector('.product-name');
           const originalName = nameElement.textContent;
-          
-          // Reset highlighting
+
           nameElement.innerHTML = originalName;
-          
+
           const matchesSearch = !query || name.includes(query) || category.includes(query);
           const matchesFilter = currentFilter === 'all' || category.includes(currentFilter);
-          
+
           if (matchesSearch && matchesFilter) {
-            box.style.display = 'block';
-            box.classList.add('fade-in');
+            card.style.display = 'block';
             visibleCount++;
-            
-            // Highlight matching text
+
             if (query && name.includes(query)) {
               const regex = new RegExp(`(${query})`, 'gi');
               nameElement.innerHTML = originalName.replace(regex, '<span class="highlight">$1</span>');
             }
           } else {
-            box.style.display = 'none';
-            box.classList.remove('fade-in');
+            card.style.display = 'none';
           }
         });
 
         updateResultsCount(visibleCount);
       }
 
-      // Filter functionality
       function applyFilter(filter) {
         currentFilter = filter;
-        
-        // Update active filter button
+
         filterBtns.forEach(btn => {
           btn.classList.toggle('active', btn.dataset.filter === filter);
         });
-        
+
         performSearch();
       }
 
-      // View toggle functionality
       function toggleView(view) {
         currentView = view;
-        
+
         viewBtns.forEach(btn => {
           btn.classList.toggle('active', btn.dataset.view === view);
         });
-        
-        productGrid.classList.toggle('list-view', view === 'list');
+
+        productsGrid.classList.toggle('list-view', view === 'list');
       }
 
-      // Update results count
       function updateResultsCount(count) {
         const productText = count === 1 ? 'product' : 'products';
         resultsCount.textContent = `${count} ${productText} found`;
       }
 
-      // Event listeners
-      searchInput.addEventListener('keyup', debounce(performSearch, 300));
-      
-      filterBtns.forEach(btn => {
-        btn.addEventListener('click', () => applyFilter(btn.dataset.filter));
-      });
-      
-      viewBtns.forEach(btn => {
-        btn.addEventListener('click', () => toggleView(btn.dataset.view));
-      });
-
-      // Debounce function to limit search frequency
       function debounce(func, wait) {
         let timeout;
         return function executedFunction(...args) {
@@ -222,31 +205,37 @@
         };
       }
 
-      // Sort functionality (can be added)
-      function sortProducts(sortBy) {
-        const boxes = Array.from(productBoxes);
-        
-        boxes.sort((a, b) => {
-          switch(sortBy) {
-            case 'name':
-              return a.dataset.name.localeCompare(b.dataset.name);
-            case 'price-low':
-              return parseFloat(a.dataset.price) - parseFloat(b.dataset.price);
-            case 'price-high':
-              return parseFloat(b.dataset.price) - parseFloat(a.dataset.price);
-            default:
-              return 0;
-          }
-        });
-        
-        boxes.forEach(box => productGrid.appendChild(box));
+      function handleScroll() {
+        const scrolled = window.pageYOffset;
+        const threshold = 300;
+
+        if (scrolled > threshold) {
+          scrollTopBtn.classList.add('visible');
+        } else {
+          scrollTopBtn.classList.remove('visible');
+        }
       }
 
-      // Initialize
-      updateResultsCount(productBoxes.length);
+      searchInput.addEventListener('keyup', debounce(performSearch, 300));
+
+      filterBtns.forEach(btn => {
+        btn.addEventListener('click', () => applyFilter(btn.dataset.filter));
+      });
+
+      viewBtns.forEach(btn => {
+        btn.addEventListener('click', () => toggleView(btn.dataset.view));
+      });
+
+      scrollTopBtn.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+
+      window.addEventListener('scroll', handleScroll);
+
+      updateResultsCount(productCards.length);
     });
   </script>
-   @stack('scripts')
+  @stack('scripts')
 </body>
 
 </html>
