@@ -55,19 +55,4 @@ class Prescription extends Model
     {
         return $this->hasOne(Order::class, 'prescription_id');
     }
-
-    public function messages()
-    {
-        return $this->hasMany(PrescriptionMessage::class)->orderBy('created_at');
-    }
-
-    public function unreadMessagesForAdmin()
-    {
-        return $this->messages()->where('sender_type', 'customer')->where('is_read', false);
-    }
-
-    public function unreadMessagesForCustomer()
-    {
-        return $this->messages()->where('sender_type', 'admin')->where('is_read', false);
-    }
 }

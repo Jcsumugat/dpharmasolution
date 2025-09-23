@@ -1,13 +1,13 @@
 .container {
-    max-width: 1000px;
+    max-width: 900px;
     margin: 0 auto;
-    padding: 0 20px;
+    padding: 0 18px;
 }
 
 .hero {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
-    padding: 64px 0;
+    padding: 57.6px 0;
     text-align: center;
     position: relative;
     overflow: hidden;
@@ -31,17 +31,17 @@
 }
 
 .hero h1 {
-    font-size: clamp(2rem, 4vw, 3.2rem);
+    font-size: clamp(1.8rem, 3.6vw, 2.88rem);
     font-weight: 700;
-    margin-bottom: 16px;
+    margin-bottom: 14.4px;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .hero .subtitle {
-    font-size: clamp(1rem, 2vw, 1.2rem);
-    margin-bottom: 28px;
+    font-size: clamp(0.9rem, 1.8vw, 1.08rem);
+    margin-bottom: 25.2px;
     opacity: 0.95;
-    max-width: 500px;
+    max-width: 450px;
     margin-left: auto;
     margin-right: auto;
     line-height: 1.5;
@@ -56,9 +56,9 @@
 .user-info {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 8px 16px;
-    border-radius: 8px;
+    gap: 10.8px;
+    padding: 7.2px 14.4px;
+    border-radius: 7.2px;
     cursor: pointer;
     transition: background-color 0.2s ease;
     background-color: #f8f9fa;
@@ -70,8 +70,8 @@
 }
 
 .user-avatar {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     display: flex;
@@ -79,7 +79,7 @@
     justify-content: center;
     color: white;
     font-weight: 600;
-    font-size: 14px;
+    font-size: 12.6px;
 }
 
 .user-details {
@@ -90,19 +90,19 @@
 
 .user-name {
     font-weight: 600;
-    font-size: 14px;
+    font-size: 12.6px;
     color: #333;
     margin: 0;
 }
 
 .user-email {
-    font-size: 12px;
+    font-size: 10.8px;
     color: #666;
     margin: 0;
 }
 
 .dropdown-arrow {
-    font-size: 12px;
+    font-size: 10.8px;
     color: #666;
     transition: transform 0.2s ease;
 }
@@ -115,16 +115,16 @@
     position: absolute;
     top: 100%;
     right: 0;
-    margin-top: 8px;
+    margin-top: 7.2px;
     background: white;
     border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    min-width: 250px;
+    border-radius: 7.2px;
+    box-shadow: 0 3.6px 10.8px rgba(0, 0, 0, 0.15);
+    min-width: 225px;
     z-index: 1000;
     opacity: 0;
     visibility: hidden;
-    transform: translateY(-10px);
+    transform: translateY(-9px);
     transition: all 0.2s ease;
 }
 
@@ -135,7 +135,7 @@
 }
 
 .dropdown-header {
-    padding: 16px 20px;
+    padding: 14.4px 18px;
     border-bottom: 1px solid #f0f0f0;
     background-color: #f8f9fa;
 }
@@ -143,19 +143,19 @@
 .dropdown-user-name {
     font-weight: 600;
     color: #333;
-    margin-bottom: 4px;
+    margin-bottom: 3.6px;
 }
 
 .dropdown-user-email {
-    font-size: 12px;
+    font-size: 10.8px;
     color: #666;
 }
 
 .dropdown-item {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 12px 20px;
+    gap: 10.8px;
+    padding: 10.8px 18px;
     text-decoration: none;
     color: #333;
     border: none;
@@ -180,42 +180,42 @@
 }
 
 .dropdown-icon {
-    font-size: 16px;
-    width: 20px;
+    font-size: 14.4px;
+    width: 18px;
     text-align: center;
 }
 
 .btn-group {
     display: flex;
-    gap: 16px;
+    gap: 14.4px;
     justify-content: center;
     flex-wrap: wrap;
-    margin-top: 24px;
+    margin-top: 21.6px;
 }
 
 .btn {
-    padding: 12px 24px;
-    border-radius: 50px;
+    padding: 10.8px 21.6px;
+    border-radius: 45px;
     text-decoration: none;
     font-weight: 600;
-    font-size: 0.95rem;
+    font-size: 0.855rem;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     overflow: hidden;
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 7.2px;
 }
 
 .btn-primary {
     background: white;
     color: #667eea;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 5.4px 18px rgba(0, 0, 0, 0.15);
 }
 
 .btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
+    transform: translateY(-1.8px);
+    box-shadow: 0 10.8px 25.2px rgba(0, 0, 0, 0.2);
     background: #f8f9ff;
 }
 
@@ -228,19 +228,19 @@
 .btn-secondary:hover {
     background: white;
     color: #667eea;
-    transform: translateY(-2px);
+    transform: translateY(-1.8px);
 }
 
 .stats {
     background: white;
-    margin: -32px auto 0;
-    max-width: 720px;
-    border-radius: 16px;
-    box-shadow: 0 16px 32px rgba(0, 0, 0, 0.1);
-    padding: 32px 24px;
+    margin: -28.8px auto 0;
+    max-width: 648px;
+    border-radius: 14.4px;
+    box-shadow: 0 14.4px 28.8px rgba(0, 0, 0, 0.1);
+    padding: 28.8px 21.6px;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 24px;
+    grid-template-columns: repeat(auto-fit, minmax(144px, 1fr));
+    gap: 21.6px;
     position: relative;
     z-index: 10;
 }
@@ -250,7 +250,7 @@
 }
 
 .stat-number {
-    font-size: 2rem;
+    font-size: 1.8rem;
     font-weight: 700;
     color: #667eea;
     display: block;
@@ -258,52 +258,52 @@
 
 .stat-label {
     color: #7c8ba1;
-    font-size: 0.9rem;
-    margin-top: 4px;
+    font-size: 0.81rem;
+    margin-top: 3.6px;
 }
 
 .main-content {
-    padding: 80px 0 48px;
+    padding: 72px 0 43.2px;
 }
 
 .services-section {
-    margin-bottom: 64px;
+    margin-bottom: 57.6px;
 }
 
 .section-header {
     text-align: center;
-    margin-bottom: 48px;
+    margin-bottom: 43.2px;
 }
 
 .section-title {
-    font-size: clamp(1.8rem, 3.5vw, 2.4rem);
+    font-size: clamp(1.62rem, 3.15vw, 2.16rem);
     color: #2c3e50;
-    margin-bottom: 12px;
+    margin-bottom: 10.8px;
     font-weight: 700;
 }
 
 .section-subtitle {
-    font-size: 1.05rem;
+    font-size: 0.945rem;
     color: #7c8ba1;
-    max-width: 500px;
+    max-width: 450px;
     margin: 0 auto;
     line-height: 1.6;
 }
 
 .services-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 24px;
-    margin-top: 40px;
+    grid-template-columns: repeat(auto-fit, minmax(252px, 1fr));
+    gap: 21.6px;
+    margin-top: 36px;
 }
 
 .service-card {
     background: white;
-    padding: 32px 24px;
-    border-radius: 16px;
+    padding: 28.8px 21.6px;
+    border-radius: 14.4px;
     text-align: center;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 7.2px 21.6px rgba(0, 0, 0, 0.08);
     position: relative;
     overflow: hidden;
 }
@@ -314,7 +314,7 @@
     top: 0;
     left: 0;
     right: 0;
-    height: 3px;
+    height: 2.7px;
     background: linear-gradient(90deg, #667eea, #764ba2);
     transform: scaleX(0);
     transition: transform 0.4s ease;
@@ -325,42 +325,42 @@
 }
 
 .service-card:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    transform: translateY(-7.2px);
+    box-shadow: 0 18px 36px rgba(0, 0, 0, 0.15);
 }
 
 .service-icon {
-    width: 64px;
-    height: 64px;
-    margin: 0 auto 20px;
+    width: 57.6px;
+    height: 57.6px;
+    margin: 0 auto 18px;
     background: linear-gradient(135deg, #667eea, #764ba2);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.6rem;
+    font-size: 1.44rem;
     color: white;
 }
 
 .service-card h3 {
-    font-size: 1.2rem;
+    font-size: 1.08rem;
     color: #2c3e50;
-    margin-bottom: 12px;
+    margin-bottom: 10.8px;
     font-weight: 600;
 }
 
 .service-card p {
     color: #7c8ba1;
     line-height: 1.6;
-    font-size: 0.95rem;
+    font-size: 0.855rem;
 }
 
 .about-section {
     background: white;
-    border-radius: 24px;
-    padding: 48px;
-    margin-bottom: 64px;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
+    border-radius: 21.6px;
+    padding: 43.2px;
+    margin-bottom: 57.6px;
+    box-shadow: 0 10.8px 25.2px rgba(0, 0, 0, 0.08);
     position: relative;
     overflow: hidden;
 }
@@ -370,8 +370,8 @@
     position: absolute;
     top: -40%;
     right: -8%;
-    width: 240px;
-    height: 240px;
+    width: 216px;
+    height: 216px;
     background: linear-gradient(135deg, #667eea20, #764ba220);
     border-radius: 50%;
     z-index: 1;
@@ -380,55 +380,55 @@
 .about-content {
     position: relative;
     z-index: 2;
-    max-width: 640px;
+    max-width: 576px;
 }
 
 .about-section h2 {
-    font-size: 1.9rem;
+    font-size: 1.71rem;
     color: #2c3e50;
-    margin-bottom: 20px;
+    margin-bottom: 18px;
     font-weight: 700;
 }
 
 .about-section p {
-    font-size: 1rem;
+    font-size: 0.9rem;
     color: #5a6c7d;
     line-height: 1.7;
-    margin-bottom: 16px;
+    margin-bottom: 14.4px;
 }
 
 .features-list {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 16px;
-    margin-top: 32px;
+    grid-template-columns: repeat(auto-fit, minmax(162px, 1fr));
+    gap: 14.4px;
+    margin-top: 28.8px;
 }
 
 .feature-item {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 12px;
+    gap: 10.8px;
+    padding: 10.8px;
     background: #f8fdff;
-    border-radius: 12px;
+    border-radius: 10.8px;
     transition: all 0.3s ease;
 }
 
 .feature-item:hover {
     background: #e8f4f8;
-    transform: translateX(4px);
+    transform: translateX(3.6px);
 }
 
 .feature-icon {
-    width: 32px;
-    height: 32px;
+    width: 28.8px;
+    height: 28.8px;
     background: linear-gradient(135deg, #667eea, #764ba2);
-    border-radius: 8px;
+    border-radius: 7.2px;
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
-    font-size: 1rem;
+    font-size: 0.9rem;
     flex-shrink: 0;
 }
 
@@ -436,8 +436,8 @@
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     text-align: center;
-    padding: 64px 48px;
-    border-radius: 24px;
+    padding: 57.6px 43.2px;
+    border-radius: 21.6px;
     position: relative;
     overflow: hidden;
 }
@@ -455,26 +455,26 @@
 .cta-content {
     position: relative;
     z-index: 2;
-    max-width: 480px;
+    max-width: 432px;
     margin: 0 auto;
 }
 
 .cta-section h2 {
-    font-size: clamp(1.6rem, 3vw, 2.1rem);
-    margin-bottom: 16px;
+    font-size: clamp(1.44rem, 2.7vw, 1.89rem);
+    margin-bottom: 14.4px;
     font-weight: 700;
 }
 
 .cta-section p {
-    font-size: 1.05rem;
-    margin-bottom: 28px;
+    font-size: 0.945rem;
+    margin-bottom: 25.2px;
     opacity: 0.95;
     line-height: 1.6;
 }
 
 .cta-buttons {
     display: flex;
-    gap: 16px;
+    gap: 14.4px;
     justify-content: center;
     flex-wrap: wrap;
 }
@@ -482,28 +482,28 @@
 .cta-btn {
     background: white;
     color: #667eea;
-    padding: 12px 28px;
-    border-radius: 50px;
+    padding: 10.8px 25.2px;
+    border-radius: 45px;
     text-decoration: none;
     font-weight: 600;
-    font-size: 0.95rem;
+    font-size: 0.855rem;
     transition: all 0.3s ease;
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    gap: 7.2px;
+    box-shadow: 0 5.4px 18px rgba(0, 0, 0, 0.15);
 }
 
 .cta-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
+    transform: translateY(-1.8px);
+    box-shadow: 0 10.8px 25.2px rgba(0, 0, 0, 0.2);
     background: #f8f9ff;
 }
 
 @keyframes fadeInUp {
     from {
         opacity: 0;
-        transform: translateY(40px);
+        transform: translateY(36px);
     }
     to {
         opacity: 1;
@@ -516,7 +516,7 @@
         transform: translateY(0px);
     }
     50% {
-        transform: translateY(-8px);
+        transform: translateY(-7.2px);
     }
 }
 
@@ -527,74 +527,74 @@
 @media (max-width: 1024px) {
     .container {
         max-width: 100%;
-        padding: 0 24px;
+        padding: 0 21.6px;
     }
 
     .hero {
-        padding: 56px 0;
+        padding: 50.4px 0;
     }
 
     .about-section {
-        padding: 40px 32px;
+        padding: 36px 28.8px;
     }
 
     .cta-section {
-        padding: 56px 40px;
+        padding: 50.4px 36px;
     }
 }
 
 @media (max-width: 768px) {
     .container {
-        padding: 0 20px;
+        padding: 0 18px;
     }
 
     .hero {
-        padding: 48px 0;
+        padding: 43.2px 0;
     }
 
     .stats {
-        margin: -24px 16px 0;
-        padding: 24px 16px;
+        margin: -21.6px 14.4px 0;
+        padding: 21.6px 14.4px;
         grid-template-columns: repeat(2, 1fr);
-        gap: 20px;
+        gap: 18px;
     }
 
     .stat-number {
-        font-size: 1.8rem;
+        font-size: 1.62rem;
     }
 
     .about-section {
-        padding: 32px 24px;
-        margin: 32px 16px;
+        padding: 28.8px 21.6px;
+        margin: 28.8px 14.4px;
     }
 
     .cta-section {
-        padding: 48px 24px;
-        margin: 32px 16px 0;
+        padding: 43.2px 21.6px;
+        margin: 28.8px 14.4px 0;
     }
 
     .services-grid {
         grid-template-columns: 1fr;
-        gap: 16px;
+        gap: 14.4px;
     }
 
     .btn-group,
     .cta-buttons {
         flex-direction: column;
         align-items: center;
-        gap: 12px;
+        gap: 10.8px;
     }
 
     .btn,
     .cta-btn {
         width: 100%;
-        max-width: 280px;
+        max-width: 252px;
         justify-content: center;
     }
 
     .features-list {
         grid-template-columns: 1fr;
-        gap: 12px;
+        gap: 10.8px;
     }
 
     .user-details {
@@ -602,73 +602,72 @@
     }
 
     .user-dropdown {
-        min-width: 200px;
+        min-width: 180px;
     }
 
     .service-card {
-        padding: 28px 20px;
+        padding: 25.2px 18px;
     }
 
     .service-icon {
-        width: 56px;
-        height: 56px;
-        font-size: 1.4rem;
+        width: 50.4px;
+        height: 50.4px;
+        font-size: 1.26rem;
     }
 }
 
 @media (max-width: 480px) {
     .container {
-        padding: 0 16px;
+        padding: 0 14.4px;
     }
 
     .stats {
         grid-template-columns: 1fr;
-        margin: -20px 12px 0;
-        padding: 20px 12px;
+        margin: -18px 10.8px 0;
+        padding: 18px 10.8px;
     }
 
     .stat-number {
-        font-size: 1.6rem;
+        font-size: 1.44rem;
     }
 
     .hero h1 {
-        font-size: 1.8rem;
+        font-size: 1.62rem;
     }
 
     .hero .subtitle {
-        font-size: 0.95rem;
+        font-size: 0.855rem;
     }
 
     .section-title {
-        font-size: 1.6rem;
+        font-size: 1.44rem;
     }
 
     .about-section {
-        padding: 24px 16px;
-        margin: 24px 12px;
+        padding: 21.6px 14.4px;
+        margin: 21.6px 10.8px;
     }
 
     .about-section h2 {
-        font-size: 1.5rem;
+        font-size: 1.35rem;
     }
 
     .cta-section {
-        padding: 40px 16px;
-        margin: 24px 12px 0;
+        padding: 36px 14.4px;
+        margin: 21.6px 10.8px 0;
     }
 
     .cta-section h2 {
-        font-size: 1.4rem;
+        font-size: 1.26rem;
     }
 
     .service-card {
-        padding: 24px 16px;
+        padding: 21.6px 14.4px;
     }
 
     .btn,
     .cta-btn {
-        font-size: 0.9rem;
-        padding: 8px 3px;
+        font-size: 0.81rem;
+        padding: 7.2px 2.7px;
     }
 }
-

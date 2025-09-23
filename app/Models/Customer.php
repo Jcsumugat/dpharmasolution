@@ -11,15 +11,12 @@ class Customer extends Authenticatable
 
     protected $table = 'customers';
 
-
+    // Keep the default primary key 'id' as auto-incrementing
+    protected $primaryKey = 'id';
     public $incrementing = true;
-
-    // If customer_id is not auto-incrementing (string-based)
-    // public $incrementing = false;
-    // protected $keyType = 'string';
+    protected $keyType = 'int';
 
     protected $fillable = [
-        'customer_id',
         'full_name',
         'address',
         'birthdate',
@@ -42,23 +39,25 @@ class Customer extends Authenticatable
     ];
 
     // Auto-generate customer_id when creating new customers
-    protected static function boot()
-    {
-        parent::boot();
+protected static function boot()
+{
+    parent::boot();
 
-        static::creating(function ($customer) {
-            if (empty($customer->customer_id)) {
-                // Find the highest customer number from properly formatted customer_ids
-                $lastCustomerNumber = static::whereRaw("customer_id REGEXP '^CUST[0-9]+
-}")
-                    ->selectRaw('MAX(CAST(SUBSTRING(customer_id, 5) AS UNSIGNED)) as max_number')
-                    ->value('max_number');
+    static::creating(function ($customer) {
+        if (empty($customer->customer_id)) {
+            // Find the highest numeric customer_id
+            $lastCustomerNumber = static::whereRaw("customer_id REGEXP '^[0-9]+$'")
+                ->selectRaw('MAX(CAST(customer_id AS UNSIGNED)) as max_number')
+                ->value('max_number');
 
-                $nextNumber = ($lastCustomerNumber ?? 0) + 1;
-                $customer->customer_id = 'CUST' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
-            }
-        });
-    }
+            $nextNumber = ($lastCustomerNumber ?? 0) + 1;
+            // Format like 0001, 0002, etc.
+            $customer->customer_id = str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
+        }
+    });
+}
+
+
     /**
      * Get all conversations for this customer
      */
@@ -110,7 +109,7 @@ class Customer extends Authenticatable
     public function createConversation($type = 'general_support', $title = null, $metadata = [])
     {
         $conversation = Conversation::create([
-            'customer_id' => $this->id,
+            'customer_id' => $this->id, // Use the primary key 'id' here
             'type' => $type,
             'title' => $title,
             'metadata' => $metadata,

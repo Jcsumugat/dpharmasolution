@@ -81,28 +81,28 @@ class AuthController extends Controller
         }
 
         try {
-            $customer = new Customer();
 
-            // Generate customer_id if it's a custom field
-            // Option 1: Auto-increment based approach
-            $lastCustomer = Customer::latest('id')->first();
-            $customer->customer_id = $lastCustomer ? $lastCustomer->id + 1 : 1;
-            $customer->full_name = $registrationData['full_name'];
-            $customer->address = $registrationData['address'];
-            $customer->birthdate = $registrationData['birthdate'];
-            $customer->sex = $registrationData['sex'];
-            $customer->email_address = $registrationData['email_address'];
-            $customer->contact_number = $registrationData['contact_number'];
-            $customer->password = Hash::make($request->password);
+            $customer = Customer::create([
+                // DON'T set customer_id here - let the model's boot() method handle it
+                'full_name' => $registrationData['full_name'],
+                'address' => $registrationData['address'],
+                'birthdate' => $registrationData['birthdate'],
+                'sex' => $registrationData['sex'],
+                'email_address' => $registrationData['email_address'],
+                'contact_number' => $registrationData['contact_number'],
+                'password' => Hash::make($request->password),
+                'status' => 'active'
+            ]);
 
-            // Use the correct status column instead of is_active/is_restricted
-            $customer->status = 'active'; // Set default status to active
-
-            $customer->save();
+            Log::info('Customer created with auto-generated customer_id', [
+                'id' => $customer->id,
+                'customer_id' => $customer->customer_id,
+                'full_name' => $customer->full_name
+            ]);
 
             // CREATE CUSTOMER CHAT RECORD
             CustomerChat::create([
-                'customer_id' => $customer->customer_id,
+                'customer_id' => $customer->customer_id, // Use the auto-generated string ID
                 'email_address' => $customer->email_address,
                 'full_name' => $customer->full_name,
                 'is_online' => false,
@@ -195,7 +195,8 @@ class AuthController extends Controller
             }
 
             Log::info('Customer logged in successfully', [
-                'customer_id' => $customer->id,
+                'id' => $customer->id,
+                'customer_id' => $customer->customer_id,
                 'customer_name' => $customer->full_name,
                 'login_time' => now()
             ]);
@@ -215,47 +216,48 @@ class AuthController extends Controller
         return view('client.home');
     }
 
-  public function logout(Request $request)
-{
-    // Get the authenticated customer before logging out
-    $customer = Auth::guard('customer')->user();
+    public function logout(Request $request)
+    {
+        // Get the authenticated customer before logging out
+        $customer = Auth::guard('customer')->user();
 
-    if ($customer) {
-        // UPDATE CUSTOMER CHAT STATUS TO OFFLINE
-        try {
-            Log::info('Attempting to update chat status to offline for customer', [
-                'customer_id' => $customer->customer_id,
-                'customer_name' => $customer->full_name
-            ]);
+        if ($customer) {
+            // UPDATE CUSTOMER CHAT STATUS TO OFFLINE
+            try {
+                Log::info('Attempting to update chat status to offline for customer', [
+                    'customer_id' => $customer->customer_id,
+                    'customer_name' => $customer->full_name
+                ]);
 
-            $updated = CustomerChat::where('customer_id', $customer->customer_id)->update([
-                'is_online' => false,
-                'last_active' => now(),
-                'chat_status' => 'offline'
-            ]);
+                $updated = CustomerChat::where('customer_id', $customer->customer_id)->update([
+                    'is_online' => false,
+                    'last_active' => now(),
+                    'chat_status' => 'offline'
+                ]);
 
-            Log::info('Customer chat status updated to offline', [
-                'customer_id' => $customer->customer_id,
-                'customer_name' => $customer->full_name,
-                'rows_affected' => $updated,
-                'logout_time' => now()
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Failed to update customer chat status on logout', [
-                'customer_id' => $customer->customer_id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
+                Log::info('Customer chat status updated to offline', [
+                    'customer_id' => $customer->customer_id,
+                    'customer_name' => $customer->full_name,
+                    'rows_affected' => $updated,
+                    'logout_time' => now()
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Failed to update customer chat status on logout', [
+                    'customer_id' => $customer->customer_id,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+            }
         }
+
+        // Logout from customer guard only
+        Auth::guard('customer')->logout();
+        $request->session()->regenerateToken();
+
+        // Redirect to customer login form
+        return redirect()->route('login.form')->with('success', 'You have been logged out successfully.');
     }
 
-    // Logout from customer guard only
-    Auth::guard('customer')->logout();
-    $request->session()->regenerateToken();
-
-    // Redirect to customer login form
-    return redirect()->route('login.form')->with('success', 'You have been logged out successfully.');
-}
     public function show()
     {
         $user = auth()->user();

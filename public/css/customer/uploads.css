@@ -8,8 +8,6 @@ body {
     font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
     background: linear-gradient(135deg, #f8fdff 0%, #e8f4f8 100%);
     color: #2c3e50;
-    line-height: 1.6;
-    min-height: 100vh;
     padding-top: 118px;
 }
 
@@ -694,6 +692,7 @@ body {
         opacity: 0;
         transform: translateY(-24px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -705,6 +704,7 @@ body {
         opacity: 0;
         transform: translateY(24px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -734,6 +734,7 @@ body {
         transform: translateX(100%);
         opacity: 0;
     }
+
     to {
         transform: translateX(0);
         opacity: 1;
@@ -992,6 +993,7 @@ body {
     from {
         opacity: 0;
     }
+
     to {
         opacity: 1;
     }
@@ -1002,6 +1004,7 @@ body {
         transform: translateY(-16px);
         opacity: 0;
     }
+
     to {
         transform: translateY(0);
         opacity: 1;
@@ -1012,76 +1015,101 @@ body {
     display: none;
 }
 
+/* Enhanced Mobile Responsiveness */
+
+/* Large tablets and small laptops */
 @media (max-width: 1024px) {
     body {
-        padding-top: 112px;
+        padding-top: 105px;
     }
 
     .main-container {
         max-width: 100%;
+        padding: 24px 16px;
+        gap: 24px;
+    }
+
+    .panel {
         padding: 24px 20px;
-        gap: 24px;
-    }
-
-    .panel {
-        padding: 28px 24px;
-    }
-
-    .modal-content {
-        max-width: 720px;
-    }
-}
-
-@media (max-width: 960px) {
-    .main-container {
-        grid-template-columns: 1fr;
-        gap: 24px;
-        max-width: 720px;
-    }
-
-    .modal-content {
-        width: 95%;
-        max-width: 640px;
-    }
-
-    .detail-label {
-        width: 100px;
-    }
-}
-
-
-@media (max-width: 768px) {
-    body {
-        padding-top: 56px;
-    }
-
-    .main-container {
-        padding: 16px 12px;
-    }
-
-    .panel {
-        padding: 20px 16px;
-        border-radius: 12px;
+        border-radius: 16px;
     }
 
     .panel h2,
     .panel h3 {
-        font-size: 1.3rem;
+        font-size: 1.5rem;
+        margin-bottom: 20px;
+    }
+
+    .filters-section {
+        padding: 16px;
+    }
+
+    .modal-content {
+        max-width: 85%;
+        margin: 20px;
+    }
+
+    .order-stats {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+
+    .stat-number {
+        font-size: 1.5rem;
+    }
+}
+
+/* Standard tablets (portrait) */
+@media (max-width: 960px) {
+    .main-container {
+        grid-template-columns: 1fr;
+        gap: 20px;
+        max-width: 720px;
+        padding: 20px 16px;
+    }
+
+    .panel {
+        padding: 20px 16px;
     }
 
     .order-type-selector {
-        grid-template-columns: 1fr;
-        gap: 12px;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+    }
+
+    .order-type-option {
+        padding: 16px;
+    }
+
+    .order-type-icon {
+        font-size: 1.5rem;
+        margin-bottom: 8px;
+    }
+
+    .order-type-title {
+        font-size: 0.95rem;
+        margin-bottom: 4px;
+    }
+
+    .order-type-description {
+        font-size: 0.8rem;
     }
 
     .filter-row {
         grid-template-columns: 1fr;
-        gap: 12px;
+        gap: 10px;
     }
 
     .search-row {
         flex-direction: column;
-        gap: 12px;
+        gap: 10px;
+        align-items: stretch;
+    }
+
+    .clear-filters-btn {
+        width: 100%;
+        justify-content: center;
+        padding: 12px 16px;
     }
 
     .order-stats {
@@ -1090,35 +1118,53 @@ body {
     }
 
     .stat-item {
-        padding: 12px;
+        padding: 14px 12px;
     }
 
     .stat-number {
         font-size: 1.4rem;
     }
 
+    .stat-label {
+        font-size: 0.75rem;
+    }
+
     .card-header {
         flex-direction: column;
         align-items: flex-start;
         gap: 12px;
+        padding: 14px 16px;
     }
 
     .card-actions {
         align-self: stretch;
         justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .order-id-section {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .order-id {
+        font-size: 0.95rem;
     }
 
     #preorder-history {
-        max-height: 400px;
+        max-height: 350px;
+        gap: 12px;
     }
 
     .history-table {
-        font-size: 0.85rem;
+        font-size: 0.8rem;
     }
 
     .history-table th,
     .history-table td {
-        padding: 10px 6px;
+        padding: 8px 6px;
+        font-size: 0.75rem;
     }
 
     .order-type-badge,
@@ -1128,78 +1174,14 @@ body {
     }
 
     .action-btn {
-        padding: 5px 10px;
+        padding: 6px 10px;
         font-size: 0.7rem;
     }
 
     .modal-content {
         width: 95%;
-        max-width: 480px;
-    }
-
-    .detail-label {
-        width: 100px;
-    }
-}
-
-@media (max-width: 480px) {
-    body {
-        padding-top: 48px;
-    }
-
-    .panel {
-        padding: 16px 12px;
-    }
-
-    .section-title {
-        font-size: 1rem;
-    }
-
-    .form-group input,
-    .form-group textarea {
-        padding: 10px 12px;
-        font-size: 0.9rem;
-    }
-
-    .btn-submit {
-        padding: 12px 20px;
-        font-size: 0.95rem;
-    }
-
-    .card-header,
-    .card-body,
-    .card-footer {
-        padding: 12px;
-    }
-
-    .order-id {
-        font-size: 0.95rem;
-    }
-
-    .filters-section {
-        padding: 16px 12px;
-    }
-
-    .filter-select,
-    .search-input {
-        font-size: 0.85rem;
-    }
-
-    .clear-filters-btn {
-        font-size: 0.8rem;
-        padding: 8px 12px;
-    }
-
-    .stat-number {
-        font-size: 1.2rem;
-    }
-
-    .stat-label {
-        font-size: 0.75rem;
-    }
-
-    .modal-content {
-        max-width: 90%;
+        max-width: 500px;
+        margin: 10px;
     }
 
     .modal-header {
@@ -1211,11 +1193,11 @@ body {
     }
 
     .modal-title {
-        font-size: 1.1rem;
+        font-size: 1.15rem;
     }
 
     .detail-label {
-        width: 80px;
+        width: 90px;
         font-size: 0.85rem;
     }
 
@@ -1223,19 +1205,415 @@ body {
         font-size: 0.85rem;
     }
 
+    .form-group input,
+    .form-group textarea {
+        padding: 10px 12px;
+        font-size: 0.9rem;
+    }
+
+    .btn-submit {
+        padding: 12px 24px;
+        font-size: 0.95rem;
+    }
+
+    .filters-section {
+        padding: 14px 12px;
+        margin-bottom: 16px;
+    }
+
+    .filter-select,
+    .search-input {
+        font-size: 0.85rem;
+        padding: 10px;
+    }
+
+    .search-input {
+        padding-left: 32px;
+    }
+
+    .file-input-wrapper::after {
+        font-size: 0.85rem;
+    }
+}
+
+/* Standard phones (portrait) */
+@media (max-width: 640px) {
+    body {
+        padding-top: 70px;
+    }
+
+    .main-container {
+        padding: 12px 8px;
+        gap: 12px;
+    }
+
+    .panel {
+        padding: 14px 10px;
+    }
+
+    .panel h2,
+    .panel h3 {
+        font-size: 1.15rem;
+        margin-bottom: 14px;
+    }
+
+    .section-title {
+        font-size: 1rem;
+        margin-bottom: 12px;
+    }
+
+    .order-type-option {
+        padding: 14px 10px;
+    }
+
+    .order-type-icon {
+        font-size: 1.3rem;
+        margin-bottom: 6px;
+    }
+
+    .order-type-title {
+        font-size: 0.9rem;
+    }
+
+    .order-type-description {
+        font-size: 0.75rem;
+    }
+
+    .form-group {
+        margin-bottom: 12px;
+    }
+
+    .form-group label {
+        font-size: 0.9rem;
+        margin-bottom: 6px;
+    }
+
+    .btn-submit {
+        padding: 10px 20px;
+        font-size: 0.9rem;
+    }
+
+    .modal-content {
+        width: 98%;
+        max-width: 400px;
+        margin: 5px;
+    }
+
+    .modal-header {
+        padding: 12px 12px 0;
+    }
+
+    .modal-body {
+        padding: 0 12px 12px;
+    }
+
+    .detail-row {
+        flex-direction: column;
+        gap: 4px;
+        padding: 8px 0;
+    }
+
+    .detail-label {
+        width: auto;
+        font-size: 0.8rem;
+        color: #64748b;
+    }
+
+    .detail-value {
+        font-size: 0.8rem;
+        padding-left: 0;
+    }
+
+    .card-header {
+        padding: 12px 14px;
+    }
+
+    .card-actions {
+        gap: 6px;
+    }
+
+    .filters-section {
+        padding: 12px 10px;
+    }
+
+    .success-message-temp {
+        right: 8px;
+        top: 8px;
+        max-width: calc(100% - 16px);
+        padding: 12px;
+    }
+}
+
+/* Small phones (portrait) */
+@media (max-width: 480px) {
+    body {
+        padding-top: 60px;
+    }
+
+    .main-container {
+        padding: 10px 6px;
+        gap: 10px;
+    }
+
+    .panel {
+        padding: 12px 8px;
+        border-radius: 10px;
+    }
+
+    .panel h2,
+    .panel h3 {
+        font-size: 1.05rem;
+        margin-bottom: 12px;
+    }
+
+    .section-title {
+        font-size: 0.95rem;
+        margin-bottom: 10px;
+    }
+
+    .form-group input,
+    .form-group textarea {
+        padding: 8px 10px;
+        font-size: 0.85rem;
+    }
+
+    .form-group label {
+        font-size: 0.85rem;
+    }
+
+    .btn-submit {
+        padding: 8px 16px;
+        font-size: 0.85rem;
+    }
+
+    .order-type-option {
+        padding: 12px 8px;
+    }
+
+    .order-type-icon {
+        font-size: 1.2rem;
+        margin-bottom: 4px;
+    }
+
+    .order-type-title {
+        font-size: 0.85rem;
+        margin-bottom: 2px;
+    }
+
+    .order-type-description {
+        font-size: 0.7rem;
+    }
+
+    .card-header {
+        padding: 10px 12px;
+    }
+
+    .order-id {
+        font-size: 0.9rem;
+    }
+
+    .filters-section {
+        padding: 10px 8px;
+    }
+
+    .filter-select,
+    .search-input {
+        font-size: 0.8rem;
+        padding: 8px;
+    }
+
+    .search-input {
+        padding-left: 28px;
+    }
+
+    .clear-filters-btn {
+        font-size: 0.8rem;
+        padding: 10px 14px;
+    }
+
+    .stat-item {
+        padding: 10px 8px;
+    }
+
+    .stat-number {
+        font-size: 1.2rem;
+    }
+
+    .stat-label {
+        font-size: 0.7rem;
+    }
+
+    .modal-content {
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
+        border-radius: 0;
+        max-height: 100vh;
+    }
+
+    .modal-header {
+        padding: 10px 10px 0;
+    }
+
+    .modal-body {
+        padding: 0 10px 10px;
+    }
+
+    .modal-title {
+        font-size: 1rem;
+    }
+
+    .detail-label,
+    .detail-value {
+        font-size: 0.75rem;
+    }
+
     .no-history {
-        padding: 32px 12px;
+        padding: 24px 8px;
     }
 
     .no-history-icon {
-        font-size: 2.5rem;
+        font-size: 2.2rem;
+        margin-bottom: 12px;
     }
 
     .no-history h4 {
-        font-size: 1.1rem;
+        font-size: 1rem;
+        margin-bottom: 6px;
     }
 
     .no-history p {
-        font-size: 0.9rem;
+        font-size: 0.8rem;
+    }
+
+    .history-table th,
+    .history-table td {
+        padding: 6px 4px;
+        font-size: 0.7rem;
+    }
+
+    .order-type-badge,
+    .status-badge {
+        font-size: 0.55rem;
+        padding: 2px 4px;
+    }
+
+    .action-btn {
+        padding: 4px 8px;
+        font-size: 0.65rem;
+    }
+
+    .file-input-wrapper::after {
+        font-size: 0.8rem;
+    }
+
+    .success-message-temp {
+        right: 4px;
+        top: 4px;
+        padding: 10px;
+        font-size: 0.85rem;
     }
 }
+
+/* Extra small phones and very narrow screens */
+@media (max-width: 360px) {
+    .main-container {
+        padding: 8px 4px;
+        gap: 8px;
+    }
+
+    .panel {
+        padding: 10px 6px;
+    }
+
+    .panel h2,
+    .panel h3 {
+        font-size: 1rem;
+    }
+
+    .form-group input,
+    .form-group textarea {
+        padding: 6px 8px;
+        font-size: 0.8rem;
+    }
+
+    .btn-submit {
+        padding: 6px 12px;
+        font-size: 0.8rem;
+    }
+
+    .order-type-option {
+        padding: 10px 6px;
+    }
+
+    .card-header {
+        padding: 8px 10px;
+    }
+
+    .filters-section {
+        padding: 8px 6px;
+    }
+
+    .stat-item {
+        padding: 8px 6px;
+    }
+
+    .stat-number {
+        font-size: 1.1rem;
+    }
+
+    .no-history {
+        padding: 20px 6px;
+    }
+
+    .modal-content {
+        width: 90%;
+        max-width: 600px;
+    }
+
+    .detail-label {
+        width: 110px;
+    }
+
+    .filter-row {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+}
+
+/* Large phones (landscape) and small tablets (portrait) */
+@media (max-width: 768px) {
+    body {
+        padding-top: 85px;
+    }
+
+    .main-container {
+        padding: 16px 12px;
+        gap: 16px;
+    }
+
+    .panel {
+        padding: 16px 12px;
+        border-radius: 12px;
+    }
+
+    .panel h2,
+    .panel h3 {
+        font-size: 1.25rem;
+        margin-bottom: 16px;
+    }
+
+    .order-type-selector {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .order-type-option {
+        padding: 16px 12px;
+    }
+
+    .order-type-icon {
+        font-size: 1.
+    }
+}
+

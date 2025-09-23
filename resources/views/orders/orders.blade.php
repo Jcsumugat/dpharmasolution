@@ -98,13 +98,7 @@
                                 @else
                                     <em>Guest Order</em>
                                 @endif
-                                <div class="message-indicator" id="msg-indicator-{{ $prescription->id }}">
-                                    @if ($prescription->unreadMessagesForAdmin()->count() > 0)
-                                        <span
-                                            class="unread-indicator">{{ $prescription->unreadMessagesForAdmin()->count() }}
-                                            new message</span>
-                                    @endif
-                                </div>
+
                             </td>
 
                             <td>

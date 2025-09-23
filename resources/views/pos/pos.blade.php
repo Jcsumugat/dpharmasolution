@@ -422,31 +422,31 @@
                     </thead>
                     <tbody>
                         ${products.map(product => `
-                                        <tr data-id="${product.id}">
-                                            <td>
-                                                <div class="product-name">${highlightMatch(product.product_name, searchTerm)}</div>
-                                                <div class="product-brand">${highlightMatch(product.brand_name, searchTerm)}</div>
-                                                ${product.batches && product.batches[0] && new Date(product.batches[0].expiration_date) <= new Date(Date.now() + 30*24*60*60*1000) ?
-                                                    `<div class="product-expiry">Expires: ${new Date(product.batches[0].expiration_date).toLocaleDateString()}</div>` : ''}
-                                            </td>
-                                            <td>
-                                                <div class="product-price">₱${parseFloat(product.unit_price || 0).toFixed(2)}</div>
-                                            </td>
-                                            <td>
-                                                <div class="product-stock">${product.total_stock || 0}</div>
-                                            </td>
-                                            <td class="action-cell">
-                                                <div class="action-buttons-group">
-                                                    <button type="button" class="btn-view-details" onclick="showProductDetails(${product.id})">
-                                                        Details
-                                                    </button>
-                                                    <button type="button" class="btn-add-to-cart" onclick="addToCart(${product.id})">
-                                                        Add
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    `).join('')}
+                                                <tr data-id="${product.id}">
+                                                    <td>
+                                                        <div class="product-name">${highlightMatch(product.product_name, searchTerm)}</div>
+                                                        <div class="product-brand">${highlightMatch(product.brand_name, searchTerm)}</div>
+                                                        ${product.batches && product.batches[0] && new Date(product.batches[0].expiration_date) <= new Date(Date.now() + 30*24*60*60*1000) ?
+                                                            `<div class="product-expiry">Expires: ${new Date(product.batches[0].expiration_date).toLocaleDateString()}</div>` : ''}
+                                                    </td>
+                                                    <td>
+                                                        <div class="product-price">₱${parseFloat(product.unit_price || 0).toFixed(2)}</div>
+                                                    </td>
+                                                    <td>
+                                                        <div class="product-stock">${product.total_stock || 0}</div>
+                                                    </td>
+                                                    <td class="action-cell">
+                                                        <div class="action-buttons-group">
+                                                            <button type="button" class="btn-view-details" onclick="showProductDetails(${product.id})">
+                                                                Details
+                                                            </button>
+                                                            <button type="button" class="btn-add-to-cart" onclick="addToCart(${product.id})">
+                                                                Add
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            `).join('')}
                     </tbody>
                 </table>
             `;
@@ -815,79 +815,82 @@
             const receiptContent = document.getElementById('receiptContent');
 
             receiptContent.innerHTML = `
-                <div class="receipt">
-                    <div class="receipt-business-info">
-                        <h3>MJ's Pharmacy</h3>
-                        <p>Your Trusted Healthcare Partner</p>
-                    </div>
+        <div class="receipt-body">
+            <div class="receipt">
+                <div class="receipt-business-info">
+                    <h3>MJ's Pharmacy</h3>
+                    <p>Your Trusted Healthcare Partner</p>
+                </div>
 
-                    <div class="receipt-transaction-info">
-                        <p><strong>Transaction ID:</strong> ${transaction.transaction_id}</p>
-                        <p><strong>Date:</strong> ${new Date().toLocaleString()}</p>
-                        ${transaction.customer_name ? `<p><strong>Customer:</strong> ${transaction.customer_name}</p>` : ''}
-                        <p><strong>Payment:</strong> ${transaction.payment_method.toUpperCase()}</p>
-                    </div>
+                <div class="receipt-transaction-info">
+                    <p><strong>Transaction ID:</strong> ${transaction.transaction_id}</p>
+                    <p><strong>Date:</strong> ${new Date().toLocaleString()}</p>
+                    ${transaction.customer_name ? `<p><strong>Customer:</strong> ${transaction.customer_name}</p>` : ''}
+                    <p><strong>Payment:</strong> ${transaction.payment_method.toUpperCase()}</p>
+                </div>
 
-                    <div class="receipt-items">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Item</th>
-                                    <th>Qty</th>
-                                    <th>Price</th>
-                                    <th>Total</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${transaction.items.map(item => `
-                                                <tr>
-                                                    <td>
-                                                        <div class="item-name">${item.product_name}</div>
-                                                        <div class="item-brand">${item.brand_name}</div>
-                                                    </td>
-                                                    <td>${item.quantity}</td>
-                                                    <td>₱${parseFloat(item.unit_price).toFixed(2)}</td>
-                                                    <td>₱${parseFloat(item.total_price).toFixed(2)}</td>
-                                                </tr>
-                                            `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
+                <div class="receipt-items">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th>Qty</th>
+                                <th>Price</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${transaction.items.map(item => `
+                                        <tr>
+                                            <td>
+                                                <div class="item-name">${item.product_name}</div>
+                                                <div class="item-brand">${item.brand_name}</div>
+                                            </td>
+                                            <td>${item.quantity}</td>
+                                            <td>₱${parseFloat(item.unit_price).toFixed(2)}</td>
+                                            <td>₱${parseFloat(item.total_price).toFixed(2)}</td>
+                                        </tr>
+                                    `).join('')}
+                        </tbody>
+                    </table>
+                </div>
 
-                    <div class="receipt-summary">
-                        <div class="summary-line">
-                            <span>Subtotal:</span>
-                            <span>₱${parseFloat(transaction.subtotal).toFixed(2)}</span>
-                        </div>
-                        ${parseFloat(transaction.discount_amount) > 0 ? `
-                                        <div class="summary-line">
-                                            <span>Discount:</span>
-                                            <span>-₱${parseFloat(transaction.discount_amount).toFixed(2)}</span>
-                                        </div>
-                                    ` : ''}
-                        <div class="summary-line total-line">
-                            <span><strong>Total:</strong></span>
-                            <span><strong>₱${parseFloat(transaction.total_amount).toFixed(2)}</strong></span>
-                        </div>
-                        <div class="summary-line">
-                            <span>Amount Paid:</span>
-                            <span>₱${parseFloat(transaction.amount_paid).toFixed(2)}</span>
-                        </div>
-                        <div class="summary-line">
-                            <span>Change:</span>
-                            <span>₱${parseFloat(transaction.change_amount).toFixed(2)}</span>
-                        </div>
+                <div class="receipt-summary">
+                    <div class="summary-line">
+                        <span>Subtotal:</span>
+                        <span>₱${parseFloat(transaction.subtotal).toFixed(2)}</span>
                     </div>
-
-                    <div class="receipt-footer">
-                        <p>Thank you for choosing MJ's Pharmacy!</p>
-                        <p>Please keep this receipt for your records</p>
+                    ${parseFloat(transaction.discount_amount) > 0 ? `
+                                <div class="summary-line">
+                                    <span>Discount:</span>
+                                    <span>-₱${parseFloat(transaction.discount_amount).toFixed(2)}</span>
+                                </div>
+                            ` : ''}
+                    <div class="summary-line total-line">
+                        <span><strong>Total:</strong></span>
+                        <span><strong>₱${parseFloat(transaction.total_amount).toFixed(2)}</strong></span>
+                    </div>
+                    <div class="summary-line">
+                        <span>Amount Paid:</span>
+                        <span>₱${parseFloat(transaction.amount_paid).toFixed(2)}</span>
+                    </div>
+                    <div class="summary-line">
+                        <span>Change:</span>
+                        <span>₱${parseFloat(transaction.change_amount).toFixed(2)}</span>
                     </div>
                 </div>
-            `;
+
+                <div class="receipt-footer">
+                    <p>Thank you for choosing MJ's Pharmacy!</p>
+                    <p>Please keep this receipt for your records</p>
+                </div>
+            </div>
+        </div>
+    `;
 
             document.getElementById('receiptModal').classList.add('active');
         }
+
 
         function hideReceiptModal() {
             document.getElementById('receiptModal').classList.remove('active');

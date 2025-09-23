@@ -62,7 +62,7 @@
                             <input type="radio" id="online_order" name="order_type" value="online_order"
                                 {{ old('order_type') === 'online_order' ? 'checked' : '' }}>
                             <div class="order-type-icon"></div>
-                            <div class="order-type-title">Medicine List</div>
+                            <div class="order-type-title">Non-Prescription Upload</div>
                             <div class="order-type-description">Upload a list of medicines you want to order directly
                             </div>
                         </label>
@@ -137,7 +137,7 @@
                         <select id="type-filter" class="filter-select">
                             <option value="all">All Types</option>
                             <option value="prescription">Prescription</option>
-                            <option value="online_order">Medicine List</option>
+                            <option value="online_order">Non-Prescription</option>
                         </select>
                     </div>
                     <div class="filter-group">
