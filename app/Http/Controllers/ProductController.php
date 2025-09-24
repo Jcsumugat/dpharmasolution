@@ -39,7 +39,7 @@ class ProductController extends Controller
 
     public function customerIndex()
     {
-        $products = Product::where('product_type', '!=', 'Prescription')
+        $products = Product::where('product_type', '!=', 'Null')
             ->whereHas('batches', function ($query) {
                 $query->where('quantity_remaining', '>', 0)
                     ->where('expiration_date', '>', now());

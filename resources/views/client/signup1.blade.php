@@ -308,7 +308,7 @@
                 </div>
 
                 <div class="input-group">
-                    <label>Sex</label>
+                    <label>Gender</label>
                     <div class="gender-group">
                         <label for="male">
                             <input type="radio"

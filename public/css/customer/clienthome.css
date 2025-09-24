@@ -88,18 +88,6 @@
     align-items: flex-start;
 }
 
-.user-name {
-    font-weight: 600;
-    font-size: 12.6px;
-    color: #333;
-    margin: 0;
-}
-
-.user-email {
-    font-size: 10.8px;
-    color: #666;
-    margin: 0;
-}
 
 .dropdown-arrow {
     font-size: 10.8px;

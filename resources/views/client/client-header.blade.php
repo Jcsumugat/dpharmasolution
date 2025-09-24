@@ -14,7 +14,7 @@
                 <div class="user-info" onclick="toggleUserDropdown()">
                     <div class="user-avatar">
                         <span id="userInitials">
-                            @if(Auth::guard('customer')->check())
+                            @if (Auth::guard('customer')->check())
                                 {{ strtoupper(substr(Auth::guard('customer')->user()->full_name, 0, 1)) }}{{ strtoupper(substr(strrchr(Auth::guard('customer')->user()->full_name, ' '), 1, 1)) }}
                             @else
                                 GU
@@ -23,14 +23,15 @@
                     </div>
                     <div class="user-details">
                         <div class="user-name" id="userName">
-                            @if(Auth::guard('customer')->check())
-                                {{ explode(' ', Auth::guard('customer')->user()->full_name)[0] }} {{ explode(' ', Auth::guard('customer')->user()->full_name)[count(explode(' ', Auth::guard('customer')->user()->full_name)) - 1] }}
+                            @if (Auth::guard('customer')->check())
+                                {{ explode(' ', Auth::guard('customer')->user()->full_name)[0] }}
+                                {{ explode(' ', Auth::guard('customer')->user()->full_name)[count(explode(' ', Auth::guard('customer')->user()->full_name)) - 1] }}
                             @else
                                 Guest User
                             @endif
                         </div>
                         <div class="user-email" id="userEmail">
-                            @if(Auth::guard('customer')->check())
+                            @if (Auth::guard('customer')->check())
                                 {{ Auth::guard('customer')->user()->email_address }}
                             @else
                                 guest@example.com
@@ -43,14 +44,14 @@
                 <div class="user-dropdown" id="userDropdown">
                     <div class="dropdown-header">
                         <div class="dropdown-user-name" id="dropdownUserName">
-                            @if(Auth::guard('customer')->check())
+                            @if (Auth::guard('customer')->check())
                                 {{ Auth::guard('customer')->user()->full_name }}
                             @else
                                 Guest User
                             @endif
                         </div>
                         <div class="dropdown-user-email" id="dropdownUserEmail">
-                            @if(Auth::guard('customer')->check())
+                            @if (Auth::guard('customer')->check())
                                 {{ Auth::guard('customer')->user()->email_address }}
                             @else
                                 guest@example.com
@@ -58,7 +59,7 @@
                         </div>
                     </div>
 
-                    @if(Auth::guard('customer')->check())
+                    @if (Auth::guard('customer')->check())
                         <a href="{{ url('/profile') }}" class="dropdown-item">
                             <span class="dropdown-icon">👤</span>
                             <span>My Profile</span>
@@ -92,16 +93,21 @@
     <nav class="desktop-nav">
         <div class="nav-container">
             <a href="{{ url('/home') }}" class="nav-button {{ request()->is('home') ? 'active' : '' }}">Home</a>
-            <a href="{{ url('/home/uploads') }}" class="nav-button {{ request()->is('home/uploads') ? 'active' : '' }}">Order</a>
-            <a href="{{ url('/home/products') }}" class="nav-button {{ request()->is('home/products') ? 'active' : '' }}">Products</a>
+            <a href="{{ url('/home/uploads') }}"
+                class="nav-button {{ request()->is('home/uploads') ? 'active' : '' }}">Order</a>
+            <a href="{{ url('/home/products') }}"
+                class="nav-button {{ request()->is('home/products') ? 'active' : '' }}">Products</a>
 
-            <a href="{{ url('/home/notifications') }}" class="nav-button notifications-nav {{ request()->is('home/notifications') ? 'active' : '' }}">
+            <a href="{{ url('/home/notifications') }}"
+                class="nav-button notifications-nav {{ request()->is('home/notifications') ? 'active' : '' }}">
                 Notifications
-                @if(Auth::guard('customer')->check())
+                @if (Auth::guard('customer')->check())
                     @php
-                        $unreadCount = \App\Models\CustomerNotification::getUnreadCountForCustomer(Auth::guard('customer')->id());
+                        $unreadCount = \App\Models\CustomerNotification::getUnreadCountForCustomer(
+                            Auth::guard('customer')->id(),
+                        );
                     @endphp
-                    @if($unreadCount > 0)
+                    @if ($unreadCount > 0)
                         <span id="notificationBadge" class="notification-badge">{{ $unreadCount }}</span>
                     @else
                         <span id="notificationBadge" class="notification-badge" style="display: none;"></span>
@@ -109,8 +115,10 @@
                 @endif
             </a>
 
-            <a href="{{ url('/home/contact-us') }}" class="nav-button {{ request()->is('home/contact-us') ? 'active' : '' }}">Contact us</a>
-            <a href="{{ url('/home/messages') }}" class="nav-button {{ request()->is('home/messages') ? 'active' : '' }}">Messages</a>
+            <a href="{{ url('/home/contact-us') }}"
+                class="nav-button {{ request()->is('home/contact-us') ? 'active' : '' }}">Contact us</a>
+            <a href="{{ url('/home/messages') }}"
+                class="nav-button {{ request()->is('home/messages') ? 'active' : '' }}">Messages</a>
         </div>
     </nav>
 </div>
@@ -119,56 +127,66 @@
 
 <div class="sidebar-overlay" onclick="closeSidebar()"></div>
 <div class="mobile-sidebar" id="mobileSidebar">
+    <div class="sidebar-header">
+        <div class="sidebar-logo">MJ'S PHARMACY</div>
+    </div>
     <nav class="sidebar-nav">
         <a href="{{ url('/home') }}" class="sidebar-nav-item {{ request()->is('home') ? 'active' : '' }}">
             <div class="nav-icon">🏠</div>
             <span>Home</span>
         </a>
-        <a href="{{ url('/home/uploads') }}" class="sidebar-nav-item {{ request()->is('home/uploads') ? 'active' : '' }}">
+        <a href="{{ url('/home/uploads') }}"
+            class="sidebar-nav-item {{ request()->is('home/uploads') ? 'active' : '' }}">
             <div class="nav-icon">📋</div>
             <span>Order</span>
         </a>
-        <a href="{{ url('/home/products') }}" class="sidebar-nav-item {{ request()->is('home/products') ? 'active' : '' }}">
+        <a href="{{ url('/home/products') }}"
+            class="sidebar-nav-item {{ request()->is('home/products') ? 'active' : '' }}">
             <div class="nav-icon">💊</div>
             <span>Products</span>
         </a>
-        <a href="{{ url('/home/notifications') }}" class="sidebar-nav-item {{ request()->is('home/notifications') ? 'active' : '' }}">
+        <a href="{{ url('/home/notifications') }}"
+            class="sidebar-nav-item {{ request()->is('home/notifications') ? 'active' : '' }}">
             <div class="nav-icon">🔔</div>
             <span>Notifications</span>
-            @if(Auth::guard('customer')->check())
+            @if (Auth::guard('customer')->check())
                 @php
-                    $unreadCount = \App\Models\CustomerNotification::getUnreadCountForCustomer(Auth::guard('customer')->id());
+                    $unreadCount = \App\Models\CustomerNotification::getUnreadCountForCustomer(
+                        Auth::guard('customer')->id(),
+                    );
                 @endphp
-                @if($unreadCount > 0)
+                @if ($unreadCount > 0)
                     <span class="notification-badge">{{ $unreadCount }}</span>
                 @endif
             @endif
         </a>
-        <a href="{{ url('/home/contact-us') }}" class="sidebar-nav-item {{ request()->is('home/contact-us') ? 'active' : '' }}">
+        <a href="{{ url('/home/contact-us') }}"
+            class="sidebar-nav-item {{ request()->is('home/contact-us') ? 'active' : '' }}">
             <div class="nav-icon">📞</div>
             <span>Contact us</span>
         </a>
-        <a href="{{ url('/home/messages') }}" class="sidebar-nav-item {{ request()->is('home/messages') ? 'active' : '' }}">
+        <a href="{{ url('/home/messages') }}"
+            class="sidebar-nav-item {{ request()->is('home/messages') ? 'active' : '' }}">
             <div class="nav-icon">💬</div>
             <span>Messages</span>
         </a>
     </nav>
 </div>
 
-@if(Auth::guard('customer')->check())
-<div id="logoutModal" class="modal-overlay">
-    <div class="modal-content">
-        <h2>Logout Notice</h2>
-        <p>You are about to log out of your session. Do you want to proceed?</p>
-        <div class="logout-modal-buttons">
-            <form action="{{ route('customer.logout') }}" method="POST">
-                @csrf
-                <button type="submit" class="lgt-btn-confirm">Logout</button>
-            </form>
-            <button class="lgt-btn-cancel" onclick="hideLogoutModal()">Cancel</button>
+@if (Auth::guard('customer')->check())
+    <div id="logoutModal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Logout Notice</h2>
+            <p>You are about to log out of your session. Do you want to proceed?</p>
+            <div class="logout-modal-buttons">
+                <form action="{{ route('customer.logout') }}" method="POST">
+                    @csrf
+                    <button type="submit" class="lgt-btn-confirm">Logout</button>
+                </form>
+                <button class="lgt-btn-cancel" onclick="hideLogoutModal()">Cancel</button>
+            </div>
         </div>
     </div>
-</div>
 @endif
 
 <script>
@@ -271,22 +289,22 @@
 
         setInterval(() => {
             fetch('/home/notifications/unread-count', {
-                method: 'GET',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json'
-                },
-                credentials: 'same-origin'
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    updateNotificationBadge(data.unread_count);
-                }
-            })
-            .catch(error => {
-                console.error('Error checking notification count:', error);
-            });
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    },
+                    credentials: 'same-origin'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        updateNotificationBadge(data.unread_count);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking notification count:', error);
+                });
         }, 30000);
     })();
 </script>

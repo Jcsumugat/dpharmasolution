@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -54,6 +55,7 @@
                 opacity: 0;
                 transform: translateY(40px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
@@ -91,8 +93,13 @@
         }
 
         @keyframes gridMove {
-            0% { transform: translate(0, 0); }
-            100% { transform: translate(10px, 10px); }
+            0% {
+                transform: translate(0, 0);
+            }
+
+            100% {
+                transform: translate(10px, 10px);
+            }
         }
 
         .brand-section {
@@ -116,8 +123,15 @@
         }
 
         @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
         }
 
         .brand-icon i {
@@ -257,7 +271,7 @@
             left: -100%;
             width: 100%;
             height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
             transition: left 0.5s;
         }
 
@@ -286,9 +300,19 @@
         }
 
         @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            75% { transform: translateX(5px); }
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            25% {
+                transform: translateX(-5px);
+            }
+
+            75% {
+                transform: translateX(5px);
+            }
         }
 
         .floating-elements {
@@ -333,12 +357,15 @@
                 transform: translateY(100vh) rotate(0deg);
                 opacity: 0;
             }
+
             10% {
                 opacity: 1;
             }
+
             90% {
                 opacity: 1;
             }
+
             100% {
                 transform: translateY(-100px) rotate(360deg);
                 opacity: 0;
@@ -371,6 +398,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="login-container">
         <div class="left-panel">
@@ -381,24 +409,34 @@
 
             <form method="POST" action="{{ route('admin.login') }}" id="loginForm">
                 @csrf
-                
-                @if(session('error'))
+
+                @if (session('error'))
                     <div class="error-message">
                         {{ session('error') }}
+                    </div>
+                @endif
+
+                @if ($errors->any())
+                    <div class="error-message">
+                        @foreach ($errors->all() as $error)
+                            {{ $error }}
+                        @endforeach
                     </div>
                 @endif
 
                 <div class="form-group">
                     <label class="form-label" for="email">Email Address</label>
                     <div class="input-wrapper">
-                        <input type="email" id="email" name="email" class="form-input" placeholder="Enter your email" required value="{{ old('email') }}">
+                        <input type="email" id="email" name="email" class="form-input"
+                            placeholder="Enter your email" required value="{{ old('email') }}">
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label" for="password">Password</label>
                     <div class="password-wrapper">
-                        <input type="password" id="password" name="password" class="form-input" placeholder="Enter your password" required>
+                        <input type="password" id="password" name="password" class="form-input"
+                            placeholder="Enter your password" required>
                         <button type="button" class="password-toggle" onclick="togglePassword()">
                             <i class="fas fa-eye" id="toggleIcon"></i>
                         </button>
@@ -420,7 +458,7 @@
                 <div class="floating-pill"></div>
                 <div class="floating-pill"></div>
             </div>
-            
+
             <div class="brand-section">
                 <div class="brand-icon">
                     <i class="fas fa-pills"></i>
@@ -435,7 +473,7 @@
         function togglePassword() {
             const passwordInput = document.getElementById('password');
             const toggleIcon = document.getElementById('toggleIcon');
-            
+
             if (passwordInput.type === 'password') {
                 passwordInput.type = 'text';
                 toggleIcon.classList.remove('fa-eye');
@@ -455,7 +493,7 @@
         document.getElementById('loginForm').addEventListener('submit', function(e) {
             const button = document.querySelector('.login-button');
             const buttonText = document.getElementById('buttonText');
-            
+
             // Show loading state
             button.disabled = true;
             buttonText.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing in...';
@@ -466,7 +504,7 @@
             input.addEventListener('focus', function() {
                 this.parentElement.style.transform = 'scale(1.02)';
             });
-            
+
             input.addEventListener('blur', function() {
                 this.parentElement.style.transform = 'scale(1)';
             });
@@ -486,4 +524,5 @@
         });
     </script>
 </body>
+
 </html>

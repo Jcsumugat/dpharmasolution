@@ -16,6 +16,8 @@ class CheckLogin extends Controller
 
     public function check(Request $request)
     {
+        \Log::info('Login attempt from: ' . $request->ip());
+        \Log::info('Request data: ' . json_encode($request->all()));
         $request->validate([
             'email' => 'required|email',
             'password' => 'required',

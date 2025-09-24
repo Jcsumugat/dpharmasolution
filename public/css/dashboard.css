@@ -1183,17 +1183,10 @@ body.dark-mode .modal-content {
     display: none !important;
 }
 
-.dashboard-alert-badge.critical {
-    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
-    animation: pulse-badge-critical 2.5s infinite, shake-badge 0.8s infinite !important;
-    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.6), 0 0 0 0 rgba(220, 38, 38, 0.7) !important;
-}
-
 /* Hover effect for the wrapper - only apply when visible */
 .nav-button-wrapper:hover .dashboard-alert-badge.visible {
     transform: scale(1.15) !important;
-    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
-    animation-play-state: paused !important;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
 }
 
 .nav-button-wrapper:hover .dashboard-alert-badge.visible::before {
