@@ -240,7 +240,6 @@ body {
 
 .inventory-table tbody tr:hover {
     background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-    z-index: 6;
 }
 
 .inventory-table tbody tr:nth-child(even) {
@@ -392,6 +391,7 @@ body {
     transition: all 0.3s ease;
     color: var(--color-text-secondary);
     position: relative;
+    z-index: 1001 !important;
 }
 
 .dropdown-toggle:hover {
@@ -407,7 +407,7 @@ body {
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
     border-radius: 12px;
     border: 1px solid var(--color-border-light);
-    z-index: 1000 !important;
+    z-index: 10 !important;
     transform: translateX(-50%);
 }
 
@@ -425,6 +425,7 @@ body {
     font-size: var(--font-size-sm);
     font-weight: var(--font-weight-medium);
     position: relative;
+    z-index: 1001 !important;
 }
 
 .dropdown-item:hover {
@@ -439,23 +440,21 @@ body {
 
 /* Modal Styles */
 .modal-bg {
+    display: none;
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(8px);
-    z-index: 1000;
-    display: flex;
+    z-index: 9999;
     align-items: center;
     justify-content: center;
-    animation: fadeIn 0.3s ease;
 }
 
 .modal {
     background: var(--color-bg-primary);
-    border-radius: 12px 0 0 12px;;
+    border-radius: 12px 0 0 12px;
+    ;
     width: 90%;
     max-width: 800px;
     max-height: 90vh;
@@ -512,6 +511,35 @@ body {
     border-bottom: 2px solid var(--color-border-light);
     margin-bottom: 2rem;
     background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+body.modal-open {
+    overflow: hidden;
+}
+
+body.modal-open .container,
+body.modal-open #mainContent {
+    filter: blur(3px);
+    pointer-events: none;
+    /* Force visibility */
+    visibility: visible !important;
+    opacity: 1 !important;
+    display: block !important;
+}
+
+/* Ensure modals are above everything */
+.modal-bg.active {
+    display: flex !important;
+}
+
+/* When modal closes, remove all effects immediately */
+body:not(.modal-open) .container,
+body:not(.modal-open) #mainContent {
+    filter: none !important;
+    pointer-events: auto !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    display: block !important;
 }
 
 /* Form Styles */
@@ -800,6 +828,7 @@ button:focus-visible,
 .modal-bg {
     display: none;
 }
+
 /* Product Information Modal Specific Styles */
 .product-info-modal {
     max-width: 900px;

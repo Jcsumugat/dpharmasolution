@@ -1237,7 +1237,7 @@ body {
 }
 
 /* Standard phones (portrait) */
-@media (max-width: 640px) {
+@media (max-width: 768px) {
     body {
         padding-top: 70px;
     }
@@ -1293,10 +1293,13 @@ body {
         font-size: 0.9rem;
     }
 
+
     .modal-content {
-        width: 98%;
+        width: 90% !important;
         max-width: 400px;
         margin: 5px;
+        height: 110% !important;
+        max-height: 700px;
     }
 
     .modal-header {
@@ -1444,8 +1447,8 @@ body {
     }
 
     .modal-content {
-        width: 100%;
-        max-width: 100%;
+        width: 200%;
+        max-width: 200%;
         margin: 0;
         border-radius: 0;
         max-height: 100vh;
@@ -1568,7 +1571,7 @@ body {
 
     .modal-content {
         width: 90%;
-        max-width: 600px;
+        max-width: 1500px;
     }
 
     .detail-label {
@@ -1616,4 +1619,3 @@ body {
         font-size: 1.
     }
 }
-

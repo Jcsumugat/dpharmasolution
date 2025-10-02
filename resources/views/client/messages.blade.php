@@ -107,7 +107,7 @@
         window.addEventListener('resize', setViewportHeight);
         window.addEventListener('orientationchange', setViewportHeight);
         setViewportHeight();
-        
+
         async function initializeChat() {
             try {
                 await findOrCreateConversation();
@@ -426,7 +426,7 @@
                 if (currentConversationId) {
                     loadMessages(true);
                 }
-            }, 3000);
+            }, 10000);
         }
 
         function showError(message) {
@@ -461,6 +461,35 @@
                 updateTypingStatus(false);
             }
         });
+
+        function handleMobileViewport() {
+            const setHeight = () => {
+                const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+                document.documentElement.style.setProperty('--vh', `${vh * 0.01}px`);
+            };
+
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', setHeight);
+            }
+
+            window.addEventListener('resize', setHeight);
+            setHeight();
+        }
+
+        // Prevent input from being hidden by keyboard
+        const messageInput = document.getElementById('messageInput');
+        if (messageInput) {
+            messageInput.addEventListener('focus', function() {
+                setTimeout(() => {
+                    this.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'nearest'
+                    });
+                }, 300);
+            });
+        }
+
+        handleMobileViewport();
     </script>
 
     @stack('scripts')

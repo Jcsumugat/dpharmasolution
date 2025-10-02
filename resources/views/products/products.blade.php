@@ -182,7 +182,7 @@
                             <input type="text" class="form-input" name="brand_name" id="brand_name" placeholder=" "
                                 value="{{ old('brand_name') }}">
                             <label for="brand_name" class="form-label">Brand Name</label>
-                            <div class="help-text">Commercial brand or trade name</div>
+                            <div class="help-text">Commercial brand or trade name (Optional).</div>
                         </div>
                         <div class="form-group">
                             <select class="form-select" name="manufacturer" id="manufacturer" required>

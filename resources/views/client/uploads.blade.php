@@ -8,6 +8,186 @@
     <title>Order | MJ's Pharmacy</title>
     <link rel="stylesheet" href="{{ asset('css/customer/uploads.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* Restriction Alert Styles */
+        .restriction-alert {
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            border: 2px solid #ef4444;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: start;
+            gap: 15px;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        .restriction-alert-icon {
+            font-size: 28px;
+            color: #dc2626;
+            flex-shrink: 0;
+        }
+
+        .restriction-alert-content h4 {
+            color: #991b1b;
+            margin: 0 0 8px 0;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .restriction-alert-content p {
+            color: #7f1d1d;
+            margin: 0;
+            line-height: 1.6;
+        }
+
+        .restriction-duration {
+            display: inline-block;
+            background: #dc2626;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            margin: 0 2px;
+        }
+
+        /* Disabled button styles */
+        .btn-submit.disabled {
+            background: #9ca3af !important;
+            cursor: not-allowed !important;
+            opacity: 0.6;
+            position: relative;
+        }
+
+        .btn-submit.disabled:hover {
+            background: #9ca3af !important;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        .btn-submit.disabled::after {
+            content: '🔒';
+            position: absolute;
+            right: 15px;
+            font-size: 18px;
+        }
+
+        /* Form overlay for disabled state */
+        .form-disabled-overlay {
+            position: relative;
+        }
+
+        .form-disabled-overlay::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.7);
+            z-index: 1;
+            pointer-events: none;
+            opacity: 0.5;
+        }
+
+        /* Restriction modal */
+        .restriction-modal {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.3s;
+        }
+
+        .restriction-modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .restriction-modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            animation: scaleIn 0.3s;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .restriction-modal-icon {
+            font-size: 60px;
+            color: #ef4444;
+            margin-bottom: 20px;
+        }
+
+        .restriction-modal-content h3 {
+            color: #991b1b;
+            margin-bottom: 15px;
+            font-size: 24px;
+        }
+
+        .restriction-modal-content p {
+            color: #4b5563;
+            line-height: 1.8;
+            margin-bottom: 25px;
+        }
+
+        .restriction-modal-close {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .restriction-modal-close:hover {
+            background: #dc2626;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes scaleIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+    </style>
 </head>
 
 <body>
@@ -19,7 +199,34 @@
         <div class="panel">
             <h2><i class="fas fa-upload"></i> Upload Your Document</h2>
 
-            @php $prescriptions = $prescriptions ?? collect(); @endphp
+            @php
+                $prescriptions = $prescriptions ?? collect();
+                $customer = auth()->user();
+                $isRestricted = $customer->status === 'restricted';
+            @endphp
+
+            @if ($isRestricted)
+                <div class="restriction-alert">
+                    <div class="restriction-alert-icon">
+                        <i class="fas fa-ban"></i>
+                    </div>
+                    <div class="restriction-alert-content">
+                        <h4><i class="fas fa-exclamation-triangle"></i> Account Restricted</h4>
+                        <p>
+                            Your account has been restricted and you cannot place orders at this time.
+                            @if ($customer->auto_restore_at)
+                                Your account will be automatically restored in
+                                <span class="restriction-duration" id="restriction-timer"
+                                    data-restore-time="{{ $customer->auto_restore_at }}">
+                                    Calculating...
+                                </span>
+                            @else
+                                Please contact the pharmacy for more information.
+                            @endif
+                        </p>
+                    </div>
+                </div>
+            @endif
 
             @if (session('success'))
                 <script>
@@ -44,7 +251,7 @@
             @endif
 
             <form action="{{ route('prescription.upload') }}" method="POST" enctype="multipart/form-data"
-                class="upload-form">
+                class="upload-form {{ $isRestricted ? 'form-disabled-overlay' : '' }}" id="upload-form">
                 @csrf
 
                 <div class="form-section">
@@ -52,7 +259,8 @@
                     <div class="order-type-selector">
                         <label class="order-type-option" for="prescription">
                             <input type="radio" id="prescription" name="order_type" value="prescription"
-                                {{ old('order_type', 'prescription') === 'prescription' ? 'checked' : '' }}>
+                                {{ old('order_type', 'prescription') === 'prescription' ? 'checked' : '' }}
+                                {{ $isRestricted ? 'disabled' : '' }}>
                             <div class="order-type-icon"></div>
                             <div class="order-type-title">Prescription Upload</div>
                             <div class="order-type-description">Upload a doctor's prescription for validation and
@@ -61,7 +269,8 @@
 
                         <label class="order-type-option" for="online_order">
                             <input type="radio" id="online_order" name="order_type" value="online_order"
-                                {{ old('order_type') === 'online_order' ? 'checked' : '' }}>
+                                {{ old('order_type') === 'online_order' ? 'checked' : '' }}
+                                {{ $isRestricted ? 'disabled' : '' }}>
                             <div class="order-type-icon"></div>
                             <div class="order-type-title">Non-Prescription Upload</div>
                             <div class="order-type-description">Upload a list of medicines you want to order directly
@@ -75,12 +284,14 @@
                     <div class="form-group">
                         <label for="mobile_number">Mobile Number</label>
                         <input type="text" id="mobile_number" name="mobile_number" required
-                            placeholder="e.g. 09123456789" value="{{ old('mobile_number') }}" />
+                            placeholder="e.g. 09123456789" value="{{ old('mobile_number') }}"
+                            {{ $isRestricted ? 'disabled' : '' }} />
                     </div>
 
                     <div class="form-group">
                         <label for="notes"> Notes (Optional)</label>
-                        <textarea id="notes" name="notes" rows="3" placeholder="Any additional information...">{{ old('notes') }}</textarea>
+                        <textarea id="notes" name="notes" rows="3" placeholder="Any additional information..."
+                            {{ $isRestricted ? 'disabled' : '' }}>{{ old('notes') }}</textarea>
                     </div>
 
                     <div class="form-group">
@@ -88,7 +299,7 @@
                             Document (JPG, PNG, PDF)</label>
                         <div class="file-input-wrapper">
                             <input type="file" id="prescription_file" name="prescription_file"
-                                accept=".jpg,.jpeg,.png,.pdf" required />
+                                accept=".jpg,.jpeg,.png,.pdf" required {{ $isRestricted ? 'disabled' : '' }} />
                         </div>
                         <small id="file-security-note" style="color: #666; margin-top: 4px; display: block;">
                             <i class="fas fa-shield-alt"></i> Your document will be securely encrypted and can only be
@@ -98,12 +309,15 @@
                     </div>
                 </div>
 
-                <button type="submit" class="btn-submit">
-                    <i class="fas fa-paper-plane"></i> Submit Order
+                <button type="submit" class="btn-submit {{ $isRestricted ? 'disabled' : '' }}" id="submit-btn"
+                    {{ $isRestricted ? 'disabled' : '' }}>
+                    <i class="fas fa-paper-plane"></i>
+                    {{ $isRestricted ? 'Order Submission Disabled' : 'Submit Order' }}
                 </button>
             </form>
         </div>
 
+        <!-- Rest of the order history panel remains the same -->
         <div class="panel">
             <div class="history-header">
                 <h3><i class="fas fa-history"></i> Your Order History</h3>
@@ -217,9 +431,7 @@
     <div id="orderModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 class="modal-title">
-                    Order Details
-                </h3>
+                <h3 class="modal-title">Order Details</h3>
                 <button class="modal-close" onclick="closeModal()">&times;</button>
             </div>
             <div class="modal-body" id="modal-body-content">
@@ -228,7 +440,26 @@
         </div>
     </div>
 
+    <!-- Restriction Modal -->
+    <div id="restrictionModal" class="restriction-modal">
+        <div class="restriction-modal-content">
+            <div class="restriction-modal-icon">
+                <i class="fas fa-ban"></i>
+            </div>
+            <h3>Account Restricted</h3>
+            <p id="restriction-message">
+                Your account has been restricted and you cannot place orders until it's unrestricted.
+            </p>
+            <button class="restriction-modal-close" onclick="closeRestrictionModal()">
+                Understood
+            </button>
+        </div>
+    </div>
+
     <script>
+        // Restriction data from server
+        const isRestricted = {{ $isRestricted ? 'true' : 'false' }};
+
         // Store prescription data for modal display
         const prescriptionsData = {
             @foreach ($prescriptions as $prescription)
@@ -250,6 +481,85 @@
                 },
             @endforeach
         };
+
+        // Timer function for restriction countdown
+        function updateRestrictionTimer() {
+            const timerElement = document.getElementById('restriction-timer');
+            if (!timerElement) return;
+
+            const restoreTime = new Date(timerElement.dataset.restoreTime).getTime();
+            const now = new Date().getTime();
+            const distance = restoreTime - now;
+
+            if (distance < 0) {
+                timerElement.textContent = 'Restriction expired - Please refresh the page';
+                return;
+            }
+
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+            let timeString = '';
+            if (days > 0) {
+                timeString = `${days} day${days > 1 ? 's' : ''}, ${hours} hour${hours > 1 ? 's' : ''}`;
+            } else if (hours > 0) {
+                timeString = `${hours} hour${hours > 1 ? 's' : ''}, ${minutes} minute${minutes > 1 ? 's' : ''}`;
+            } else if (minutes > 0) {
+                timeString = `${minutes} minute${minutes > 1 ? 's' : ''}, ${seconds} second${seconds > 1 ? 's' : ''}`;
+            } else {
+                timeString = `${seconds} second${seconds > 1 ? 's' : ''}`;
+            }
+
+            timerElement.textContent = timeString;
+        }
+
+        // Start the timer if restriction exists
+        if (isRestricted) {
+            updateRestrictionTimer();
+            setInterval(updateRestrictionTimer, 1000); // Update every second
+        }
+
+        // Handle form submission for restricted accounts
+        document.getElementById('upload-form').addEventListener('submit', function(e) {
+            if (isRestricted) {
+                e.preventDefault();
+                showRestrictionModal();
+                return false;
+            }
+        });
+
+        // Handle button clicks for restricted accounts
+        document.getElementById('submit-btn').addEventListener('click', function(e) {
+            if (isRestricted) {
+                e.preventDefault();
+                showRestrictionModal();
+                return false;
+            }
+        });
+
+        function showRestrictionModal() {
+            const modal = document.getElementById('restrictionModal');
+            const message = document.getElementById('restriction-message');
+            const timerElement = document.getElementById('restriction-timer');
+
+            if (timerElement && timerElement.dataset.restoreTime) {
+                const duration = timerElement.textContent;
+                message.innerHTML =
+                    `Your account has been restricted for <strong>${duration}</strong> and you cannot place orders until it's unrestricted. Please wait or contact the pharmacy for more information.`;
+            } else {
+                message.innerHTML =
+                    'Your account has been restricted and you cannot place orders until it\'s unrestricted. Please contact the pharmacy for more information.';
+            }
+
+            modal.classList.add('show');
+        }
+
+        // Close restriction modal
+        function closeRestrictionModal() {
+            document.getElementById('restrictionModal').classList.remove('show');
+        }
 
         // View order details in modal
         function viewOrderDetails(prescriptionId) {
@@ -377,13 +687,20 @@
         // Close modal when clicking outside
         window.onclick = function(event) {
             const modal = document.getElementById('orderModal');
+            const restrictionModal = document.getElementById('restrictionModal');
+
             if (event.target === modal) {
                 closeModal();
+            }
+            if (event.target === restrictionModal) {
+                closeRestrictionModal();
             }
         }
 
         // Update UI based on selected order type
         function updateOrderTypeUI() {
+            if (isRestricted) return; // Don't update if restricted
+
             const prescriptionRadio = document.getElementById('prescription');
             const onlineOrderRadio = document.getElementById('online_order');
             const fileLabel = document.getElementById('file-label');
@@ -493,7 +810,6 @@
 
         // View document function
         function viewDocument(prescriptionId) {
-            // Open the document in a new tab/window
             const documentUrl = `{{ url('/prescription/document/') }}/${prescriptionId}`;
             window.open(documentUrl, '_blank');
         }
@@ -507,10 +823,12 @@
         document.addEventListener('DOMContentLoaded', function() {
             updateOrderTypeUI();
 
-            // Add event listeners for order type changes
-            document.querySelectorAll('input[name="order_type"]').forEach(radio => {
-                radio.addEventListener('change', updateOrderTypeUI);
-            });
+            // Add event listeners for order type changes (only if not restricted)
+            if (!isRestricted) {
+                document.querySelectorAll('input[name="order_type"]').forEach(radio => {
+                    radio.addEventListener('change', updateOrderTypeUI);
+                });
+            }
 
             // Add event listeners for filters
             document.getElementById('status-filter').addEventListener('change', filterOrders);
@@ -519,16 +837,24 @@
             document.getElementById('order-search').addEventListener('input', filterOrders);
             document.getElementById('clear-filters').addEventListener('click', clearFilters);
 
-            // Close modal with Escape key
+            // Close modals with Escape key
             document.addEventListener('keydown', function(e) {
                 if (e.key === 'Escape') {
                     closeModal();
+                    closeRestrictionModal();
                 }
             });
         });
 
-        // File validation
+        // File validation (only if not restricted)
         document.getElementById('prescription_file').addEventListener('change', function(e) {
+            if (isRestricted) {
+                e.preventDefault();
+                showRestrictionModal();
+                this.value = '';
+                return;
+            }
+
             const file = e.target.files[0];
             const fileInfo = document.getElementById('file-info');
 
@@ -604,6 +930,8 @@
 
         // Auto-format mobile number input
         document.getElementById('mobile_number').addEventListener('input', function(e) {
+            if (isRestricted) return;
+
             let value = e.target.value.replace(/\D/g, '');
 
             if (value.length > 11) {

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -37,12 +38,12 @@
                         <span class="stat-label">Online</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-number" id="totalCount">0</span>
-                        <span class="stat-label">Total</span>
+                        <span class="stat-number" id="activeChats">0</span>
+                        <span class="stat-label">Active</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-number" id="activeChats">0</span>
-                        <span class="stat-label">Active Chats</span>
+                        <span class="stat-number" id="totalCount">0</span>
+                        <span class="stat-label">Total</span>
                     </div>
                 </div>
             </div>
@@ -51,12 +52,7 @@
         <div class="customers-container">
             <div class="customers-header">
                 <div class="search-controls">
-                    <input
-                        type="text"
-                        class="search-input"
-                        id="customerSearch"
-                        placeholder="Search customers..."
-                    >
+                    <input type="text" class="search-input" id="customerSearch" placeholder="Search customers...">
                     <select class="status-filter" id="statusFilter">
                         <option value="">All Status</option>
                         <option value="on">Online</option>
@@ -117,28 +113,26 @@
             </div>
 
             <div class="chat-modal-input">
-                <div class="attachment-preview" id="modalAttachmentPreview" style="display: none; padding: 10px; background: #f8f9fa; border-radius: 8px; margin-bottom: 10px; border: 1px solid #e9ecef;">
+                <div class="attachment-preview" id="modalAttachmentPreview"
+                    style="display: none; padding: 10px; background: #f8f9fa; border-radius: 8px; margin-bottom: 10px; border: 1px solid #e9ecef;">
                     <div class="attachment-item">
                         <span>No files selected</span>
                     </div>
                 </div>
 
                 <div class="modal-input-container">
-                    <button class="modal-attachment-btn" onclick="document.getElementById('modalFileInput').click()" title="Attach File">
+                    <button class="modal-attachment-btn" onclick="document.getElementById('modalFileInput').click()"
+                        title="Attach File">
                         📄
                     </button>
-                    <textarea
-                        class="modal-message-input"
-                        id="modalMessageInput"
-                        placeholder="Type a message..."
-                        rows="1"
-                    ></textarea>
+                    <textarea class="modal-message-input" id="modalMessageInput" placeholder="Type a message..." rows="1"></textarea>
                     <button class="modal-send-btn" id="modalSendBtn" onclick="sendModalMessage()" disabled>
                         ➤
                     </button>
                 </div>
 
-                <input type="file" id="modalFileInput" multiple accept="image/*,application/pdf,.doc,.docx" style="display: none;">
+                <input type="file" id="modalFileInput" multiple accept="image/*,application/pdf,.doc,.docx"
+                    style="display: none;">
             </div>
         </div>
     </div>
@@ -174,13 +168,13 @@
         async function loadCustomers(silent = false) {
             if (!silent) {
                 document.getElementById('customersTableBody').innerHTML = `
-                    <tr>
-                        <td colspan="5" class="loading-table">
-                            <div class="loading-spinner"></div>
-                            <div>Loading customers...</div>
-                        </td>
-                    </tr>
-                `;
+            <tr>
+                <td colspan="5" class="loading-table">
+                    <div class="loading-spinner"></div>
+                    <div>Loading customers...</div>
+                </td>
+            </tr>
+        `;
             }
 
             try {
@@ -198,26 +192,82 @@
                 }
 
                 customers = data.customers || [];
-                displayCustomers(customers);
+                filterCustomers();
 
             } catch (error) {
                 console.error('Error loading customers:', error);
                 if (!silent) {
                     document.getElementById('customersTableBody').innerHTML = `
-                        <tr>
-                            <td colspan="5" class="error-state">
-                                <div>Failed to load customers</div>
-                                <div style="font-size: 0.8em; color: #666; margin-top: 5px;">
-                                    Error: ${error.message}
-                                </div>
-                                <button onclick="loadCustomers()" class="btn btn-sm" style="margin-top: 10px;">
-                                    Retry
-                                </button>
-                            </td>
-                        </tr>
-                    `;
+                <tr>
+                    <td colspan="5" class="error-state">
+                        <div>Failed to load customers</div>
+                        <div style="font-size: 0.8em; color: #666; margin-top: 5px;">
+                            Error: ${error.message}
+                        </div>
+                        <button onclick="loadCustomers()" class="btn btn-sm" style="margin-top: 10px;">
+                            Retry
+                        </button>
+                    </td>
+                </tr>
+            `;
                 }
             }
+        }
+
+        function setupSearch() {
+            const searchInput = document.getElementById('customerSearch');
+            const statusFilter = document.getElementById('statusFilter');
+
+            if (searchInput) {
+                searchInput.addEventListener('input', filterCustomers);
+            }
+            if (statusFilter) {
+                statusFilter.addEventListener('change', filterCustomers);
+            }
+        }
+
+        function filterCustomers() {
+            const searchInput = document.getElementById('customerSearch');
+            const statusFilter = document.getElementById('statusFilter');
+
+            const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+            const statusValue = statusFilter ? statusFilter.value : '';
+
+            let filteredCustomers = customers.filter(customer => {
+                let matchesSearch = true;
+
+                if (searchTerm) {
+                    const fullName = (customer.full_name || '').toLowerCase();
+                    const email = (customer.email_address || '').toLowerCase();
+                    const customerId = (customer.customer_id || '').toString().toLowerCase();
+
+                    const searchChars = searchTerm.split('');
+                    let nameMatch = true;
+                    let lastIndex = -1;
+
+                    for (let char of searchChars) {
+                        const index = fullName.indexOf(char, lastIndex + 1);
+                        if (index === -1) {
+                            nameMatch = false;
+                            break;
+                        }
+                        lastIndex = index;
+                    }
+
+                    matchesSearch = nameMatch ||
+                        email.includes(searchTerm) ||
+                        customerId.includes(searchTerm);
+                }
+
+                const customerStatus = customer.chat_status || 'offline';
+                const matchesStatus = statusValue === '' ||
+                    (statusValue === 'on' && customerStatus === 'online') ||
+                    (statusValue === 'off' && customerStatus === 'offline');
+
+                return matchesSearch && matchesStatus;
+            });
+
+            displayCustomers(filteredCustomers);
         }
 
         function displayCustomers(customerList) {
@@ -225,48 +275,49 @@
 
             if (!customerList || customerList.length === 0) {
                 tbody.innerHTML = `
-                    <tr>
-                        <td colspan="5" class="no-customers">
-                            <div>No customers found</div>
-                        </td>
-                    </tr>
-                `;
+            <tr>
+                <td colspan="5" class="no-customers">
+                    <div>No customers found</div>
+                </td>
+            </tr>
+        `;
                 return;
             }
 
             let html = '';
             customerList.forEach(customer => {
                 const initials = getInitials(customer.full_name || 'Unknown');
-                const statusClass = `status-${customer.chat_status || 'off'}`;
+                const status = customer.chat_status || 'offline';
+                const statusClass = status === 'online' ? 'status-on' : 'status-off';
 
                 html += `
-                    <tr>
-                        <td>
-                            <div class="customer-info">
-                                <div class="customer-avatar">${initials}</div>
-                                <div>
-                                    <div class="customer-name">${customer.full_name || 'Unknown'}</div>
-                                    <div class="customer-id">ID: ${customer.customer_id || 'N/A'}</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td>${customer.email_address || 'No email'}</td>
-                        <td>
-                            <div class="status-indicator">
-                                <span class="status-dot ${statusClass}"></span>
-                                <span>${formatStatus(customer.chat_status || 'off')}</span>
-                            </div>
-                        </td>
-                        <td>
-                            <div class="last-active">${formatLastActive(customer.last_active)}</div>
-                        </td>
-                        <td>
-                            <button class="chat-button" onclick="openChatModal('${customer.customer_id}')">
-                                Send Message
-                            </button>
-                        </td>
-                    </tr>
-                `;
+            <tr>
+                <td>
+                    <div class="customer-info">
+                        <div class="customer-avatar">${initials}</div>
+                        <div>
+                            <div class="customer-name">${customer.full_name || 'Unknown'}</div>
+                            <div class="customer-id">ID: ${customer.customer_id || 'N/A'}</div>
+                        </div>
+                    </div>
+                </td>
+                <td>${customer.email_address || 'No email'}</td>
+                <td>
+                    <div class="status-indicator">
+                        <span class="status-dot ${statusClass}"></span>
+                        <span>${formatStatus(status)}</span>
+                    </div>
+                </td>
+                <td>
+                    <div class="last-active">${formatLastActive(customer.last_active)}</div>
+                </td>
+                <td>
+                    <button class="chat-button" onclick="openChatModal('${customer.customer_id}')">
+                        Send Message
+                    </button>
+                </td>
+            </tr>
+        `;
             });
 
             tbody.innerHTML = html;
@@ -281,11 +332,14 @@
             document.getElementById('modalCustomerAvatar').textContent = getInitials(customer.full_name);
             document.getElementById('modalCustomerName').textContent = customer.full_name;
 
+            const status = customer.chat_status || 'offline';
+            const statusClass = status === 'online' ? 'status-on' : 'status-off';
+
             const statusElement = document.getElementById('modalCustomerStatus');
             statusElement.innerHTML = `
-                <span class="status-dot status-${customer.chat_status || 'off'}"></span>
-                <span>${formatStatus(customer.chat_status || 'off')}</span>
-            `;
+        <span class="status-dot ${statusClass}"></span>
+        <span>${formatStatus(status)}</span>
+    `;
 
             document.getElementById('chatModal').classList.add('show');
             document.body.style.overflow = 'hidden';
@@ -307,7 +361,7 @@
             selectedModalFiles = [];
 
             document.getElementById('modalMessageInput').value = '';
-            document.getElementById('modalAttachmentPreview').classList.remove('show');
+            document.getElementById('modalAttachmentPreview').style.display = 'none';
 
             if (modalPollingInterval) {
                 clearInterval(modalPollingInterval);
@@ -343,11 +397,11 @@
         async function loadModalMessages(conversationId, silent = false) {
             if (!silent) {
                 document.getElementById('modalMessages').innerHTML = `
-                    <div class="loading-messages">
-                        <div class="loading-spinner"></div>
-                        <div>Loading messages...</div>
-                    </div>
-                `;
+            <div class="loading-messages">
+                <div class="loading-spinner"></div>
+                <div>Loading messages...</div>
+            </div>
+        `;
             }
 
             try {
@@ -366,8 +420,8 @@
                 console.error('Error loading messages:', error);
                 if (!silent) {
                     document.getElementById('modalMessages').innerHTML = `
-                        <div class="error-state">Failed to load messages</div>
-                    `;
+                <div class="error-state">Failed to load messages</div>
+            `;
                 }
             }
         }
@@ -384,14 +438,14 @@
                     const senderName = message.is_from_customer ? 'Customer' : 'You';
 
                     html += `
-                        <div class="modal-message ${messageClass}">
-                            <div class="modal-message-content">
-                                ${message.message ? `<div>${message.message}</div>` : ''}
-                                ${message.has_attachments ? renderModalAttachments(message.attachments) : ''}
-                                <div class="modal-message-time">${message.time_ago} • ${senderName}</div>
-                            </div>
-                        </div>
-                    `;
+                <div class="modal-message ${messageClass}">
+                    <div class="modal-message-content">
+                        ${message.message ? `<div>${message.message}</div>` : ''}
+                        ${message.has_attachments ? renderModalAttachments(message.attachments) : ''}
+                        <div class="modal-message-time">${message.time_ago} • ${senderName}</div>
+                    </div>
+                </div>
+            `;
                 });
             }
 
@@ -407,25 +461,25 @@
 
                 if (isImage) {
                     html += `
-                        <div class="modal-attachment-item modal-image-attachment">
-                            <img src="/storage/${attachment.file_path}" alt="${attachment.file_name}"
-                                 style="max-width: 200px; max-height: 200px; border-radius: 8px; margin: 5px 0; cursor: pointer;"
-                                 onclick="window.open('/storage/${attachment.file_path}', '_blank')">
-                            <div class="modal-attachment-name">${attachment.file_name}</div>
-                        </div>
-                    `;
+                <div class="modal-attachment-item modal-image-attachment">
+                    <img src="/storage/${attachment.file_path}" alt="${attachment.file_name}"
+                         style="max-width: 200px; max-height: 200px; border-radius: 8px; margin: 5px 0; cursor: pointer;"
+                         onclick="window.open('/storage/${attachment.file_path}', '_blank')">
+                    <div class="modal-attachment-name">${attachment.file_name}</div>
+                </div>
+            `;
                 } else {
                     html += `
-                        <div class="modal-attachment-item modal-file-attachment">
-                            <div class="modal-file-icon">📄</div>
-                            <div class="modal-file-info">
-                                <div class="modal-file-name">${attachment.file_name}</div>
-                                <div class="modal-file-size">${formatFileSize(attachment.file_size)}</div>
-                            </div>
-                            <a href="/api/admin/chat/download/${attachment.id}"
-                               class="modal-download-btn" download="${attachment.file_name}">⬇️</a>
-                        </div>
-                    `;
+                <div class="modal-attachment-item modal-file-attachment">
+                    <div class="modal-file-icon">📄</div>
+                    <div class="modal-file-info">
+                        <div class="modal-file-name">${attachment.file_name}</div>
+                        <div class="modal-file-size">${formatFileSize(attachment.file_size)}</div>
+                    </div>
+                    <a href="/api/admin/chat/download/${attachment.id}"
+                       class="modal-download-btn" download="${attachment.file_name}">⬇️</a>
+                </div>
+            `;
                 }
             });
 
@@ -445,7 +499,6 @@
             const messageInput = document.getElementById('modalMessageInput');
             const message = messageInput.value.trim();
 
-            // Allow sending if there's either a message or files
             if (!message && selectedModalFiles.length === 0) return;
             if (!currentConversationId) return;
 
@@ -455,8 +508,6 @@
 
             try {
                 const formData = new FormData();
-
-                // Always append message, even if empty (for files-only messages)
                 formData.append('message', message || '');
                 formData.append('message_type', selectedModalFiles.length > 0 ? 'file' : 'text');
                 formData.append('is_internal_note', false);
@@ -478,7 +529,7 @@
 
                 messageInput.value = '';
                 selectedModalFiles = [];
-                document.getElementById('modalAttachmentPreview').classList.remove('show');
+                document.getElementById('modalAttachmentPreview').style.display = 'none';
                 document.getElementById('modalFileInput').value = '';
 
                 await loadModalMessages(currentConversationId);
@@ -497,7 +548,6 @@
             const sendBtn = document.getElementById('modalSendBtn');
 
             function updateSendButtonState() {
-                // Enable send button if there's text OR files selected
                 sendBtn.disabled = !messageInput.value.trim() && selectedModalFiles.length === 0;
             }
 
@@ -522,7 +572,6 @@
                 selectedModalFiles = Array.from(e.target.files);
                 displayModalAttachments();
 
-                // Update send button state when files are selected
                 const messageInput = document.getElementById('modalMessageInput');
                 const sendBtn = document.getElementById('modalSendBtn');
                 sendBtn.disabled = !messageInput.value.trim() && selectedModalFiles.length === 0;
@@ -543,24 +592,24 @@
                 const fileSize = formatFileSize(file.size);
 
                 html += `
-                    <div class="attachment-item" style="display: flex; align-items: center; gap: 10px; padding: 8px; background: #fff; border-radius: 6px; margin-bottom: 5px; border: 1px solid #ddd;">
-                        <div class="file-icon" style="font-size: 18px; width: 24px; text-align: center;">
-                            ${isImage ? '🖼️' : '📄'}
-                        </div>
-                        <div class="file-info" style="flex: 1; min-width: 0;">
-                            <div class="file-name" style="font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px;">
-                                ${file.name}
-                            </div>
-                            <div class="file-size" style="font-size: 12px; color: #666;">
-                                ${fileSize}
-                            </div>
-                        </div>
-                        <button onclick="removeModalAttachment(${index})" class="remove-attachment"
-                                style="background: #dc3545; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; line-height: 1;">
-                            ×
-                        </button>
+            <div class="attachment-item" style="display: flex; align-items: center; gap: 10px; padding: 8px; background: #fff; border-radius: 6px; margin-bottom: 5px; border: 1px solid #ddd;">
+                <div class="file-icon" style="font-size: 18px; width: 24px; text-align: center;">
+                    ${isImage ? '🖼️' : '📄'}
+                </div>
+                <div class="file-info" style="flex: 1; min-width: 0;">
+                    <div class="file-name" style="font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px;">
+                        ${file.name}
                     </div>
-                `;
+                    <div class="file-size" style="font-size: 12px; color: #666;">
+                        ${fileSize}
+                    </div>
+                </div>
+                <button onclick="removeModalAttachment(${index})" class="remove-attachment"
+                        style="background: #dc3545; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; line-height: 1;">
+                    ×
+                </button>
+            </div>
+        `;
             });
 
             preview.innerHTML = html;
@@ -584,32 +633,6 @@
                     loadModalMessages(currentConversationId, true);
                 }
             }, 3000);
-        }
-
-        function setupSearch() {
-            const searchInput = document.getElementById('customerSearch');
-            const statusFilter = document.getElementById('statusFilter');
-
-            searchInput.addEventListener('input', filterCustomers);
-            statusFilter.addEventListener('change', filterCustomers);
-        }
-
-        function filterCustomers() {
-            const searchTerm = document.getElementById('customerSearch').value.toLowerCase();
-            const statusFilter = document.getElementById('statusFilter').value;
-
-            let filteredCustomers = customers.filter(customer => {
-                const matchesSearch =
-                    (customer.full_name || '').toLowerCase().includes(searchTerm) ||
-                    (customer.email_address || '').toLowerCase().includes(searchTerm) ||
-                    (customer.customer_id || '').toString().includes(searchTerm);
-
-                const matchesStatus = !statusFilter || (customer.chat_status || 'off') === statusFilter;
-
-                return matchesSearch && matchesStatus;
-            });
-
-            displayCustomers(filteredCustomers);
         }
 
         async function loadStats() {
@@ -643,8 +666,8 @@
         }
 
         function formatStatus(status) {
-            if (status === 'on') return 'Online';
-            if (status === 'off') return 'Offline';
+            if (status === 'online' || status === 'on') return 'Online';
+            if (status === 'offline' || status === 'off') return 'Offline';
             return (status || 'offline').charAt(0).toUpperCase() + (status || 'offline').slice(1);
         }
 
@@ -683,4 +706,5 @@
     </script>
     @stack('scripts')
 </body>
+
 </html>

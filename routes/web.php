@@ -66,6 +66,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/pos/receipt/{transactionId}', [PosController::class, 'getReceipt'])->name('pos.receipt');
 });
 
+
 Route::middleware(['auth', 'admin'])->group(function () {
     Route::prefix('admin')->group(function () {
         Route::get('/profile', [CheckLogin::class, 'showProfile'])->name('admin.profile');
@@ -281,7 +282,7 @@ Route::prefix('api/admin/chat')->group(function () {
     Route::get('/unread-count', [ChatConversationController::class, 'getUnreadCount']);
 });
 
-// Keep the main routes with authentication
+
 Route::middleware(['auth', 'verified'])->group(function () {
     // Chat Dashboard (existing)
     Route::get('/chat', [ChatViewController::class, 'chatSupport'])->name('chat.index');

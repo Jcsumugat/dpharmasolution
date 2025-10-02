@@ -24,6 +24,12 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping()
             ->onOneServer()
             ->appendOutputTo(storage_path('logs/expired-batches.log'));
+
+        // Run auto-restore every hour
+        $schedule->command('customers:auto-restore')
+            ->hourly()
+            ->withoutOverlapping()
+            ->runInBackground();
     }
 
     /**

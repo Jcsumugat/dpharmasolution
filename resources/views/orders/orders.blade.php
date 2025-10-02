@@ -53,12 +53,6 @@
         <div class="search-container">
             <input type="text" class="search-input" id="order-search"
                 placeholder="Search by Order ID, Customer, Mobile, or Notes...">
-            <select class="filter-btn" id="status-filter">
-                <option value="all">All Status</option>
-                <option value="pending">Pending</option>
-                <option value="approved">Approved</option>
-                <option value="cancelled">Cancelled</option>
-            </select>
         </div>
 
         <div class="table-wrapper">
@@ -184,32 +178,26 @@
                             </td>
 
                             <td class="action-cell">
-                                <div class="action-dropdown">
-                                    <button class="dropdown-trigger" data-id="{{ $prescription->id }}">
-                                        &#8943;
+                                <div class="action-buttons">
+                                    <button class="btn-action btn-process" data-id="{{ $prescription->id }}"
+                                        title="Process this order">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                            stroke="currentColor" stroke-width="2">
+                                            <path d="M9 11l3 3L22 4" />
+                                            <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
+                                        </svg>
+                                        Process
                                     </button>
-                                    <div class="dropdown-menu">
-                                        <button class="dropdown-item process-complete-btn"
-                                            data-id="{{ $prescription->id }}">
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                                                stroke="currentColor" stroke-width="2">
-                                                <path d="M9 11l3 3L22 4" />
-                                                <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
-                                            </svg>
-                                            Process Order
-                                        </button>
-                                        <div class="dropdown-divider"></div>
-                                        <button class="dropdown-item cancel-order-btn"
-                                            data-id="{{ $prescription->id }}">
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                                                stroke="currentColor" stroke-width="2">
-                                                <circle cx="12" cy="12" r="10" />
-                                                <line x1="15" y1="9" x2="9" y2="15" />
-                                                <line x1="9" y1="9" x2="15" y2="15" />
-                                            </svg>
-                                            Cancel Order
-                                        </button>
-                                    </div>
+                                    <button class="btn-action btn-cancel" data-id="{{ $prescription->id }}"
+                                        title="Cancel this order">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                            stroke="currentColor" stroke-width="2">
+                                            <circle cx="12" cy="12" r="10" />
+                                            <line x1="15" y1="9" x2="9" y2="15" />
+                                            <line x1="9" y1="9" x2="15" y2="15" />
+                                        </svg>
+                                        Cancel
+                                    </button>
                                 </div>
                             </td>
                         </tr>
@@ -224,98 +212,99 @@
                     <div class="modal-title">
                         Manage Order Products - <span id="manageOrderId"></span>
                     </div>
-                    <div class="modal-close" onclick="closeManageOrderModal()">&times;</div>
+                    <<div class="modal-close" id="closeManageOrderBtn">&times;
                 </div>
+            </div>
 
-                <div class="modal-body manage-order-body">
-                    <!-- Prescription Viewer Section -->
-                    <div class="prescription-reference-section">
-                        <div class="prescription-reference-header">
-                            <h4>Prescription Reference</h4>
-                            <div class="prescription-toggle-controls">
-                                <button id="togglePrescriptionBtn" class="btn btn-secondary">Show
-                                    Prescription</button>
-                                <button id="refreshPrescriptionBtn" class="btn btn-outline"
-                                    style="display: none;">Refresh</button>
-                            </div>
-                        </div>
-
-                        <div id="prescriptionReferenceContainer" class="prescription-reference-container"
-                            style="display: none;">
-                            <div class="prescription-loading-ref" id="prescriptionLoadingRef" style="display: none;">
-                                <div class="loading-spinner-small"></div>
-                                <span>Loading prescription...</span>
-                            </div>
-
-                            <div class="prescription-content-ref" id="prescriptionContentRef">
-                                <div class="no-prescription-message">
-                                    <p>No prescription document available</p>
-                                </div>
-                            </div>
-
-                            <div class="prescription-error-ref" id="prescriptionErrorRef" style="display: none;">
-                                <p>Error loading prescription. <button class="retry-btn"
-                                        onclick="retryLoadPrescription()">Retry</button></p>
-                            </div>
+            <div class="modal-body manage-order-body">
+                <!-- Prescription Viewer Section -->
+                <div class="prescription-reference-section">
+                    <div class="prescription-reference-header">
+                        <h4>Prescription Reference</h4>
+                        <div class="prescription-toggle-controls">
+                            <button id="togglePrescriptionBtn" class="btn btn-secondary">Show
+                                Prescription</button>
+                            <button id="refreshPrescriptionBtn" class="btn btn-outline"
+                                style="display: none;">Refresh</button>
                         </div>
                     </div>
 
-                    <!-- Product Management Section -->
-                    <div class="product-management-section">
-                        <input type="text" id="productSearch" placeholder="Search products..."
-                            class="product-search-input" />
+                    <div id="prescriptionReferenceContainer" class="prescription-reference-container"
+                        style="display: none;">
+                        <div class="prescription-loading-ref" id="prescriptionLoadingRef" style="display: none;">
+                            <div class="loading-spinner-small"></div>
+                            <span>Loading prescription...</span>
+                        </div>
 
-                        <div class="product-management-container">
-                            <div class="available-products-section">
-                                <h4>Available Products</h4>
-                                <ul id="availableProducts" class="product-list">
-                                    <!-- Products will be populated here -->
-                                </ul>
+                        <div class="prescription-content-ref" id="prescriptionContentRef">
+                            <div class="no-prescription-message">
+                                <p>No prescription document available</p>
                             </div>
+                        </div>
 
-                            <div class="selected-products-section">
-                                <h4>Selected Products</h4>
-                                <ul id="selectedProducts" class="product-list selected-list">
-                                    <!-- Selected products will appear here -->
-                                </ul>
-                            </div>
+                        <div class="prescription-error-ref" id="prescriptionErrorRef" style="display: none;">
+                            <p>Error loading prescription. <button class="retry-btn"
+                                    onclick="retryLoadPrescription()">Retry</button></p>
                         </div>
                     </div>
                 </div>
 
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" id="cancelManageOrder">Cancel</button>
-                    <button id="saveSelection" class="btn btn-primary">Complete Order</button>
-                </div>
-            </div>
-        </div>
-        <div id="productQuantityModal" class="modal">
-            <div class="modal-content">
-                <h3 id="productModalName"></h3>
-                <div class="quantity-controls">
-                    <button id="decreaseQty">−</button>
-                    <input type="number" id="productQty" value="1" min="1" />
-                    <button id="increaseQty">+</button>
-                </div>
-                <div>
-                    <button class="btn btn-secondary" id="cancelQtyModal">Cancel</button>
-                    <button class="btn btn-primary" id="confirmQtyModal">Select</button>
-                </div>
-            </div>
-        </div>
+                <!-- Product Management Section -->
+                <div class="product-management-section">
+                    <input type="text" id="productSearch" placeholder="Search products..."
+                        class="product-search-input" />
 
-        <div id="completeOrderModal" class="modal-overlay">
-            <div class="modal-content">
-                <h3>Confirm Order Completion</h3>
-                <div id="orderSummary">
-                    <p>Selected products will be displayed here...</p>
-                </div>
-                <div class="modal-buttons">
-                    <button class="btn btn-primary" id="submitOrderBtn">Complete Order</button>
-                    <button class="btn btn-secondary" id="cancelCompleteModal">Cancel</button>
+                    <div class="product-management-container">
+                        <div class="available-products-section">
+                            <h4>Available Products</h4>
+                            <ul id="availableProducts" class="product-list">
+                                <!-- Products will be populated here -->
+                            </ul>
+                        </div>
+
+                        <div class="selected-products-section">
+                            <h4>Selected Products</h4>
+                            <ul id="selectedProducts" class="product-list selected-list">
+                                <!-- Selected products will appear here -->
+                            </ul>
+                        </div>
+                    </div>
                 </div>
             </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelManageOrder">Cancel</button>
+                <button id="saveSelection" class="btn btn-primary">Complete Order</button>
+            </div>
         </div>
+    </div>
+    <div id="productQuantityModal" class="modal">
+        <div class="modal-content">
+            <h3 id="productModalName"></h3>
+            <div class="quantity-controls">
+                <button id="decreaseQty">−</button>
+                <input type="number" id="productQty" value="1" min="1" />
+                <button id="increaseQty">+</button>
+            </div>
+            <div>
+                <button class="btn btn-secondary" id="cancelQtyModal">Cancel</button>
+                <button class="btn btn-primary" id="confirmQtyModal">Select</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="completeOrderModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Confirm Order Completion</h3>
+            <div id="orderSummary">
+                <p>Selected products will be displayed here...</p>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn btn-primary" id="submitOrderBtn">Complete Order</button>
+                <button class="btn btn-secondary" id="cancelCompleteModal">Cancel</button>
+            </div>
+        </div>
+    </div>
     </div>
 
     <div id="prescriptionViewerModal" class="modal">
@@ -324,7 +313,7 @@
                 <div class="modal-title">
                     Prescription Viewer - <span id="prescriptionModalOrderId"></span>
                 </div>
-                <div class="modal-close" onclick="closePrescriptionViewer()">&times;</div>
+                <div class="modal-close" id="closePrescriptionViewerBtn">&times;</div>
             </div>
             <div class="modal-body prescription-viewer-body">
                 <div class="prescription-loading" id="prescriptionLoading">
@@ -366,7 +355,13 @@
                 };
                 this.elements = {};
                 this.debounceTimers = {};
+                this.handlers = {}; // Store bound handlers to prevent memory leaks
                 this.CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+                this.TIMEOUTS = {
+                    NOTIFICATION_DISPLAY: 3000,
+                    RELOAD_DELAY: 2000,
+                    IMAGE_LOAD_TIMEOUT: 10000
+                };
                 this.init();
             }
 
@@ -381,7 +376,6 @@
                 // Use object mapping for better performance
                 const elementMap = {
                     // Modal elements
-                    dropdownOverlay: '.dropdown-overlay',
                     manageModal: '#manageOrderModal',
                     qtyModal: '#productQuantityModal',
                     prescriptionModal: '#prescriptionViewerModal',
@@ -411,7 +405,6 @@
             bindEvents() {
                 this.bindGlobalEvents();
                 this.bindSearchAndFilter();
-                this.bindDropdownEvents();
                 this.bindModalEvents();
                 this.bindOrderActions();
                 this.bindProductManagement();
@@ -421,7 +414,6 @@
             bindGlobalEvents() {
                 document.addEventListener('keydown', (e) => {
                     if (e.key === "Escape") {
-                        this.closeAllDropdowns();
                         this.closeAllModals();
                     }
                 });
@@ -455,21 +447,6 @@
                 });
             }
 
-            bindDropdownEvents() {
-                // Use event delegation for better performance
-                document.addEventListener('click', (e) => {
-                    if (e.target.classList.contains('dropdown-trigger')) {
-                        e.stopPropagation();
-                        this.handleDropdownTrigger(e.target);
-                    } else if (!e.target.closest('.action-dropdown')) {
-                        this.closeAllDropdowns();
-                    }
-                });
-
-                if (this.elements.dropdownOverlay) {
-                    this.elements.dropdownOverlay.addEventListener('click', () => this.closeAllDropdowns());
-                }
-            }
 
             bindModalEvents() {
                 const modals = [this.elements.manageModal, this.elements.qtyModal, this.elements.prescriptionModal];
@@ -485,10 +462,15 @@
                 });
 
                 // Bind cancel buttons efficiently
+                if (!this.handlers.closeManageModal) {
+                    this.handlers.closeManageModal = () => this.closeManageOrderModal();
+                    this.handlers.closeQtyModalHandler = () => this.closeQtyModal();
+                }
+
                 const cancelButtons = [
-                    ['#cancelManageOrder', () => this.closeManageOrderModal()],
-                    ['#cancelQtyModal', () => this.closeQtyModal()],
-                    ['#manageOrderModal .modal-close', () => this.closeManageOrderModal()]
+                    ['#cancelManageOrder', this.handlers.closeManageModal],
+                    ['#cancelQtyModal', this.handlers.closeQtyModalHandler],
+                    ['#closeManageOrderBtn', this.handlers.closeManageModal]
                 ];
 
                 cancelButtons.forEach(([selector, handler]) => {
@@ -498,16 +480,19 @@
             }
 
             bindOrderActions() {
-                // Use event delegation for dynamically generated content
+                // Use event delegation for button actions
                 document.addEventListener('click', (e) => {
-                    const target = e.target;
-                    const prescriptionId = target.dataset.id;
+                    // Check if click is on button or any child element of button
+                    const processBtn = e.target.closest('.btn-process');
+                    const cancelBtn = e.target.closest('.btn-cancel');
 
-                    if (target.classList.contains('process-complete-btn')) {
+                    if (processBtn) {
                         e.preventDefault();
+                        const prescriptionId = processBtn.dataset.id;
                         this.processOrder(prescriptionId);
-                    } else if (target.classList.contains('cancel-order-btn')) {
+                    } else if (cancelBtn) {
                         e.preventDefault();
+                        const prescriptionId = cancelBtn.dataset.id;
                         this.cancelOrder(prescriptionId);
                     }
                 });
@@ -712,33 +697,45 @@
                 }
             }
 
-            // Separate modal controls binding
             bindModalControls() {
+                // Store handlers if not already stored
+                if (!this.handlers.saveAndComplete) {
+                    this.handlers.saveAndComplete = (e) => this.saveAndCompleteOrder(e);
+                    this.handlers.togglePrescription = () => this.togglePrescriptionViewer();
+                    this.handlers.refreshPrescription = () => this.loadPrescriptionReference();
+                }
+
                 const modalControls = [
-                    ['#saveSelection', (e) => this.saveAndCompleteOrder(e)],
-                    ['#togglePrescriptionBtn', () => this.togglePrescriptionViewer()],
-                    ['#refreshPrescriptionBtn', () => this.loadPrescriptionReference()]
+                    ['#saveSelection', this.handlers.saveAndComplete],
+                    ['#togglePrescriptionBtn', this.handlers.togglePrescription],
+                    ['#refreshPrescriptionBtn', this.handlers.refreshPrescription]
                 ];
 
                 modalControls.forEach(([selector, handler]) => {
                     const element = document.querySelector(selector);
                     if (element) {
-                        const boundHandler = handler.bind(this);
-                        element.removeEventListener('click', boundHandler);
-                        element.addEventListener('click', boundHandler);
+                        element.addEventListener('click', handler);
                     }
                 });
             }
 
             bindPrescriptionViewer() {
-                // Global functions for onclick handlers
-                window.viewPrescriptionInModal = (id, type, filename, viewUrl, downloadUrl) => {
-                    this.viewPrescriptionInModal(id, type, filename, viewUrl, downloadUrl);
-                };
+                // Use event delegation instead of global functions
+                document.addEventListener('click', (e) => {
+                    const viewBtn = e.target.closest('.btn-view');
+                    if (viewBtn && viewBtn.hasAttribute('onclick')) {
+                        e.preventDefault();
+                        const onclickStr = viewBtn.getAttribute('onclick');
+                        const match = onclickStr.match(
+                            /viewPrescriptionInModal\((\d+),\s*'([^']+)',\s*'([^']+)',\s*'([^']+)',\s*'([^']+)'\)/
+                        );
 
-                window.closePrescriptionViewer = () => this.closePrescriptionViewer();
-                window.retryLoadPrescription = () => this.loadPrescriptionReference();
-                window.closeManageOrderModal = () => this.closeManageOrderModal();
+                        if (match) {
+                            const [, id, type, filename, viewUrl, downloadUrl] = match;
+                            this.viewPrescriptionInModal(id, type, filename, viewUrl, downloadUrl);
+                        }
+                    }
+                });
 
                 const downloadBtn = document.getElementById('downloadPrescriptionBtn');
                 if (downloadBtn) {
@@ -748,6 +745,12 @@
                         }
                     });
                 }
+
+                const closeViewerBtn = document.getElementById('closePrescriptionViewerBtn');
+                if (closeViewerBtn) {
+                    closeViewerBtn.addEventListener('click', () => this.closePrescriptionViewer());
+                }
+                
             }
 
             // Utility Methods
@@ -812,14 +815,6 @@
                 });
             }
 
-            closeAllDropdowns() {
-                const activeMenus = document.querySelectorAll('.dropdown-menu.show');
-                activeMenus.forEach(menu => menu.classList.remove('show'));
-
-                if (this.elements.dropdownOverlay) {
-                    this.elements.dropdownOverlay.style.display = 'none';
-                }
-            }
 
             closeAllModals() {
                 const modals = [this.elements.manageModal, this.elements.qtyModal, this.elements.prescriptionModal];
@@ -921,57 +916,10 @@
                     });
                 }
             }
-
-            // Enhanced Dropdown Management
-            handleDropdownTrigger(trigger) {
-                // Close all other dropdowns first
-                document.querySelectorAll('.dropdown-menu.show').forEach(menu => {
-                    if (menu !== trigger.nextElementSibling) {
-                        menu.classList.remove('show');
-                    }
-                });
-
-                const dropdown = trigger.nextElementSibling;
-                if (dropdown?.classList.contains('dropdown-menu')) {
-                    const isVisible = dropdown.classList.contains('show');
-
-                    if (isVisible) {
-                        dropdown.classList.remove('show');
-                        if (this.elements.dropdownOverlay) {
-                            this.elements.dropdownOverlay.style.display = 'none';
-                        }
-                    } else {
-                        dropdown.classList.add('show');
-                        if (this.elements.dropdownOverlay) {
-                            this.elements.dropdownOverlay.style.display = 'block';
-                        }
-
-                        // Position dropdown if needed
-                        this.positionDropdown(dropdown, trigger);
-                    }
-                }
-            }
-
-            positionDropdown(dropdown, trigger) {
-                const rect = trigger.getBoundingClientRect();
-                const dropdownRect = dropdown.getBoundingClientRect();
-                const viewportHeight = window.innerHeight;
-
-                // Check if dropdown would go below viewport
-                if (rect.bottom + dropdownRect.height > viewportHeight) {
-                    dropdown.style.top = 'auto';
-                    dropdown.style.bottom = '100%';
-                } else {
-                    dropdown.style.top = '100%';
-                    dropdown.style.bottom = 'auto';
-                }
-            }
-
             // Enhanced Order Actions
             async processOrder(prescriptionId) {
                 if (this.state.isLoading) return;
 
-                this.closeAllDropdowns();
                 this.state.currentPrescriptionId = prescriptionId;
                 this.state.isLoading = true;
 
@@ -1042,8 +990,6 @@
 
             async cancelOrder(prescriptionId) {
                 if (this.state.isLoading) return;
-
-                this.closeAllDropdowns();
 
                 // Get order information for modal title
                 const orderRow = document.querySelector(`[data-id="${prescriptionId}"]`)?.closest('.order-row');

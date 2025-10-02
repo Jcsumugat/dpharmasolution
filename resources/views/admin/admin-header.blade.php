@@ -4,7 +4,6 @@
     </div>
 </header>
 
-<!-- Add this CSRF token meta tag in the head section -->
 <meta name="csrf-token" content="{{ csrf_token() }}">
 
 <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}" />
@@ -95,9 +94,7 @@
                     @endif
                 </div>
                 <div class="menu-divider"></div>
-                <a href="{{ route('admin.profile') }}" class="menu-item"
-                    style="text-decoration: none; color: inherit; display: block;">👤 Profile</a>
-                <button class="menu-item">⚙️ Settings</button>
+                <a href="{{ route('admin.profile') }}" class="menu-item" style="text-decoration: none; color: inherit; display: block;">👤 Profile</a>
                 <button class="menu-item" id="themeToggle">🌙 Dark Mode</button>
                 <div class="menu-divider"></div>
                 <button class="menu-item logout-item" onclick="showLogoutModal()">🚪 Logout</button>

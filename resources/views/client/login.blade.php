@@ -13,7 +13,7 @@
         <div class="form-box">
             <a href="javascript:history.back()" class="return-icon-btn" title="Go Back">←</a>
 
-            <h2>Welcome Back</h2>
+            <h2>Login Form</h2>
 
             @if (session('success'))
                 <div class="alert alert-success">

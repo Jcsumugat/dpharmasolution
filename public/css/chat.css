@@ -191,8 +191,9 @@ body {
     text-align: center;
     padding: var(--spacing-sm) var(--spacing-md);
     background: var(--bg-secondary);
-    border-radius: var(--radius-md);
+    border-radius: 8px;
     min-width: 60px;
+    text-align: center;
 }
 
 .stat-number {
@@ -598,81 +599,6 @@ body {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-md);
-}
-
-/* Messages */
-.message {
-    display: flex;
-    flex-direction: column;
-    max-width: 70%;
-    word-wrap: break-word;
-}
-
-.message.admin {
-    align-self: flex-end;
-    align-items: flex-end;
-}
-
-.message.customer {
-    align-self: flex-start;
-    align-items: flex-start;
-}
-
-.message.system {
-    align-self: center;
-    max-width: 80%;
-    text-align: center;
-}
-
-.message.internal {
-    background-color: var(--message-internal-bg);
-    border-left: 4px solid var(--priority-high);
-    opacity: 0.8;
-}
-
-.message-sender {
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: var(--text-muted);
-    margin-bottom: var(--spacing-xs);
-}
-
-.message-content {
-    padding: var(--spacing-sm) var(--spacing-md);
-    border-radius: var(--radius-lg);
-    font-size: 0.875rem;
-    line-height: 1.5;
-    word-wrap: break-word;
-}
-
-.message.admin .message-content {
-    background: var(--message-admin-bg);
-    color: var(--text-white);
-    border-bottom-right-radius: var(--radius-sm);
-}
-
-.message.customer .message-content {
-    background: var(--message-customer-bg);
-    color: var(--text-primary);
-    border-bottom-left-radius: var(--radius-sm);
-}
-
-.message.system .message-content {
-    background: var(--message-system-bg);
-    color: var(--text-primary);
-    font-style: italic;
-}
-
-.message-time {
-    font-size: 0.625rem;
-    color: var(--text-light);
-    margin-top: var(--spacing-xs);
-}
-
-.attachments {
-    margin-top: var(--spacing-xs);
-    font-size: 0.75rem;
-    color: var(--text-muted);
 }
 
 /* Message Input Area */
@@ -1178,12 +1104,11 @@ body {
     background: var(--primary-gradient);
     color: var(--text-white);
     border: none;
-    padding: var(--spacing-xs) var(--spacing-md);
     border-radius: var(--radius-md);
     font-size: 0.75rem;
     cursor: pointer;
     transition: all var(--transition-fast);
-    padding: 1rem;
+    padding: .8rem;
 }
 
 .chat-button:hover {
@@ -1369,8 +1294,8 @@ body {
 }
 
 .modal-message-time {
-    font-size: 0.625rem;
-    color: var(--text-muted);
+    font-size: 0.6rem;
+    color: rgb(199, 199, 199);
     margin-top: var(--spacing-xs);
 }
 
