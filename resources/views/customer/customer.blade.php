@@ -75,7 +75,7 @@
                     <tr>
                         <th>Customer ID</th>
                         <th>Customer Details</th>
-                        <th>Registration</th>
+                        <th>Date Registered</th>
                         <th>Status</th>
                         <th>Actions</th>
                     </tr>
@@ -115,7 +115,7 @@
                                                 <span class="timer-text">Calculating...</span>
                                             </span>
                                         @endif
-                                    @break
+                                    @break 
 
                                     @case('deactivated')
                                         <span class="status-badge status-inactive">
@@ -146,10 +146,6 @@
                                     <button class="btn-action btn-deactivate" data-customer-id="{{ $customer->id }}"
                                         data-action="toggle-activation">
                                         <i class="fas fa-pause"></i> Deactivate
-                                    </button>
-                                    <button class="btn-action btn-delete" data-customer-id="{{ $customer->id }}"
-                                        data-action="delete">
-                                        <i class="fas fa-trash"></i> Delete
                                     </button>
                                 @endif
 
@@ -496,49 +492,19 @@
                     })
                     .then(data => {
                         if (data.success) {
+                            // Refresh the page after a short delay
+                            setTimeout(() => {
+                                location.reload();
+                            }, 2000);
                             showAlert(data.message || 'Status updated successfully', 'success');
 
-                            const newStatus = data.status;
-                            const row = button.closest('tr');
 
-                            button.innerHTML = newStatus === 'restricted' ?
-                                '<i class="fas fa-unlock"></i> Unrestrict' :
-                                '<i class="fas fa-lock"></i> Restrict';
-                            button.className =
-                                `btn-action ${newStatus === 'restricted' ? 'btn-unrestrict' : 'btn-restrict'}`;
-
-                            const statusCell = row.querySelector('td:nth-child(4)');
-                            const oldTimer = statusCell.querySelector('.auto-restore-timer');
-                            if (oldTimer) oldTimer.remove();
-
-                            const statusBadge = row.querySelector('.status-badge');
-                            if (newStatus === 'restricted') {
-                                statusBadge.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Restricted';
-                                statusBadge.className = 'status-badge status-restricted';
-
-                                if (data.auto_restore_at) {
-                                    const timer = document.createElement('span');
-                                    timer.className = 'auto-restore-timer';
-                                    timer.setAttribute('data-restore-time', data.auto_restore_at);
-                                    timer.innerHTML =
-                                        '<i class="fas fa-clock"></i><span class="timer-text">Calculating...</span>';
-                                    statusCell.appendChild(timer);
-                                    updateTimers();
-                                }
-                            } else {
-                                statusBadge.innerHTML = '<i class="fas fa-check-circle"></i> Active';
-                                statusBadge.className = 'status-badge status-active';
-                            }
-
-                            row.setAttribute('data-status', newStatus);
-                            row.setAttribute('data-auto-restore', data.auto_restore_at || '');
-                            updateStats();
                         } else {
                             showAlert(data.message || 'Operation failed', 'error');
                             button.innerHTML = originalText;
+                            button.disabled = false;
+                            activeRequests--;
                         }
-                        button.disabled = false;
-                        activeRequests--;
                     })
                     .catch(error => {
                         console.error('Error:', error);
@@ -552,6 +518,7 @@
                     });
             }
 
+            // Replace the toggleActivation function with this updated version:
             function toggleActivation(button, customerId) {
                 const isActive = button.textContent.includes('Deactivate');
                 const action = isActive ? 'deactivate' : 'activate';
@@ -581,48 +548,20 @@
                     })
                     .then(data => {
                         if (data.success) {
+                            // Refresh the page after a short delay
+                            setTimeout(() => {
+                                location.reload();
+                            }, 1500);
+
                             showAlert(data.message || 'Status updated successfully', 'success');
 
-                            const newStatus = data.status;
-                            const row = button.closest('tr');
 
-                            button.innerHTML = newStatus === 'active' ?
-                                '<i class="fas fa-pause"></i> Deactivate' :
-                                '<i class="fas fa-play"></i> Activate';
-                            button.className = `btn-action ${newStatus === 'active' ? 'btn-deactivate' : 'btn-activate'}`;
-
-                            const statusCell = row.querySelector('td:nth-child(4)');
-                            const oldTimer = statusCell.querySelector('.auto-restore-timer');
-                            if (oldTimer) oldTimer.remove();
-
-                            const statusBadge = row.querySelector('.status-badge');
-                            if (newStatus === 'active') {
-                                statusBadge.innerHTML = '<i class="fas fa-check-circle"></i> Active';
-                                statusBadge.className = 'status-badge status-active';
-                            } else {
-                                statusBadge.innerHTML = '<i class="fas fa-pause-circle"></i> Deactivated';
-                                statusBadge.className = 'status-badge status-inactive';
-
-                                if (data.auto_restore_at) {
-                                    const timer = document.createElement('span');
-                                    timer.className = 'auto-restore-timer';
-                                    timer.setAttribute('data-restore-time', data.auto_restore_at);
-                                    timer.innerHTML =
-                                        '<i class="fas fa-clock"></i><span class="timer-text">Calculating...</span>';
-                                    statusCell.appendChild(timer);
-                                    updateTimers();
-                                }
-                            }
-
-                            row.setAttribute('data-status', newStatus);
-                            row.setAttribute('data-auto-restore', data.auto_restore_at || '');
-                            updateStats();
                         } else {
                             showAlert(data.message || 'Operation failed', 'error');
                             button.innerHTML = originalText;
+                            button.disabled = false;
+                            activeRequests--;
                         }
-                        button.disabled = false;
-                        activeRequests--;
                     })
                     .catch(error => {
                         console.error('Error:', error);

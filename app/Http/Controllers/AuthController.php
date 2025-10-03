@@ -120,7 +120,6 @@ class AuthController extends Controller
             session()->forget('registration');
 
             return redirect()->route('login.form')->with('success', 'Registration successful! You can now log in.');
-
         } catch (\Exception $e) {
             Log::error('Registration failed', [
                 'message' => $e->getMessage(),
@@ -158,14 +157,33 @@ class AuthController extends Controller
             return back()->withErrors(['mobile' => 'This account has been deleted. Please contact support.'])->withInput();
         }
 
-        // Check if customer is restricted
-        if ($customer->status === 'restricted') {
-            return back()->withErrors(['mobile' => 'Your account has been restricted. Please contact support.'])->withInput();
-        }
-
         // Check if customer is deactivated
         if ($customer->status === 'deactivated') {
-            return back()->withErrors(['mobile' => 'Your account has been deactivated. Please contact support.'])->withInput();
+            $message = 'Your account has been deactivated due to multiple violations.';
+
+            // Check if there's an auto-restore time
+            if ($customer->auto_restore_at) {
+                $restoreTime = \Carbon\Carbon::parse($customer->auto_restore_at);
+                $now = \Carbon\Carbon::now();
+
+                if ($restoreTime->isFuture()) {
+                    $duration = $restoreTime->diffForHumans($now, [
+                        'parts' => 2,
+                        'short' => false,
+                        'syntax' => \Carbon\CarbonInterface::DIFF_ABSOLUTE
+                    ]);
+
+                    $message = "Your account has been deactivated for {$duration} due to multiple violations. ";
+                    $message .= "It will be automatically restored on " . $restoreTime->format('F j, Y \a\t g:i A') . ".";
+                } else {
+                    // Auto-restore time has passed, maybe update status
+                    $message .= ' Please contact support.';
+                }
+            } else {
+                $message .= ' Please contact support.';
+            }
+
+            return back()->withErrors(['mobile' => $message])->withInput();
         }
 
         // Attempt authentication
