@@ -54,6 +54,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
 
 
 
+
 Route::middleware(['auth'])->group(function () {
     // Main POS interface
     Route::get('/pos', [PosController::class, 'index'])->name('pos.index');
@@ -213,6 +214,13 @@ Route::middleware('auth:customer')->group(function () {
     Route::post('/my-orders/{prescription}/messages/mark-read', [ClientUpload::class, 'markCustomerMessagesAsRead'])->name('customer.prescription.mark-read');
 });
 
+
+// Quick duplicate check endpoint - requires customer authentication
+Route::middleware(['web', 'auth:customer'])->group(function () {
+    Route::post('/prescription/quick-duplicate-check', [ClientUpload::class, 'quickDuplicateCheck'])
+        ->name('api.prescription.quick-duplicate-check');
+});
+
 Route::get('/feedback', function () {
     return view('client.feedback');
 });
@@ -302,3 +310,5 @@ Route::middleware(['auth:customer'])->prefix('api/customer/chat')->group(functio
     Route::post('typing-status', [CustomerChatApiController::class, 'updateTypingStatus']);
     Route::get('download/{attachmentId}', [CustomerChatApiController::class, 'downloadAttachment']);
 });
+
+

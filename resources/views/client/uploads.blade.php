@@ -8,6 +8,7 @@
     <title>Order | MJ's Pharmacy</title>
     <link rel="stylesheet" href="{{ asset('css/customer/uploads.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
     <style>
         /* Restriction Alert Styles */
         .restriction-alert {
@@ -187,6 +188,18 @@
                 transform: scale(1);
             }
         }
+
+        /* Warning state for duplicate uploads */
+        .file-preview.warning {
+            background: #fffbeb !important;
+            border: 2px solid #f59e0b !important;
+        }
+
+        /* Confirmed duplicate state */
+        .file-preview.confirmed {
+            background: #fef3c7 !important;
+            border: 2px solid #f59e0b !important;
+        }
     </style>
 </head>
 
@@ -235,6 +248,16 @@
                             message: `{{ session('success') }}`,
                             qrImage: `{{ session('qr_image') }}`,
                             qrLink: `{{ session('qr_link') }}`
+                        });
+                    });
+                </script>
+            @endif
+
+            @if (session('warning'))
+                <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        showDuplicateAlert({
+                            message: `{{ session('warning') }}`
                         });
                     });
                 </script>
@@ -456,491 +479,808 @@
         </div>
     </div>
 
-    <script>
-        // Restriction data from server
-        const isRestricted = {{ $isRestricted ? 'true' : 'false' }};
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/blueimp-md5/2.19.0/js/md5.min.js"></script>
+<script>
+    // Restriction data from server
+    const isRestricted = {{ $isRestricted ? 'true' : 'false' }};
 
-        // Store prescription data for modal display
-        const prescriptionsData = {
-            @foreach ($prescriptions as $prescription)
-                '{{ $prescription->id }}': {
-                    id: '{{ $prescription->id }}',
-                    orderId: '{{ $prescription->order->order_id ?? 'N/A' }}',
-                    orderType: '{{ $prescription->order_type ?? 'prescription' }}',
-                    status: '{{ $prescription->status ?? 'completed' }}',
-                    createdAt: '{{ $prescription->created_at->format('M d, Y') }}',
-                    createdAtTime: '{{ $prescription->created_at->format('h:i A') }}',
-                    timeAgo: '{{ $prescription->created_at->diffForHumans() }}',
-                    notes: {!! json_encode($prescription->notes ?? '') !!},
-                    adminMessage: {!! json_encode($prescription->admin_message ?? '') !!},
-                    originalFilename: {!! json_encode($prescription->original_filename ?? '') !!},
-                    fileSize: '{{ $prescription->file_size ? number_format($prescription->file_size / 1024, 1) . ' KB' : '' }}',
-                    isEncrypted: {{ $prescription->is_encrypted ? 'true' : 'false' }},
-                    hasFile: {{ $prescription->file_path || ($prescription->is_encrypted && $prescription->original_filename) ? 'true' : 'false' }},
-                    hasQrCode: {{ $prescription->qr_code_path ? 'true' : 'false' }}
-                },
-            @endforeach
-        };
+    // Store prescription data for modal display
+    const prescriptionsData = {
+        @foreach ($prescriptions as $prescription)
+            '{{ $prescription->id }}': {
+                id: '{{ $prescription->id }}',
+                orderId: '{{ $prescription->order->order_id ?? 'N/A' }}',
+                orderType: '{{ $prescription->order_type ?? 'prescription' }}',
+                status: '{{ $prescription->status ?? 'completed' }}',
+                createdAt: '{{ $prescription->created_at->format('M d, Y') }}',
+                createdAtTime: '{{ $prescription->created_at->format('h:i A') }}',
+                timeAgo: '{{ $prescription->created_at->diffForHumans() }}',
+                notes: {!! json_encode($prescription->notes ?? '') !!},
+                adminMessage: {!! json_encode($prescription->admin_message ?? '') !!},
+                originalFilename: {!! json_encode($prescription->original_filename ?? '') !!},
+                fileSize: '{{ $prescription->file_size ? number_format($prescription->file_size / 1024, 1) . ' KB' : '' }}',
+                isEncrypted: {{ $prescription->is_encrypted ? 'true' : 'false' }},
+                hasFile: {{ $prescription->file_path || ($prescription->is_encrypted && $prescription->original_filename) ? 'true' : 'false' }},
+                hasQrCode: {{ $prescription->qr_code_path ? 'true' : 'false' }}
+            },
+        @endforeach
+    };
 
-        // Timer function for restriction countdown
-        function updateRestrictionTimer() {
-            const timerElement = document.getElementById('restriction-timer');
-            if (!timerElement) return;
+    // Global variables for file handling
+    let selectedFileHash = null;
+    let isDuplicateFile = false;
+    let duplicateConfirmed = false;
 
-            const restoreTime = new Date(timerElement.dataset.restoreTime).getTime();
-            const now = new Date().getTime();
-            const distance = restoreTime - now;
+    // Timer function for restriction countdown
+    function updateRestrictionTimer() {
+        const timerElement = document.getElementById('restriction-timer');
+        if (!timerElement) return;
 
-            if (distance < 0) {
-                timerElement.textContent = 'Restriction expired - Please refresh the page';
-                return;
-            }
+        const restoreTime = new Date(timerElement.dataset.restoreTime).getTime();
+        const now = new Date().getTime();
+        const distance = restoreTime - now;
 
-            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
-            let timeString = '';
-            if (days > 0) {
-                timeString = `${days} day${days > 1 ? 's' : ''}, ${hours} hour${hours > 1 ? 's' : ''}`;
-            } else if (hours > 0) {
-                timeString = `${hours} hour${hours > 1 ? 's' : ''}, ${minutes} minute${minutes > 1 ? 's' : ''}`;
-            } else if (minutes > 0) {
-                timeString = `${minutes} minute${minutes > 1 ? 's' : ''}, ${seconds} second${seconds > 1 ? 's' : ''}`;
-            } else {
-                timeString = `${seconds} second${seconds > 1 ? 's' : ''}`;
-            }
-
-            timerElement.textContent = timeString;
+        if (distance < 0) {
+            timerElement.textContent = 'Restriction expired - Please refresh the page';
+            return;
         }
 
-        // Start the timer if restriction exists
+        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+        let timeString = '';
+        if (days > 0) {
+            timeString = `${days} day${days > 1 ? 's' : ''}, ${hours} hour${hours > 1 ? 's' : ''}`;
+        } else if (hours > 0) {
+            timeString = `${hours} hour${hours > 1 ? 's' : ''}, ${minutes} minute${minutes > 1 ? 's' : ''}`;
+        } else if (minutes > 0) {
+            timeString = `${minutes} minute${minutes > 1 ? 's' : ''}, ${seconds} second${seconds > 1 ? 's' : ''}`;
+        } else {
+            timeString = `${seconds} second${seconds > 1 ? 's' : ''}`;
+        }
+
+        timerElement.textContent = timeString;
+    }
+
+    // Start the timer if restriction exists
+    if (isRestricted) {
+        updateRestrictionTimer();
+        setInterval(updateRestrictionTimer, 1000);
+    }
+
+    // Handle button clicks for restricted accounts
+    document.getElementById('submit-btn').addEventListener('click', function(e) {
         if (isRestricted) {
-            updateRestrictionTimer();
-            setInterval(updateRestrictionTimer, 1000); // Update every second
+            e.preventDefault();
+            showRestrictionModal();
+            return false;
+        }
+    });
+
+    function showRestrictionModal() {
+        const modal = document.getElementById('restrictionModal');
+        const message = document.getElementById('restriction-message');
+        const timerElement = document.getElementById('restriction-timer');
+
+        if (timerElement && timerElement.dataset.restoreTime) {
+            const duration = timerElement.textContent;
+            message.innerHTML =
+                `Your account has been restricted for <strong>${duration}</strong> and you cannot place orders until it's unrestricted. Please wait or contact the pharmacy for more information.`;
+        } else {
+            message.innerHTML =
+                'Your account has been restricted and you cannot place orders until it\'s unrestricted. Please contact the pharmacy for more information.';
         }
 
-        // Handle form submission for restricted accounts
-        document.getElementById('upload-form').addEventListener('submit', function(e) {
-            if (isRestricted) {
-                e.preventDefault();
-                showRestrictionModal();
-                return false;
-            }
-        });
+        modal.classList.add('show');
+    }
 
-        // Handle button clicks for restricted accounts
-        document.getElementById('submit-btn').addEventListener('click', function(e) {
-            if (isRestricted) {
-                e.preventDefault();
-                showRestrictionModal();
-                return false;
-            }
-        });
+    function closeRestrictionModal() {
+        document.getElementById('restrictionModal').classList.remove('show');
+    }
 
-        function showRestrictionModal() {
-            const modal = document.getElementById('restrictionModal');
-            const message = document.getElementById('restriction-message');
-            const timerElement = document.getElementById('restriction-timer');
+    // View order details in modal
+    function viewOrderDetails(prescriptionId) {
+        const data = prescriptionsData[prescriptionId];
+        if (!data) return;
 
-            if (timerElement && timerElement.dataset.restoreTime) {
-                const duration = timerElement.textContent;
-                message.innerHTML =
-                    `Your account has been restricted for <strong>${duration}</strong> and you cannot place orders until it's unrestricted. Please wait or contact the pharmacy for more information.`;
-            } else {
-                message.innerHTML =
-                    'Your account has been restricted and you cannot place orders until it\'s unrestricted. Please contact the pharmacy for more information.';
-            }
+        const orderTypeLabel = data.orderType === 'online_order' ? 'Medicine List' : 'Prescription';
+        const orderTypeIcon = data.orderType === 'online_order' ? 'fas fa-list' : 'fas fa-prescription-bottle-alt';
+        const statusIcon = data.status === 'completed' ? 'fas fa-check-circle' :
+            data.status === 'cancelled' ? 'fas fa-times-circle' : 'fas fa-clock';
 
-            modal.classList.add('show');
-        }
+        let modalContent = `
+            <div class="detail-section">
+                <h4 class="section-title"><i class="fas fa-info-circle"></i> Order Information</h4>
+                <div class="detail-row">
+                    <div class="detail-label">Order ID:</div>
+                    <div class="detail-value"><strong>${data.orderId}</strong></div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Order Type:</div>
+                    <div class="detail-value">
+                        <span class="order-type-badge ${data.orderType}">
+                            <i class="${orderTypeIcon}"></i> ${orderTypeLabel}
+                        </span>
+                    </div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Status:</div>
+                    <div class="detail-value">
+                        <span class="status-badge ${data.status}">
+                            <i class="${statusIcon}"></i> ${data.status.charAt(0).toUpperCase() + data.status.slice(1)}
+                        </span>
+                    </div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Date Uploaded:</div>
+                    <div class="detail-value">${data.createdAt} at ${data.createdAtTime}</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Time Ago:</div>
+                    <div class="detail-value">${data.timeAgo}</div>
+                </div>
+            </div>
+        `;
 
-        // Close restriction modal
-        function closeRestrictionModal() {
-            document.getElementById('restrictionModal').classList.remove('show');
-        }
-
-        // View order details in modal
-        function viewOrderDetails(prescriptionId) {
-            const data = prescriptionsData[prescriptionId];
-            if (!data) return;
-
-            const orderTypeLabel = data.orderType === 'online_order' ? 'Medicine List' : 'Prescription';
-            const orderTypeIcon = data.orderType === 'online_order' ? 'fas fa-list' : 'fas fa-prescription-bottle-alt';
-            const statusIcon = data.status === 'completed' ? 'fas fa-check-circle' :
-                data.status === 'cancelled' ? 'fas fa-times-circle' : 'fas fa-clock';
-
-            let modalContent = `
+        if (data.notes) {
+            modalContent += `
                 <div class="detail-section">
-                    <h4 class="section-title"><i class="fas fa-info-circle"></i> Order Information</h4>
+                    <h4 class="section-title"><i class="fas fa-sticky-note"></i> Notes</h4>
                     <div class="detail-row">
-                        <div class="detail-label">Order ID:</div>
-                        <div class="detail-value"><strong>${data.orderId}</strong></div>
-                    </div>
-                    <div class="detail-row">
-                        <div class="detail-label">Order Type:</div>
-                        <div class="detail-value">
-                            <span class="order-type-badge ${data.orderType}">
-                                <i class="${orderTypeIcon}"></i> ${orderTypeLabel}
-                            </span>
-                        </div>
-                    </div>
-                    <div class="detail-row">
-                        <div class="detail-label">Status:</div>
-                        <div class="detail-value">
-                            <span class="status-badge ${data.status}">
-                                <i class="${statusIcon}"></i> ${data.status.charAt(0).toUpperCase() + data.status.slice(1)}
-                            </span>
-                        </div>
-                    </div>
-                    <div class="detail-row">
-                        <div class="detail-label">Date Uploaded:</div>
-                        <div class="detail-value">${data.createdAt} at ${data.createdAtTime}</div>
-                    </div>
-                    <div class="detail-row">
-                        <div class="detail-label">Time Ago:</div>
-                        <div class="detail-value">${data.timeAgo}</div>
+                        <div class="detail-value" style="width: 100%;">${data.notes}</div>
                     </div>
                 </div>
             `;
+        }
 
-            if (data.notes) {
-                modalContent += `
-                    <div class="detail-section">
-                        <h4 class="section-title"><i class="fas fa-sticky-note"></i> Notes</h4>
-                        <div class="detail-row">
-                            <div class="detail-value" style="width: 100%;">${data.notes}</div>
+        if (data.adminMessage) {
+            modalContent += `
+                <div class="detail-section">
+                    <div class="admin-message-section">
+                        <h4 class="section-title" style="margin-bottom: 12px;">
+                            <i class="fas fa-comment-medical" style="color: #f59e0b;"></i> Pharmacy Message
+                        </h4>
+                        <div class="admin-message-text">${data.adminMessage}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        if (data.hasFile) {
+            modalContent += `
+                <div class="detail-section">
+                    <h4 class="section-title"><i class="fas fa-file"></i> Document</h4>
+                    <div class="file-info">
+                        <div class="file-icon">
+                            <i class="fas fa-file-alt"></i>
+                        </div>
+                        <div>
+                            <div><strong>${data.originalFilename || 'Document uploaded'}</strong></div>
+                            ${data.fileSize ? `<div style="color: #64748b; font-size: 0.875rem;">Size: ${data.fileSize}</div>` : ''}
+                            ${data.isEncrypted ? '<div class="security-badge"><i class="fas fa-shield-alt"></i> Encrypted</div>' : ''}
                         </div>
                     </div>
-                `;
-            }
-
-            if (data.adminMessage) {
-                modalContent += `
-                    <div class="detail-section">
-                        <div class="admin-message-section">
-                            <h4 class="section-title" style="margin-bottom: 12px;">
-                                <i class="fas fa-comment-medical" style="color: #f59e0b;"></i> Pharmacy Message
-                            </h4>
-                            <div class="admin-message-text">${data.adminMessage}</div>
-                        </div>
-                    </div>
-                `;
-            }
-
-            if (data.hasFile) {
-                modalContent += `
-                    <div class="detail-section">
-                        <h4 class="section-title"><i class="fas fa-file"></i> Document</h4>
-                        <div class="file-info">
-                            <div class="file-icon">
-                                <i class="fas fa-file-alt"></i>
-                            </div>
-                            <div>
-                                <div><strong>${data.originalFilename || 'Document uploaded'}</strong></div>
-                                ${data.fileSize ? `<div style="color: #64748b; font-size: 0.875rem;">Size: ${data.fileSize}</div>` : ''}
-                                ${data.isEncrypted ? '<div class="security-badge"><i class="fas fa-shield-alt"></i> Encrypted</div>' : ''}
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
-
-            // Add action buttons
-            let actionButtons = '';
-            if (data.hasFile) {
-                actionButtons += `<button class="btn-primary" onclick="viewDocument('${data.id}')">
-                    <i class="fas fa-eye"></i> View Document
-                </button>`;
-            }
-            if (data.hasQrCode) {
-                actionButtons += `<button class="btn-primary" onclick="viewQR('${data.id}')">
-                    <i class="fas fa-qrcode"></i> View QR Code
-                </button>`;
-            }
-
-            if (actionButtons) {
-                modalContent += `
-                    <div class="modal-actions">
-                        <button class="btn-secondary" onclick="closeModal()">Close</button>
-                        ${actionButtons}
-                    </div>
-                `;
-            } else {
-                modalContent += `
-                    <div class="modal-actions">
-                        <button class="btn-secondary" onclick="closeModal()">Close</button>
-                    </div>
-                `;
-            }
-
-            document.getElementById('modal-body-content').innerHTML = modalContent;
-            document.getElementById('orderModal').classList.add('show');
+                </div>
+            `;
         }
 
-        // Close modal
-        function closeModal() {
-            document.getElementById('orderModal').classList.remove('show');
+        let actionButtons = '';
+        if (data.hasFile) {
+            actionButtons += `<button class="btn-primary" onclick="viewDocument('${data.id}')">
+                <i class="fas fa-eye"></i> View Document
+            </button>`;
+        }
+        if (data.hasQrCode) {
+            actionButtons += `<button class="btn-primary" onclick="viewQR('${data.id}')">
+                <i class="fas fa-qrcode"></i> View QR Code
+            </button>`;
         }
 
-        // Close modal when clicking outside
-        window.onclick = function(event) {
-            const modal = document.getElementById('orderModal');
-            const restrictionModal = document.getElementById('restrictionModal');
-
-            if (event.target === modal) {
-                closeModal();
-            }
-            if (event.target === restrictionModal) {
-                closeRestrictionModal();
-            }
+        if (actionButtons) {
+            modalContent += `
+                <div class="modal-actions">
+                    <button class="btn-secondary" onclick="closeModal()">Close</button>
+                    ${actionButtons}
+                </div>
+            `;
+        } else {
+            modalContent += `
+                <div class="modal-actions">
+                    <button class="btn-secondary" onclick="closeModal()">Close</button>
+                </div>
+            `;
         }
 
-        // Update UI based on selected order type
-        function updateOrderTypeUI() {
-            if (isRestricted) return; // Don't update if restricted
+        document.getElementById('modal-body-content').innerHTML = modalContent;
+        document.getElementById('orderModal').classList.add('show');
+    }
 
-            const prescriptionRadio = document.getElementById('prescription');
-            const onlineOrderRadio = document.getElementById('online_order');
-            const fileLabel = document.getElementById('file-label');
-            const securityNote = document.getElementById('file-security-note');
+    function closeModal() {
+        document.getElementById('orderModal').classList.remove('show');
+    }
 
-            // Update visual selection
-            document.querySelectorAll('.order-type-option').forEach(option => {
-                option.classList.remove('selected');
-            });
+    window.onclick = function(event) {
+        const modal = document.getElementById('orderModal');
+        const restrictionModal = document.getElementById('restrictionModal');
 
-            if (prescriptionRadio.checked) {
-                prescriptionRadio.closest('.order-type-option').classList.add('selected');
-                fileLabel.innerHTML = '<i class="fas fa-file-upload"></i> Upload Prescription (JPG, PNG, PDF)';
-                securityNote.innerHTML =
-                    '<i class="fas fa-shield-alt"></i> Your prescription will be securely encrypted and can only be viewed by authorized pharmacy staff.';
-            } else if (onlineOrderRadio.checked) {
-                onlineOrderRadio.closest('.order-type-option').classList.add('selected');
-                fileLabel.innerHTML = '<i class="fas fa-file-upload"></i> Upload Medicine List (JPG, PNG, PDF)';
-                securityNote.innerHTML =
-                    '<i class="fas fa-shield-alt"></i> Your medicine list will be securely encrypted and processed by our pharmacy staff.';
-            }
+        if (event.target === modal) {
+            closeModal();
         }
-
-        // Filter functionality
-        function filterOrders() {
-            const statusFilter = document.getElementById('status-filter').value;
-            const typeFilter = document.getElementById('type-filter').value;
-            const dateFilter = document.getElementById('date-filter').value;
-            const searchTerm = document.getElementById('order-search').value.toLowerCase();
-            const rows = document.querySelectorAll('.history-row');
-            let visibleCount = 0;
-
-            rows.forEach(row => {
-                const rowStatus = row.dataset.status;
-                const rowType = row.dataset.type;
-                const rowDate = new Date(row.dataset.date);
-                const rowSearch = row.dataset.search;
-                const today = new Date();
-
-                let showRow = true;
-
-                // Status filter
-                if (statusFilter !== 'all' && rowStatus !== statusFilter) {
-                    showRow = false;
-                }
-
-                // Type filter
-                if (typeFilter !== 'all' && rowType !== typeFilter) {
-                    showRow = false;
-                }
-
-                // Date filter
-                if (dateFilter !== 'all') {
-                    const daysDiff = Math.floor((today - rowDate) / (1000 * 60 * 60 * 24));
-
-                    switch (dateFilter) {
-                        case 'today':
-                            if (daysDiff > 0) showRow = false;
-                            break;
-                        case 'week':
-                            if (daysDiff > 7) showRow = false;
-                            break;
-                        case 'month':
-                            if (daysDiff > 30) showRow = false;
-                            break;
-                        case '3months':
-                            if (daysDiff > 90) showRow = false;
-                            break;
-                    }
-                }
-
-                // Search filter
-                if (searchTerm && !rowSearch.includes(searchTerm)) {
-                    showRow = false;
-                }
-
-                if (showRow) {
-                    row.style.display = 'table-row';
-                    visibleCount++;
-                } else {
-                    row.style.display = 'none';
-                }
-            });
-
-            // Show/hide no results message and table
-            const noResults = document.getElementById('no-results');
-            const tableContainer = document.getElementById('table-container');
-            const hasRows = rows.length > 0;
-
-            if (visibleCount === 0 && hasRows) {
-                noResults.style.display = 'block';
-                tableContainer.classList.add('hidden');
-            } else {
-                noResults.style.display = 'none';
-                tableContainer.classList.remove('hidden');
-            }
+        if (event.target === restrictionModal) {
+            closeRestrictionModal();
         }
+    }
 
-        // Clear all filters
-        function clearFilters() {
-            document.getElementById('status-filter').value = 'all';
-            document.getElementById('type-filter').value = 'all';
-            document.getElementById('date-filter').value = 'all';
-            document.getElementById('order-search').value = '';
-            filterOrders();
-        }
+    function updateOrderTypeUI() {
+        if (isRestricted) return;
 
-        // View document function
-        function viewDocument(prescriptionId) {
-            const documentUrl = `{{ url('/prescription/document/') }}/${prescriptionId}`;
-            window.open(documentUrl, '_blank');
-        }
+        const prescriptionRadio = document.getElementById('prescription');
+        const onlineOrderRadio = document.getElementById('online_order');
+        const fileLabel = document.getElementById('file-label');
+        const securityNote = document.getElementById('file-security-note');
 
-        // View QR function
-        function viewQR(prescriptionId) {
-            window.open(`{{ url('/prescription/qr/') }}/${prescriptionId}`, '_blank');
-        }
-
-        // Initialize UI on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            updateOrderTypeUI();
-
-            // Add event listeners for order type changes (only if not restricted)
-            if (!isRestricted) {
-                document.querySelectorAll('input[name="order_type"]').forEach(radio => {
-                    radio.addEventListener('change', updateOrderTypeUI);
-                });
-            }
-
-            // Add event listeners for filters
-            document.getElementById('status-filter').addEventListener('change', filterOrders);
-            document.getElementById('type-filter').addEventListener('change', filterOrders);
-            document.getElementById('date-filter').addEventListener('change', filterOrders);
-            document.getElementById('order-search').addEventListener('input', filterOrders);
-            document.getElementById('clear-filters').addEventListener('click', clearFilters);
-
-            // Close modals with Escape key
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape') {
-                    closeModal();
-                    closeRestrictionModal();
-                }
-            });
+        document.querySelectorAll('.order-type-option').forEach(option => {
+            option.classList.remove('selected');
         });
 
-        // File validation (only if not restricted)
-        document.getElementById('prescription_file').addEventListener('change', function(e) {
-            if (isRestricted) {
-                e.preventDefault();
-                showRestrictionModal();
-                this.value = '';
+        if (prescriptionRadio.checked) {
+            prescriptionRadio.closest('.order-type-option').classList.add('selected');
+            fileLabel.innerHTML = '<i class="fas fa-file-upload"></i> Upload Prescription (JPG, PNG, PDF)';
+            securityNote.innerHTML =
+                '<i class="fas fa-shield-alt"></i> Your prescription will be securely encrypted and can only be viewed by authorized pharmacy staff.';
+        } else if (onlineOrderRadio.checked) {
+            onlineOrderRadio.closest('.order-type-option').classList.add('selected');
+            fileLabel.innerHTML = '<i class="fas fa-file-upload"></i> Upload Medicine List (JPG, PNG, PDF)';
+            securityNote.innerHTML =
+                '<i class="fas fa-shield-alt"></i> Your medicine list will be securely encrypted and processed by our pharmacy staff.';
+        }
+    }
+
+    function filterOrders() {
+        const statusFilter = document.getElementById('status-filter').value;
+        const typeFilter = document.getElementById('type-filter').value;
+        const dateFilter = document.getElementById('date-filter').value;
+        const searchTerm = document.getElementById('order-search').value.toLowerCase();
+        const rows = document.querySelectorAll('.history-row');
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+            const rowStatus = row.dataset.status;
+            const rowType = row.dataset.type;
+            const rowDate = new Date(row.dataset.date);
+            const rowSearch = row.dataset.search;
+            const today = new Date();
+
+            let showRow = true;
+
+            if (statusFilter !== 'all' && rowStatus !== statusFilter) {
+                showRow = false;
+            }
+
+            if (typeFilter !== 'all' && rowType !== typeFilter) {
+                showRow = false;
+            }
+
+            if (dateFilter !== 'all') {
+                const daysDiff = Math.floor((today - rowDate) / (1000 * 60 * 60 * 24));
+
+                switch (dateFilter) {
+                    case 'today':
+                        if (daysDiff > 0) showRow = false;
+                        break;
+                    case 'week':
+                        if (daysDiff > 7) showRow = false;
+                        break;
+                    case 'month':
+                        if (daysDiff > 30) showRow = false;
+                        break;
+                    case '3months':
+                        if (daysDiff > 90) showRow = false;
+                        break;
+                }
+            }
+
+            if (searchTerm && !rowSearch.includes(searchTerm)) {
+                showRow = false;
+            }
+
+            if (showRow) {
+                row.style.display = 'table-row';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        const noResults = document.getElementById('no-results');
+        const tableContainer = document.getElementById('table-container');
+        const hasRows = rows.length > 0;
+
+        if (visibleCount === 0 && hasRows) {
+            noResults.style.display = 'block';
+            tableContainer.classList.add('hidden');
+        } else {
+            noResults.style.display = 'none';
+            tableContainer.classList.remove('hidden');
+        }
+    }
+
+    function clearFilters() {
+        document.getElementById('status-filter').value = 'all';
+        document.getElementById('type-filter').value = 'all';
+        document.getElementById('date-filter').value = 'all';
+        document.getElementById('order-search').value = '';
+        filterOrders();
+    }
+
+    function viewDocument(prescriptionId) {
+        const documentUrl = `{{ url('/prescription/document/') }}/${prescriptionId}`;
+        window.open(documentUrl, '_blank');
+    }
+
+    function viewQR(prescriptionId) {
+        window.open(`{{ url('/prescription/qr/') }}/${prescriptionId}`, '_blank');
+    }
+
+    function calculateFileHash(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const arrayBuffer = e.target.result;
+                    const uint8Array = new Uint8Array(arrayBuffer);
+
+                    console.log('File info:', {
+                        name: file.name,
+                        size: file.size,
+                        type: file.type,
+                        lastModified: file.lastModified,
+                        arrayBufferSize: arrayBuffer.byteLength
+                    });
+
+                    let binaryString = '';
+                    for (let i = 0; i < uint8Array.length; i++) {
+                        binaryString += String.fromCharCode(uint8Array[i]);
+                    }
+
+                    const hash = md5(binaryString);
+                    console.log('MD5 hash calculated:', hash);
+                    console.log('First 100 bytes:', Array.from(uint8Array.slice(0, 100)));
+                    resolve(hash);
+                } catch (error) {
+                    console.error('Hash calculation error:', error);
+                    reject(error);
+                }
+            };
+            reader.onerror = reject;
+            reader.readAsArrayBuffer(file);
+        });
+    }
+
+    // File input change handler
+    document.getElementById('prescription_file').addEventListener('change', async function(e) {
+        if (isRestricted) {
+            e.preventDefault();
+            showRestrictionModal();
+            this.value = '';
+            return;
+        }
+
+        const file = e.target.files[0];
+        const fileInfo = document.getElementById('file-info');
+        const submitBtn = document.getElementById('submit-btn');
+
+        // Reset state
+        duplicateConfirmed = false;
+        isDuplicateFile = false;
+        selectedFileHash = null;
+
+        if (file) {
+            const fileSize = file.size;
+            const maxSize = 5 * 1024 * 1024;
+
+            if (fileSize > maxSize) {
+                alert('File size must be less than 5MB');
+                e.target.value = '';
+                fileInfo.style.display = 'none';
+                submitBtn.disabled = true;
                 return;
             }
 
-            const file = e.target.files[0];
-            const fileInfo = document.getElementById('file-info');
-
-            if (file) {
-                const fileSize = file.size;
-                const maxSize = 5 * 1024 * 1024; // 5MB
-
-                if (fileSize > maxSize) {
-                    alert('File size must be less than 5MB');
-                    e.target.value = '';
-                    fileInfo.style.display = 'none';
-                    return;
-                }
-
-                const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
-                if (!allowedTypes.includes(file.type)) {
-                    alert('Please upload only JPG, PNG, or PDF files');
-                    e.target.value = '';
-                    fileInfo.style.display = 'none';
-                    return;
-                }
-
-                const fileName = file.name;
-                const fileSizeKB = (fileSize / 1024).toFixed(1);
-
-                fileInfo.innerHTML = `
-                    <div class="file-preview">
-                        <i class="fas fa-file-alt file-icon"></i>
-                        <div class="file-details">
-                            <strong>Selected:</strong> ${fileName}<br>
-                            <strong>Size:</strong> ${fileSizeKB} KB<br>
-                            <strong>Type:</strong> ${file.type}
-                        </div>
-                    </div>
-                `;
-                fileInfo.style.display = 'block';
-            } else {
+            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+            if (!allowedTypes.includes(file.type)) {
+                alert('Please upload only JPG, PNG, or PDF files');
+                e.target.value = '';
                 fileInfo.style.display = 'none';
+                submitBtn.disabled = true;
+                return;
             }
+
+            fileInfo.innerHTML = `
+                <div class="file-preview" style="background: #f0f9ff; border: 2px dashed #0284c7; padding: 15px; border-radius: 8px;">
+                    <i class="fas fa-spinner fa-spin" style="color: #0284c7; font-size: 24px;"></i>
+                    <div class="file-details" style="margin-left: 15px;">
+                        <strong>Checking for duplicates...</strong><br>
+                        <small>Please wait while we verify this file.</small>
+                    </div>
+                </div>
+            `;
+            fileInfo.style.display = 'block';
+            submitBtn.disabled = true;
+
+            try {
+                console.log('Starting hash calculation...');
+                const hash = await calculateFileHash(file);
+                selectedFileHash = hash;
+
+                console.log('Hash calculated:', hash);
+                console.log('Sending API request to check duplicate...');
+
+                const response = await fetch('/prescription/quick-duplicate-check', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        file_hash: hash
+                    })
+                });
+
+                console.log('API Response status:', response.status);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                console.log('API Response data:', result);
+
+                if (result.is_duplicate) {
+                    console.log('Duplicate detected!');
+                    isDuplicateFile = true;
+                    showDuplicateWarning(file, fileSize, result.message, result.details);
+                } else {
+                    console.log('File is unique');
+                    isDuplicateFile = false;
+                    showFileSuccess(file, fileSize);
+                }
+            } catch (error) {
+                console.error('Duplicate check failed:', error);
+                isDuplicateFile = false;
+                showFileSuccess(file, fileSize);
+            }
+        } else {
+            fileInfo.style.display = 'none';
+            selectedFileHash = null;
+            isDuplicateFile = false;
+            duplicateConfirmed = false;
+            submitBtn.disabled = true;
+        }
+    });
+
+    function showDuplicateWarning(file, fileSize, message, details) {
+        const fileInfo = document.getElementById('file-info');
+        const submitBtn = document.getElementById('submit-btn');
+        const fileName = file.name;
+        const fileSizeKB = (fileSize / 1024).toFixed(1);
+
+        const warningHTML = `
+            <div class="file-preview warning" style="background: #fffbeb; border: 2px solid #f59e0b; padding: 15px; border-radius: 8px;">
+                <i class="fas fa-exclamation-triangle" style="color: #d97706; font-size: 24px;"></i>
+                <div class="file-details" style="margin-left: 15px;">
+                    <strong style="color: #92400e;">⚠️ Duplicate Detected</strong><br>
+                    <span style="color: #78350f;">${message}</span><br><br>
+                    <strong>Current File:</strong> ${fileName}<br>
+                    <strong>Size:</strong> ${fileSizeKB} KB<br><br>
+                    <div style="background: #fef3c7; padding: 12px; border-radius: 6px; margin-top: 10px; border-left: 4px solid #f59e0b;">
+                        <strong style="color: #92400e;">You can still upload this file</strong><br>
+                        <small style="color: #78350f;">
+                            Our pharmacy staff will review it to verify if it's a legitimate reorder or duplicate submission.
+                            Click "Upload Anyway" to proceed.
+                        </small>
+                    </div>
+                    <div style="margin-top: 15px; display: flex; gap: 10px;">
+                        <button type="button" class="btn-upload-anyway"
+                                style="background: #f59e0b; color: white; border: none; padding: 12px 24px;
+                                       border-radius: 6px; cursor: pointer; font-weight: 600; flex: 1;
+                                       transition: background 0.2s;">
+                            <i class="fas fa-check"></i> Upload Anyway
+                        </button>
+                        <button type="button" class="btn-cancel-upload"
+                                style="background: #6b7280; color: white; border: none; padding: 12px 24px;
+                                       border-radius: 6px; cursor: pointer; flex: 1;
+                                       transition: background 0.2s;">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        fileInfo.innerHTML = warningHTML;
+        fileInfo.style.display = 'block';
+        submitBtn.disabled = true;
+
+        const uploadAnywayBtn = fileInfo.querySelector('.btn-upload-anyway');
+        const cancelBtn = fileInfo.querySelector('.btn-cancel-upload');
+
+        uploadAnywayBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            confirmDuplicateUpload();
         });
 
-        function showTemporarySuccess(data) {
-            const tempMessage = document.createElement('div');
-            tempMessage.className = 'success-message-temp';
+        cancelBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            cancelUpload();
+        });
+    }
 
-            let content = `<h3><i class="fas fa-check-circle"></i> ${data.message}</h3>`;
+    function showFileSuccess(file, fileSize) {
+        const fileInfo = document.getElementById('file-info');
+        const submitBtn = document.getElementById('submit-btn');
+        const fileName = file.name;
+        const fileSizeKB = (fileSize / 1024).toFixed(1);
 
-            if (data.qrImage) {
-                content += `
-            <p><strong>Scan this QR code at the pharmacy:</strong></p>
-            <img src="${data.qrImage}" alt="QR Code" style="max-width: 200px; margin: 10px 0;">
+        fileInfo.innerHTML = `
+            <div class="file-preview" style="background: #f0fdf4; border: 2px solid #10b981; padding: 15px; border-radius: 8px;">
+                <i class="fas fa-check-circle" style="color: #059669; font-size: 24px;"></i>
+                <div class="file-details" style="margin-left: 15px;">
+                    <strong style="color: #065f46;">✓ File Verified</strong><br>
+                    <span style="color: #047857;">No duplicates found. Ready to upload.</span><br><br>
+                    <strong>Selected:</strong> ${fileName}<br>
+                    <strong>Size:</strong> ${fileSizeKB} KB<br>
+                    <strong>Type:</strong> ${file.type}
+                </div>
+            </div>
         `;
-            }
+        fileInfo.style.display = 'block';
 
-            if (data.qrLink) {
-                content += `
-            <p><strong>Order link:</strong></p>
-            <p><a href="${data.qrLink}" target="_blank" style="color: #a7f3d0; text-decoration: underline;">${data.qrLink}</a></p>
+        submitBtn.disabled = false;
+        submitBtn.style.opacity = '1';
+        submitBtn.style.cursor = 'pointer';
+    }
+
+    function confirmDuplicateUpload() {
+        duplicateConfirmed = true;
+        const fileInfo = document.getElementById('file-info');
+        const submitBtn = document.getElementById('submit-btn');
+
+        const fileInput = document.getElementById('prescription_file');
+        const file = fileInput.files[0];
+        const fileName = file.name;
+        const fileSizeKB = (file.size / 1024).toFixed(1);
+
+        fileInfo.innerHTML = `
+            <div class="file-preview" style="background: #fef3c7; border: 2px solid #f59e0b; padding: 15px; border-radius: 8px;">
+                <i class="fas fa-exclamation-circle" style="color: #d97706; font-size: 24px;"></i>
+                <div class="file-details" style="margin-left: 15px;">
+                    <strong style="color: #92400e;">⚠️ Duplicate Upload Confirmed</strong><br>
+                    <span style="color: #78350f;">You've chosen to proceed with this duplicate file. Our pharmacy will review it.</span><br><br>
+                    <strong>File:</strong> ${fileName}<br>
+                    <strong>Size:</strong> ${fileSizeKB} KB<br>
+                    <strong>Status:</strong> <span style="color: #d97706; font-weight: 600;">Ready for review</span>
+                </div>
+            </div>
         `;
-            }
 
-            tempMessage.innerHTML = content;
-            document.body.appendChild(tempMessage);
+        submitBtn.disabled = false;
+        submitBtn.style.opacity = '1';
+        submitBtn.style.cursor = 'pointer';
+    }
 
-            // Auto-remove after 5 seconds
-            setTimeout(() => {
-                tempMessage.classList.add('fade-out');
-                setTimeout(() => {
-                    tempMessage.remove();
-                }, 500);
-            }, 5000);
+    function cancelUpload() {
+        document.getElementById('prescription_file').value = '';
+        document.getElementById('file-info').style.display = 'none';
+        selectedFileHash = null;
+        isDuplicateFile = false;
+        duplicateConfirmed = false;
+
+        const submitBtn = document.getElementById('submit-btn');
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = '0.5';
+    }
+
+    // CRITICAL FIX: Form submission handler that sends the hash
+    document.getElementById('upload-form').addEventListener('submit', function(e) {
+        if (isRestricted) {
+            e.preventDefault();
+            showRestrictionModal();
+            return false;
         }
 
-        // Auto-format mobile number input
-        document.getElementById('mobile_number').addEventListener('input', function(e) {
-            if (isRestricted) return;
+        const fileInput = document.getElementById('prescription_file');
+        if (!fileInput.files || fileInput.files.length === 0) {
+            e.preventDefault();
+            alert('Please select a file to upload.');
+            return false;
+        }
 
-            let value = e.target.value.replace(/\D/g, '');
+        if (isDuplicateFile && !duplicateConfirmed) {
+            e.preventDefault();
+            alert('⚠️ Please confirm the duplicate upload by clicking "Upload Anyway" button.');
+            return false;
+        }
 
-            if (value.length > 11) {
-                value = value.substring(0, 11);
+        // CRITICAL: Add the file hash as a hidden input
+        if (selectedFileHash) {
+            // Remove any existing file_hash input to avoid duplicates
+            const existingHashInput = this.querySelector('input[name="file_hash"]');
+            if (existingHashInput) {
+                existingHashInput.remove();
             }
 
-            e.target.value = value;
+            // Add new hash input
+            const hashInput = document.createElement('input');
+            hashInput.type = 'hidden';
+            hashInput.name = 'file_hash';
+            hashInput.value = selectedFileHash;
+            this.appendChild(hashInput);
+
+            console.log('✓ Submitting form with file hash:', selectedFileHash);
+        } else {
+            console.warn('⚠ No file hash available - backend will calculate it');
+        }
+
+        return true;
+    });
+
+    function showTemporarySuccess(data) {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s;
+        `;
+
+        const messageBox = document.createElement('div');
+        messageBox.style.cssText = `
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 500px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.3s;
+        `;
+
+        let content = `
+            <div style="font-size: 48px; margin-bottom: 15px;">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <h3 style="margin: 0 0 15px 0; font-size: 24px;">${data.message}</h3>
+        `;
+
+        if (data.qrImage) {
+            content += `
+                <div style="background: white; padding: 20px; border-radius: 10px; margin: 20px 0;">
+                    <p style="color: #374151; margin: 0 0 10px 0; font-weight: 600;">Scan this QR code at the pharmacy:</p>
+                    <img src="${data.qrImage}" alt="QR Code" style="max-width: 200px; margin: 0 auto; display: block;">
+                </div>
+            `;
+        }
+
+        content += `
+            <button onclick="this.closest('div[style*=fixed]').remove()"
+                style="background: white; color: #059669; border: none; padding: 12px 30px;
+                       border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600;
+                       margin-top: 15px; transition: transform 0.2s;">
+                <i class="fas fa-times"></i> Close
+            </button>
+        `;
+
+        if (data.qrLink) {
+            content += `
+                <p><strong>Order link:</strong></p>
+                <p><a href="${data.qrLink}" target="_blank" style="color: #a7f3d0; text-decoration: underline;">${data.qrLink}</a></p>
+            `;
+        }
+
+        messageBox.innerHTML = content;
+        overlay.appendChild(messageBox);
+        document.body.appendChild(overlay);
+
+        setTimeout(() => {
+            overlay.style.animation = 'fadeOut 0.3s';
+            setTimeout(() => overlay.remove(), 300);
+        }, 8000);
+
+        setTimeout(() => {
+            window.location.reload();
+        }, 8500);
+    }
+
+    function showDuplicateAlert(data) {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s;
+        `;
+
+        const messageBox = document.createElement('div');
+        messageBox.style.cssText = `
+            background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+            color: #991b1b;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 500px;
+            border: 3px solid #ef4444;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.3s;
+        `;
+
+        messageBox.innerHTML = `
+            <div style="font-size: 48px; margin-bottom: 15px; color: #dc2626;">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <h3 style="margin: 0 0 15px 0; font-size: 24px; color: #991b1b;">Duplicate Detected!</h3>
+            <p style="color: #7f1d1d; line-height: 1.6;">${data.message}</p>
+            <button onclick="this.closest('div[style*=fixed]').remove()"
+                style="background: #dc2626; color: white; border: none; padding: 12px 30px;
+                       border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600;
+                       margin-top: 15px; transition: transform 0.2s;">
+                <i class="fas fa-times"></i> Close
+            </button>
+        `;
+
+        overlay.appendChild(messageBox);
+        document.body.appendChild(overlay);
+
+        setTimeout(() => {
+            overlay.style.animation = 'fadeOut 0.3s';
+            setTimeout(() => overlay.remove(), 300);
+        }, 10000);
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        updateOrderTypeUI();
+
+        if (!isRestricted) {
+            document.querySelectorAll('input[name="order_type"]').forEach(radio => {
+                radio.addEventListener('change', updateOrderTypeUI);
+            });
+        }
+
+        document.getElementById('status-filter').addEventListener('change', filterOrders);
+        document.getElementById('type-filter').addEventListener('change', filterOrders);
+        document.getElementById('date-filter').addEventListener('change', filterOrders);
+        document.getElementById('order-search').addEventListener('input', filterOrders);
+        document.getElementById('clear-filters').addEventListener('click', clearFilters);
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeModal();
+                closeRestrictionModal();
+            }
         });
-    </script>
+    });
+</script>
 
     @stack('scripts')
 </body>

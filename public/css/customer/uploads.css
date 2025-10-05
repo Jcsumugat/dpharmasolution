@@ -1015,6 +1015,10 @@ body {
     display: none;
 }
 
+#submit-btn:disabled {
+    cursor: not-allowed;
+}
+
 /* Enhanced Mobile Responsiveness */
 
 /* Large tablets and small laptops */

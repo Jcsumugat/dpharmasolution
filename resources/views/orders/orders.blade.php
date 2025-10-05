@@ -19,6 +19,9 @@
                 <button class="filter-btn active" data-filter="all">All Orders</button>
                 <button class="filter-btn" data-filter="prescription">Prescriptions</button>
                 <button class="filter-btn" data-filter="online_order">Non Prescriptions</button>
+                <button class="filter-btn filter-duplicate" data-filter="duplicate">
+                    ⚠️ Duplicates/Similar
+                </button>
             </div>
         </div>
 
@@ -71,8 +74,8 @@
                     @foreach ($prescriptions as $prescription)
                         <tr class="order-row" data-order-type="{{ $prescription->order_type ?? 'prescription' }}"
                             data-status="{{ strtolower($prescription->status ?? 'pending') }}"
+                            data-duplicate="{{ $prescription->has_duplicate_warning ? 'true' : 'false' }}"
                             data-search="{{ strtolower($prescription->order->order_id ?? '') }} {{ strtolower($prescription->customer->email_address ?? '') }} {{ strtolower($prescription->mobile_number ?? '') }} {{ strtolower($prescription->notes ?? '') }}">
-
                             <td>
                                 <strong>{{ $prescription->order->order_id ?? 'ORD-' . $prescription->id }}</strong>
                                 <span class="order-type-badge {{ $prescription->order_type ?? 'prescription' }}">
@@ -84,7 +87,6 @@
                                     {{ $prescription->created_at->diffForHumans() }}
                                 </div>
                             </td>
-
                             <td>
                                 @if ($prescription->customer)
                                     <div><strong>I D: {{ $prescription->customer->customer_id }}</strong></div>
@@ -97,24 +99,61 @@
 
                             <td>
                                 <div class="status-container">
-                                    <span class="status-badges{{ strtolower($prescription->status ?? 'pending') }}">
-                                        {{ ucfirst($prescription->status ?? 'Pending') }}
-                                    </span>
-                                    <div class="status-info-icon"
-                                        data-status="{{ strtolower($prescription->status ?? 'pending') }}"
-                                        data-order-type="{{ $prescription->order_type ?? 'prescription' }}">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                                            xmlns="http://www.w3.org/2000/svg">
-                                            <circle cx="12" cy="12" r="10" stroke="currentColor"
-                                                stroke-width="2" />
-                                            <path d="m9,9 0,0 A3,3 0 0,1 15,9 A3.5,3.5 0 0,1 12,12.5"
-                                                stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                                stroke-linejoin="round" />
-                                            <circle cx="12" cy="16" r="1" fill="currentColor" />
-                                        </svg>
-                                        <div class="status-tooltip"></div>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span
+                                            class="status-badges{{ strtolower($prescription->status ?? 'pending') }}">
+                                            {{ ucfirst($prescription->status ?? 'Pending') }}
+                                        </span>
+                                        <div class="status-info-icon">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                                xmlns="http://www.w3.org/2000/svg">
+                                                <circle cx="12" cy="12" r="10" stroke="currentColor"
+                                                    stroke-width="2" />
+                                                <path d="m9,9 0,0 A3,3 0 0,1 15,9 A3.5,3.5 0 0,1 12,12.5"
+                                                    stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                    stroke-linejoin="round" />
+                                                <circle cx="12" cy="16" r="1" fill="currentColor" />
+                                            </svg>
+                                            <div class="status-tooltip">Order received and waiting to be processed.
+                                            </div>
+                                        </div>
                                     </div>
+
+                                    @if ($prescription->duplicate_check_status === 'duplicate' || $prescription->duplicate_check_status === 'suspicious')
+                                        <div style="display: flex; align-items: center; gap: 6px;">
+                                            <div class="duplicate-warning-badge">
+                                                <span class="badge-text">
+                                                    {{ $prescription->duplicate_check_status === 'duplicate' ? 'DUPLICATE' : 'SIMILAR' }}
+                                                </span>
+                                                @if ($prescription->similarity_score)
+                                                    <span
+                                                        class="similarity-score">{{ round($prescription->similarity_score) }}%</span>
+                                                @endif
+                                            </div>
+                                            <div class="duplicate-info-icon">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                                    xmlns="http://www.w3.org/2000/svg">
+                                                    <circle cx="12" cy="12" r="10" stroke="currentColor"
+                                                        stroke-width="2" />
+                                                    <path d="m9,9 0,0 A3,3 0 0,1 15,9 A3.5,3.5 0 0,1 12,12.5"
+                                                        stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                        stroke-linejoin="round" />
+                                                    <circle cx="12" cy="16" r="1" fill="currentColor" />
+                                                </svg>
+                                                <div class="duplicate-tooltip">
+                                                    The uploaded prescription has been extracted and scanned by the
+                                                    system.
+                                                    Analysis shows this prescription has been
+                                                    {{ $prescription->duplicate_check_status === 'duplicate' ? 'submitted before' : 'previously uploaded with similar content' }}.
+                                                    @if ($prescription->similarity_score)
+                                                        Match confidence: {{ round($prescription->similarity_score) }}%
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endif
                                 </div>
+
                                 @if ($prescription->notes)
                                     <div class="order-meta">
                                         <strong>Notes:</strong> {{ Str::limit($prescription->notes, 50) }}
@@ -212,99 +251,99 @@
                     <div class="modal-title">
                         Manage Order Products - <span id="manageOrderId"></span>
                     </div>
-                    <<div class="modal-close" id="closeManageOrderBtn">&times;
-                </div>
-            </div>
-
-            <div class="modal-body manage-order-body">
-                <!-- Prescription Viewer Section -->
-                <div class="prescription-reference-section">
-                    <div class="prescription-reference-header">
-                        <h4>Prescription Reference</h4>
-                        <div class="prescription-toggle-controls">
-                            <button id="togglePrescriptionBtn" class="btn btn-secondary">Show
-                                Prescription</button>
-                            <button id="refreshPrescriptionBtn" class="btn btn-outline"
-                                style="display: none;">Refresh</button>
-                        </div>
+                    <div class="modal-close" id="closeManageOrderBtn">&times;
                     </div>
+                </div>
 
-                    <div id="prescriptionReferenceContainer" class="prescription-reference-container"
-                        style="display: none;">
-                        <div class="prescription-loading-ref" id="prescriptionLoadingRef" style="display: none;">
-                            <div class="loading-spinner-small"></div>
-                            <span>Loading prescription...</span>
-                        </div>
-
-                        <div class="prescription-content-ref" id="prescriptionContentRef">
-                            <div class="no-prescription-message">
-                                <p>No prescription document available</p>
+                <div class="modal-body manage-order-body">
+                    <!-- Prescription Viewer Section -->
+                    <div class="prescription-reference-section">
+                        <div class="prescription-reference-header">
+                            <h4>Prescription Reference</h4>
+                            <div class="prescription-toggle-controls">
+                                <button id="togglePrescriptionBtn" class="btn btn-secondary">Show
+                                    Prescription</button>
+                                <button id="refreshPrescriptionBtn" class="btn btn-outline"
+                                    style="display: none;">Refresh</button>
                             </div>
                         </div>
 
-                        <div class="prescription-error-ref" id="prescriptionErrorRef" style="display: none;">
-                            <p>Error loading prescription. <button class="retry-btn"
-                                    onclick="retryLoadPrescription()">Retry</button></p>
+                        <div id="prescriptionReferenceContainer" class="prescription-reference-container"
+                            style="display: none;">
+                            <div class="prescription-loading-ref" id="prescriptionLoadingRef" style="display: none;">
+                                <div class="loading-spinner-small"></div>
+                                <span>Loading prescription...</span>
+                            </div>
+
+                            <div class="prescription-content-ref" id="prescriptionContentRef">
+                                <div class="no-prescription-message">
+                                    <p>No prescription document available</p>
+                                </div>
+                            </div>
+
+                            <div class="prescription-error-ref" id="prescriptionErrorRef" style="display: none;">
+                                <p>Error loading prescription. <button class="retry-btn"
+                                        onclick="retryLoadPrescription()">Retry</button></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Product Management Section -->
+                    <div class="product-management-section">
+                        <input type="text" id="productSearch" placeholder="Search products..."
+                            class="product-search-input" />
+
+                        <div class="product-management-container">
+                            <div class="available-products-section">
+                                <h4>Available Products</h4>
+                                <ul id="availableProducts" class="product-list">
+                                    <!-- Products will be populated here -->
+                                </ul>
+                            </div>
+
+                            <div class="selected-products-section">
+                                <h4>Selected Products</h4>
+                                <ul id="selectedProducts" class="product-list selected-list">
+                                    <!-- Selected products will appear here -->
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Product Management Section -->
-                <div class="product-management-section">
-                    <input type="text" id="productSearch" placeholder="Search products..."
-                        class="product-search-input" />
-
-                    <div class="product-management-container">
-                        <div class="available-products-section">
-                            <h4>Available Products</h4>
-                            <ul id="availableProducts" class="product-list">
-                                <!-- Products will be populated here -->
-                            </ul>
-                        </div>
-
-                        <div class="selected-products-section">
-                            <h4>Selected Products</h4>
-                            <ul id="selectedProducts" class="product-list selected-list">
-                                <!-- Selected products will appear here -->
-                            </ul>
-                        </div>
-                    </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="cancelManageOrder">Cancel</button>
+                    <button id="saveSelection" class="btn btn-primary">Complete Order</button>
                 </div>
             </div>
+        </div>
+        <div id="productQuantityModal" class="modal">
+            <div class="modal-content">
+                <h3 id="productModalName"></h3>
+                <div class="quantity-controls">
+                    <button id="decreaseQty">−</button>
+                    <input type="number" id="productQty" value="1" min="1" />
+                    <button id="increaseQty">+</button>
+                </div>
+                <div>
+                    <button class="btn btn-secondary" id="cancelQtyModal">Cancel</button>
+                    <button class="btn btn-primary" id="confirmQtyModal">Select</button>
+                </div>
+            </div>
+        </div>
 
-            <div class="modal-footer">
-                <button class="btn btn-secondary" id="cancelManageOrder">Cancel</button>
-                <button id="saveSelection" class="btn btn-primary">Complete Order</button>
+        <div id="completeOrderModal" class="modal-overlay">
+            <div class="modal-content">
+                <h3>Confirm Order Completion</h3>
+                <div id="orderSummary">
+                    <p>Selected products will be displayed here...</p>
+                </div>
+                <div class="modal-buttons">
+                    <button class="btn btn-primary" id="submitOrderBtn">Complete Order</button>
+                    <button class="btn btn-secondary" id="cancelCompleteModal">Cancel</button>
+                </div>
             </div>
         </div>
-    </div>
-    <div id="productQuantityModal" class="modal">
-        <div class="modal-content">
-            <h3 id="productModalName"></h3>
-            <div class="quantity-controls">
-                <button id="decreaseQty">−</button>
-                <input type="number" id="productQty" value="1" min="1" />
-                <button id="increaseQty">+</button>
-            </div>
-            <div>
-                <button class="btn btn-secondary" id="cancelQtyModal">Cancel</button>
-                <button class="btn btn-primary" id="confirmQtyModal">Select</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="completeOrderModal" class="modal-overlay">
-        <div class="modal-content">
-            <h3>Confirm Order Completion</h3>
-            <div id="orderSummary">
-                <p>Selected products will be displayed here...</p>
-            </div>
-            <div class="modal-buttons">
-                <button class="btn btn-primary" id="submitOrderBtn">Complete Order</button>
-                <button class="btn btn-secondary" id="cancelCompleteModal">Cancel</button>
-            </div>
-        </div>
-    </div>
     </div>
 
     <div id="prescriptionViewerModal" class="modal">
@@ -328,11 +367,11 @@
                 </div>
             </div>
             <div class="prescription-viewer-footer">
-                <button class="btn btn-secondary" onclick="closePrescriptionViewer()">Close</button>
                 <button class="btn btn-primary" id="downloadPrescriptionBtn">Download</button>
             </div>
         </div>
     </div>
+
     <script>
         class OrderManagementSystem {
             constructor() {
@@ -750,7 +789,7 @@
                 if (closeViewerBtn) {
                     closeViewerBtn.addEventListener('click', () => this.closePrescriptionViewer());
                 }
-                
+
             }
 
             // Utility Methods
@@ -854,8 +893,9 @@
                     const matchesSearch = !searchTerm || searchData.includes(searchTerm);
                     const matchesStatus = statusFilterValue === 'all' || orderStatus === statusFilterValue;
                     const matchesType = activeTypeFilter === 'all' || orderType === activeTypeFilter;
-
-                    const shouldShow = matchesSearch && matchesStatus && matchesType;
+                    const isDuplicate = row.dataset.duplicate === 'true';
+                    const matchesDuplicateFilter = activeTypeFilter !== 'duplicate' || isDuplicate;
+                    const shouldShow = matchesSearch && matchesStatus && matchesType && matchesDuplicateFilter;
 
                     row.style.display = shouldShow ? '' : 'none';
                     if (shouldShow) visibleCount++;
@@ -1100,7 +1140,8 @@
                             <option value="order_expired">Order has been received 24+ hours ago</option>
                             <option value="customer_cannot_afford">Customer can't afford the order</option>
                             <option value="customer_request">Customer requested cancellation</option>
-                            <option value="pharmacy_error">Pharmacy processing error</option>
+                            <option value="pharmacy_error">Prescription date already expired</option>
+                            <option value="pharmacy_error">Invalid prescription</option>
                             <option value="other">Other</option>
                         </select>
                     </div>

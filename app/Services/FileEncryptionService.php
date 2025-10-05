@@ -29,7 +29,7 @@ class FileEncryptionService
 
             // Read file content
             $fileContent = file_get_contents($file->getRealPath());
-            
+
             if ($fileContent === false) {
                 throw new \Exception('Failed to read file content');
             }
@@ -54,7 +54,7 @@ class FileEncryptionService
 
             // Store encrypted file
             $encryptedPath = $directory . '/' . $filename;
-            Storage::disk('private')->put($encryptedPath, $encryptedData);
+            Storage::put($encryptedPath, $encryptedData);
 
             Log::info('File encrypted and stored successfully', [
                 'original_name' => $metadata['original_name'],
@@ -88,13 +88,13 @@ class FileEncryptionService
     {
         try {
             // Check if file exists
-            if (!Storage::disk('private')->exists($encryptedPath)) {
+            if (!Storage::exists($encryptedPath)) {
                 throw new \Exception('Encrypted file not found');
             }
 
             // Read encrypted data
-            $encryptedData = Storage::disk('private')->get($encryptedPath);
-            
+            $encryptedData = Storage::get($encryptedPath);
+
             if ($encryptedData === false) {
                 throw new \Exception('Failed to read encrypted file');
             }
@@ -109,7 +109,7 @@ class FileEncryptionService
 
             // Decode file content
             $fileContent = base64_decode($decryptedData['content']);
-            
+
             if ($fileContent === false) {
                 throw new \Exception('Failed to decode file content');
             }
@@ -144,16 +144,16 @@ class FileEncryptionService
     public static function createTempDecryptedFile(string $encryptedPath): string
     {
         $decryptedData = self::decryptFile($encryptedPath);
-        
+
         // Create temporary file
         $tempPath = 'temp/decrypted_' . time() . '_' . \Illuminate\Support\Str::random(6) . '.' . $decryptedData['metadata']['original_extension'];
-        
+
         // Store temporary file
         Storage::disk('private')->put($tempPath, $decryptedData['content']);
-        
+
         // Schedule cleanup after 1 hour
         self::scheduleCleanup($tempPath);
-        
+
         return $tempPath;
     }
 
@@ -166,7 +166,7 @@ class FileEncryptionService
     public static function downloadDecryptedFile(string $encryptedPath)
     {
         $decryptedData = self::decryptFile($encryptedPath);
-        
+
         return response()->streamDownload(function () use ($decryptedData) {
             echo $decryptedData['content'];
         }, $decryptedData['metadata']['original_name'], [
@@ -184,12 +184,12 @@ class FileEncryptionService
     public static function displayDecryptedImage(string $encryptedPath)
     {
         $decryptedData = self::decryptFile($encryptedPath);
-        
+
         // Verify it's an image
         if (!str_starts_with($decryptedData['metadata']['mime_type'], 'image/')) {
             throw new \Exception('File is not an image');
         }
-        
+
         return response($decryptedData['content'])
             ->header('Content-Type', $decryptedData['metadata']['mime_type'])
             ->header('Content-Length', strlen($decryptedData['content']))
@@ -209,11 +209,11 @@ class FileEncryptionService
         try {
             if (Storage::disk('private')->exists($encryptedPath)) {
                 Storage::disk('private')->delete($encryptedPath);
-                
+
                 Log::info('Encrypted file deleted', [
                     'encrypted_path' => $encryptedPath
                 ]);
-                
+
                 return true;
             }
             return false;
@@ -249,10 +249,10 @@ class FileEncryptionService
         try {
             $tempFiles = Storage::disk('private')->files('temp');
             $oneHourAgo = now()->subHour();
-            
+
             foreach ($tempFiles as $file) {
                 $lastModified = Storage::disk('private')->lastModified($file);
-                
+
                 if ($lastModified < $oneHourAgo->timestamp) {
                     Storage::disk('private')->delete($file);
                     Log::info('Cleaned up temporary file', ['file' => $file]);

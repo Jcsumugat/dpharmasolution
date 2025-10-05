@@ -243,7 +243,13 @@ tbody tr:nth-child(even):hover {
     height: 16px;
 }
 
-/* Tooltip styling */
+.status-info-icon {
+    position: relative;
+    display: inline-flex;
+    cursor: pointer;
+    margin-left: 5px;
+}
+
 .status-tooltip {
     position: absolute;
     bottom: 100%;
@@ -254,7 +260,6 @@ tbody tr:nth-child(even):hover {
     border-radius: 6px;
     font-size: 12px;
     line-height: 1.4;
-    white-space: nowrap;
     opacity: 0;
     visibility: hidden;
     transform: translateY(-5px);
@@ -526,6 +531,7 @@ tbody tr:nth-child(even):hover {
 .btn-primary {
     background: linear-gradient(135deg, var(--color-primary) 0%, #2563eb 100%);
     color: var(--color-text-inverse);
+
 }
 
 .btn-primary:hover {
@@ -1182,45 +1188,6 @@ textarea#reasonMessage::placeholder {
     border-top: 1px solid #eee;
 }
 
-/* Button styling */
-.btn {
-    padding: 0.75rem 1.5rem;
-    border: none;
-    border-radius: 4px;
-    font-size: 0.9rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    min-width: 100px;
-}
-
-.btn-secondary {
-    background-color: #6c757d;
-    color: white;
-}
-
-.btn-secondary:hover {
-    background-color: #5a6268;
-}
-
-.btn-primary {
-    background-color: #007bff;
-    color: white;
-}
-
-.btn-primary:hover {
-    background-color: #0056b3;
-}
-
-.btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-.btn:disabled:hover {
-    background-color: inherit;
-}
-
 /* Required field indicator */
 #statusForm label[for="statusSelect"]:after,
 #statusForm label[for="reasonMessage"]:after {
@@ -1240,22 +1207,6 @@ textarea#reasonMessage::placeholder {
     border-color: #28a745;
 }
 
-/* Responsive design */
-@media (max-width: 768px) {
-    #statusForm {
-        padding: 0.5rem;
-        gap: 1rem;
-    }
-
-    .modal-actions {
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-
-    .btn {
-        width: 100%;
-    }
-}
 
 .prescription-viewer-content {
     max-width: 90vw;
@@ -1328,7 +1279,7 @@ textarea#reasonMessage::placeholder {
     padding: 1rem 2rem;
     border-top: 1px solid #dee2e6;
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     gap: 1rem;
 }
 
@@ -1362,22 +1313,6 @@ textarea#reasonMessage::placeholder {
     background-color: #1e7e34;
 }
 
-/* Responsive design */
-@media (max-width: 768px) {
-    .prescription-viewer-content {
-        max-width: 95vw;
-        max-height: 95vh;
-    }
-
-    .prescription-viewer-body {
-        min-height: 300px;
-        max-height: 60vh;
-    }
-
-    .prescription-content iframe {
-        height: 400px;
-    }
-}
 
 /* Professional Manage Order Modal Styles */
 
@@ -1444,14 +1379,15 @@ textarea#reasonMessage::placeholder {
     font-size: 1.1em;
 }
 
-.manage-order-content .modal-close {
+.manage-order-content .modal-close,
+.prescription-viewer-content .modal-close {
     background: rgba(255, 255, 255, 0.2);
     border: none;
-    color: white;
+    color: rgb(78, 78, 78);
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    cursor: pointer;
+    cursor: pointer !important;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1459,11 +1395,14 @@ textarea#reasonMessage::placeholder {
     font-weight: bold;
     transition: all 0.2s ease;
     backdrop-filter: blur(10px);
+    user-select: none;
 }
 
-.manage-order-content .modal-close:hover {
+.manage-order-content .modal-close:hover,
+.prescription-viewer-content .modal-close:hover {
     background: rgba(255, 255, 255, 0.3);
     transform: scale(1.1);
+    cursor: pointer !important;
 }
 
 /* Modal Body */
@@ -1532,13 +1471,13 @@ textarea#reasonMessage::placeholder {
     flex-direction: column;
     gap: 5px;
     z-index: 1000;
-    background: rgba(0,0,0,0.7);
+    background: rgba(0, 0, 0, 0.7);
     border-radius: 8px;
     padding: 8px;
 }
 
 .zoom-btn {
-    background: rgba(255,255,255,0.9);
+    background: rgba(255, 255, 255, 0.9);
     border: none;
     width: 40px;
     height: 40px;
@@ -1558,7 +1497,7 @@ textarea#reasonMessage::placeholder {
 }
 
 .zoom-info {
-    background: rgba(0,0,0,0.8);
+    background: rgba(0, 0, 0, 0.8);
     color: white;
     padding: 5px 10px;
     border-radius: 15px;
@@ -1572,17 +1511,19 @@ textarea#reasonMessage::placeholder {
     bottom: 10px;
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(0,0,0,0.8);
+    background: rgba(0, 0, 0, 0.8);
     color: white;
     padding: 8px 15px;
     border-radius: 20px;
     font-size: 12px;
     z-index: 1000;
 }
+
 .prescription-toggle-controls {
     display: flex;
     gap: 8px;
 }
+
 .prescription-toggle-controls .btn {
     padding: 8px 16px;
     border-radius: 8px;
@@ -1971,18 +1912,7 @@ textarea#reasonMessage::placeholder {
     font-size: 0.9rem;
 }
 
-.manage-order-content .modal-footer .btn-secondary {
-    background: #6b7280;
-    color: white;
-    border: 1px solid #6b7280;
-}
 
-.manage-order-content .modal-footer .btn-secondary:hover {
-    background: #4b5563;
-    border-color: #4b5563;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(75, 85, 99, 0.25);
-}
 
 .manage-order-content .modal-footer .btn-primary {
     background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
@@ -2304,9 +2234,10 @@ textarea#reasonMessage::placeholder {
 .expiry-date.expiring-safe {
     color: #28a745;
 }
+
 .cancel-order-content .btn:hover {
     transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .cancel-order-content select:focus,
@@ -2376,4 +2307,210 @@ textarea#reasonMessage::placeholder {
 .btn-action:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+}
+
+/* ============================================
+   STATUS CONTAINER & BADGES
+   ============================================ */
+
+/* Main status container */
+.status-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+    position: relative;
+}
+
+/* Status info icon */
+.status-info-icon {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    cursor: help;
+    color: #6c757d;
+    transition: color 0.2s ease;
+}
+
+.status-info-icon:hover {
+    color: #495057;
+}
+
+.status-info-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Status tooltip */
+.status-tooltip {
+    position: absolute;
+    bottom: 100%;
+    right: 0;
+    background: #2c3e50;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    line-height: 1.4;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-5px);
+    transition: all 0.2s ease;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    min-width: 200px;
+    white-space: normal;
+    max-width: 250px;
+}
+
+.status-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    right: 15px;
+    border: 5px solid transparent;
+    border-top-color: #2c3e50;
+}
+
+.status-info-icon:hover .status-tooltip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+/* ============================================
+   DUPLICATE WARNING BADGE
+   ============================================ */
+
+.duplicate-warning-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+    border: 2px solid #f57c00;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #e65100;
+    box-shadow: 0 2px 6px rgba(245, 124, 0, 0.2);
+    transition: all 0.2s ease;
+}
+
+.duplicate-warning-badge:hover {
+    background: linear-gradient(135deg, #ffe0b2 0%, #ffcc80 100%);
+    border-color: #e65100;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(245, 124, 0, 0.3);
+}
+
+.badge-text {
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 10px;
+}
+
+.similarity-score {
+    background: #f57c00;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+/* ============================================
+   DUPLICATE INFO ICON & TOOLTIP
+   ============================================ */
+
+.duplicate-info-icon {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    cursor: help;
+    color: #e65100;
+    transition: color 0.2s ease;
+}
+
+.duplicate-info-icon:hover {
+    color: #bf360c;
+}
+
+.duplicate-info-icon svg {
+    width: 14px;
+    height: 14px;
+}
+
+.duplicate-tooltip {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    right: 0;
+    background: #2c3e50;
+    color: white;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    line-height: 1.5;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: normal;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-5px);
+    transition: all 0.2s ease;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    min-width: 280px;
+    max-width: 320px;
+    white-space: normal;
+}
+
+.duplicate-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    right: 10px;
+    border: 6px solid transparent;
+    border-top-color: #2c3e50;
+}
+
+.duplicate-info-icon:hover .duplicate-tooltip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+/* ============================================
+   RESPONSIVE ADJUSTMENTS
+   ============================================ */
+
+@media (max-width: 768px) {
+    .status-container {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+
+    .status-tooltip {
+        right: auto;
+        left: 0;
+        min-width: 180px;
+    }
+
+    .status-tooltip::after {
+        right: auto;
+        left: 15px;
+    }
+
+    .duplicate-tooltip {
+        right: auto;
+        left: 0;
+        min-width: 220px;
+        max-width: 280px;
+    }
+
+    .duplicate-tooltip::after {
+        right: auto;
+        left: 10px;
+    }
 }

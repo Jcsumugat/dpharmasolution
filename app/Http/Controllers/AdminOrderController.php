@@ -26,13 +26,20 @@ class AdminOrderController extends Controller
 {
     public function index()
     {
-        $prescriptions = Prescription::with('order')
+        $prescriptions = Prescription::with(['order', 'duplicateOf.order'])
             ->whereIn('status', ['pending', 'approved', 'partially_approved'])
             ->whereNotIn('status', ['completed', 'cancelled'])
             ->latest()
             ->get();
 
-        // Only show products with non-expired available stock
+        // Add duplicate flag for easy filtering
+        $prescriptions->each(function ($prescription) {
+            $prescription->has_duplicate_warning = in_array(
+                $prescription->duplicate_check_status,
+                ['duplicate', 'suspicious']
+            );
+        });
+
         $products = Product::whereHas('batches', function ($q) {
             $q->where('quantity_remaining', '>', 0)
                 ->where('expiration_date', '>', now());

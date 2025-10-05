@@ -28,12 +28,28 @@ class Prescription extends Model
         'qr_code_path',
         'admin_message',
         'order_type',
+        // New duplicate detection fields
+        'file_hash',
+        'perceptual_hash',
+        'extracted_text',
+        'prescription_number',
+        'doctor_name',
+        'prescription_issue_date',
+        'prescription_expiry_date',
+        'duplicate_check_status',
+        'duplicate_of_id',
+        'similarity_score',
+        'duplicate_checked_at',
     ];
+
     protected $casts = [
         'customer_id' => 'integer',
         'user_id' => 'integer',
+        'prescription_issue_date' => 'date',
+        'prescription_expiry_date' => 'date',
+        'duplicate_checked_at' => 'datetime',
+        'similarity_score' => 'decimal:2',
     ];
-
 
     public function user()
     {
@@ -50,9 +66,24 @@ class Prescription extends Model
         return $this->hasMany(PrescriptionItem::class);
     }
 
-
     public function order()
     {
         return $this->hasOne(Order::class, 'prescription_id');
+    }
+
+    /**
+     * Get the prescription this one is a duplicate of
+     */
+    public function duplicateOf()
+    {
+        return $this->belongsTo(Prescription::class, 'duplicate_of_id');
+    }
+
+    /**
+     * Get prescriptions that are duplicates of this one
+     */
+    public function duplicates()
+    {
+        return $this->hasMany(Prescription::class, 'duplicate_of_id');
     }
 }

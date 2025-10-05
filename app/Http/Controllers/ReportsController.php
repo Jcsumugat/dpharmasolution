@@ -164,20 +164,10 @@ class ReportsController extends Controller
         } elseif ($salesSource === 'walkin') {
             return $walkinQuery->orderBy('quantity_sold', 'desc');
         } else {
-            // Combine both queries using UNION
-            return DB::query()
-                ->fromSub($onlineQuery->union($walkinQuery), 'combined_sales')
-                ->select(
-                    'product_name',
-                    DB::raw('SUM(quantity_sold) as quantity_sold'),
-                    DB::raw('AVG(unit_price) as unit_price'),
-                    DB::raw('SUM(total_amount) as total_amount'),
-                    DB::raw("CASE
-                        WHEN COUNT(DISTINCT source) > 1 THEN 'both'
-                        ELSE MIN(source)
-                    END as source")
-                )
-                ->groupBy('product_name')
+            // For 'all', return UNION without further grouping
+            // This keeps separate rows for online and walk-in sales of the same product
+            return $onlineQuery
+                ->union($walkinQuery)
                 ->orderBy('quantity_sold', 'desc');
         }
     }
@@ -587,7 +577,6 @@ class ReportsController extends Controller
             return response($csvData)
                 ->header('Content-Type', 'text/csv')
                 ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
