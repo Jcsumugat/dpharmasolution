@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="{{ asset('css/products.css') }}">
 </head>
 
+
 <body>
     @include('admin.admin-header')
 
@@ -130,8 +131,8 @@
     </div>
 
     <!-- Add Product Modal -->
-    <div class="modal-bg" id="productModal">
-        <div class="modal fade-in" style="max-width: 700px;">
+    <div class="modal-bg add-modal" id="productModal">
+        <div class="modal fade-in">
             <div class="modal-close" onclick="closeModal()">&times;</div>
             <div class="modal-header" id="modalTitle">Add New Product</div>
             <form method="POST" id="productForm" action="{{ route('products.store') }}" class="form-container"
@@ -268,6 +269,77 @@
                     </div>
                 </div>
 
+                <!-- Packaging & Units -->
+                <div class="form-section">
+                    <h2 class="section-title">
+                        <span class="section-icon">📦</span>
+                        Packaging & Units
+                    </h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <select class="form-select" name="unit" id="unit" required>
+                                <option value="">Select Packaging Unit</option>
+
+                                <optgroup label="Bottled/Container Products">
+                                    <option value="bottle">Bottle (syrup, suspension, liquid)</option>
+                                    <option value="dropper_bottle">Dropper Bottle (eye/ear drops)</option>
+                                    <option value="topical_bottle">Bottle (lotion, solution)</option>
+                                    <option value="jar">Jar (ointment, cream)</option>
+                                    <option value="tube">Tube (cream, ointment, gel)</option>
+                                </optgroup>
+
+                                <optgroup label="Injectable Products">
+                                    <option value="vial">Vial</option>
+                                    <option value="ampoule">Ampoule</option>
+                                    <option value="syringe">Pre-filled Syringe</option>
+                                </optgroup>
+
+                                <optgroup label="Solid Dose Packaging">
+                                    <option value="blister_pack">Blister Pack</option>
+                                    <option value="strip">Strip</option>
+                                    <option value="box">Box</option>
+                                    <option value="sachet">Sachet</option>
+                                </optgroup>
+
+                                <optgroup label="Respiratory">
+                                    <option value="nebule">Nebule</option>
+                                    <option value="inhaler">Inhaler</option>
+                                </optgroup>
+
+                                <optgroup label="Other">
+                                    <option value="patch">Patch</option>
+                                    <option value="suppository">Suppository</option>
+                                    <option value="piece" selected>Piece (individual items)</option>
+                                    <option value="pack">Pack (multi-item)</option>
+                                </optgroup>
+                            </select>
+                            <label for="unit" class="form-label">Packaging Unit <span
+                                    class="required-indicator">*</span></label>
+                            <div class="help-text">How is this product packaged? This is NOT the dosage form.</div>
+                        </div>
+
+                        <div class="form-group">
+                            <input type="number" class="form-input" name="unit_quantity" id="unit_quantity"
+                                placeholder=" " step="0.01" min="0.01" value="1" required>
+                            <label for="unit_quantity" class="form-label">
+                                <span id="unit_quantity_label">Contents per Package</span>
+                            </label>
+                            <div class="help-text" id="unit_quantity_help">
+                                For 60mL bottle: enter 60. For 10-tablet blister: enter 10. For single tablet: enter 1
+                            </div>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <div class="unit-preview-box">
+                                <label class="preview-label">Packaging Preview:</label>
+                                <div id="unit-preview-display" class="preview-content">
+                                    Select packaging unit above
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Dosage and Formulation -->
                 <div class="form-section">
                     <h2 class="section-title">
@@ -278,6 +350,47 @@
                         <div class="form-group full-width">
                             <div class="dosage-container">
                                 <div class="dosage-input-row">
+                                    <div class="form-group">
+                                        <select class="form-select" name="form_type" id="form_type" required>
+                                            <option value="">Select Dosage Form</option>
+                                            <optgroup label="Solid Dosage Forms">
+                                                <option value="Tablet">Tablet</option>
+                                                <option value="Capsule">Capsule</option>
+                                                <option value="Caplet">Caplet</option>
+                                                <option value="Powder">Powder</option>
+                                                <option value="Granules">Granules</option>
+                                                <option value="Chewable Tablet">Chewable Tablet</option>
+                                                <option value="Extended Release">Extended Release Tablet</option>
+                                                <option value="Enteric Coated">Enteric Coated Tablet</option>
+                                            </optgroup>
+                                            <optgroup label="Liquid Dosage Forms">
+                                                <option value="Syrup">Syrup</option>
+                                                <option value="Suspension">Suspension</option>
+                                                <option value="Solution">Solution</option>
+                                                <option value="Elixir">Elixir</option>
+                                                <option value="Drops">Drops</option>
+                                                <option value="Injection">Injection</option>
+                                                <option value="IV Solution">IV Solution</option>
+                                            </optgroup>
+                                            <optgroup label="Topical Forms">
+                                                <option value="Cream">Cream</option>
+                                                <option value="Ointment">Ointment</option>
+                                                <option value="Gel">Gel</option>
+                                                <option value="Lotion">Lotion</option>
+                                                <option value="Patch">Patch</option>
+                                                <option value="Foam">Foam</option>
+                                            </optgroup>
+                                            <optgroup label="Other Forms">
+                                                <option value="Inhaler">Inhaler</option>
+                                                <option value="Nasal Spray">Nasal Spray</option>
+                                                <option value="Eye Drops">Eye Drops</option>
+                                                <option value="Suppository">Suppository</option>
+                                            </optgroup>
+                                        </select>
+                                        <label for="form_type" class="form-label">Select Dosage Form <span
+                                                class="required-indicator">*</span></label>
+                                    </div>
+                                    <br>
                                     <div class="form-group dosage-strength-group">
                                         <input type="text" class="form-input" name="dosage_strength"
                                             id="dosage_strength" placeholder=" "
@@ -299,12 +412,12 @@
                                             <option value="drops">drops</option>
                                             <option value="ratio">ratio</option>
                                         </select>
-                                        <label for="dosage_unit" class="form-label">Unit <span
-                                                class="required-indicator">*</span></label>
+                                        <label for="dosage_unit" class="form-label">Unit
+                                            <span class="required-indicator">*</span>
+                                        </label>
                                     </div>
                                 </div>
                                 <div class="dosage-preview">
-                                    <label class="preview-label">Combined Dosage Preview:</label>
                                     <div class="dosage-preview-box">
                                         <span id="dosage-preview-text">Enter strength and unit above</span>
                                     </div>
@@ -312,46 +425,7 @@
                                 <div class="help-text">e.g., 500mg, 250mg/5mL, 1%, 1:1000</div>
                             </div>
                         </div>
-                        <div class="form-group">
-                            <select class="form-select" name="form_type" id="form_type" required>
-                                <option value="">Select Dosage Form</option>
-                                <optgroup label="Solid Dosage Forms">
-                                    <option value="Tablet">Tablet</option>
-                                    <option value="Capsule">Capsule</option>
-                                    <option value="Caplet">Caplet</option>
-                                    <option value="Powder">Powder</option>
-                                    <option value="Granules">Granules</option>
-                                    <option value="Chewable Tablet">Chewable Tablet</option>
-                                    <option value="Extended Release">Extended Release Tablet</option>
-                                    <option value="Enteric Coated">Enteric Coated Tablet</option>
-                                </optgroup>
-                                <optgroup label="Liquid Dosage Forms">
-                                    <option value="Syrup">Syrup</option>
-                                    <option value="Suspension">Suspension</option>
-                                    <option value="Solution">Solution</option>
-                                    <option value="Elixir">Elixir</option>
-                                    <option value="Drops">Drops</option>
-                                    <option value="Injection">Injection</option>
-                                    <option value="IV Solution">IV Solution</option>
-                                </optgroup>
-                                <optgroup label="Topical Forms">
-                                    <option value="Cream">Cream</option>
-                                    <option value="Ointment">Ointment</option>
-                                    <option value="Gel">Gel</option>
-                                    <option value="Lotion">Lotion</option>
-                                    <option value="Patch">Patch</option>
-                                    <option value="Foam">Foam</option>
-                                </optgroup>
-                                <optgroup label="Other Forms">
-                                    <option value="Inhaler">Inhaler</option>
-                                    <option value="Nasal Spray">Nasal Spray</option>
-                                    <option value="Eye Drops">Eye Drops</option>
-                                    <option value="Suppository">Suppository</option>
-                                </optgroup>
-                            </select>
-                            <label for="form_type" class="form-label">Select Dosage Form <span
-                                    class="required-indicator">*</span></label>
-                        </div>
+
                     </div>
 
                 </div>
@@ -383,89 +457,7 @@
                     </div>
                 </div>
 
-                <!-- Packaging & Units -->
-                <div class="form-section">
-                    <h2 class="section-title">
-                        <span class="section-icon">📦</span>
-                        Packaging & Units
-                    </h2>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <select class="form-select" name="unit" id="unit" required>
-                                <option value="">Select Unit Type</option>
 
-                                <optgroup label="Liquid Medicines">
-                                    <option value="bottle">Bottle (e.g., syrup bottle)</option>
-                                    <option value="ml">mL (milliliter - for dosing)</option>
-                                    <option value="L">L (liter - bulk)</option>
-                                    <option value="vial">Vial (injection vial)</option>
-                                    <option value="ampoule">Ampoule (sealed glass)</option>
-                                    <option value="dropper_bottle">Dropper Bottle (eye/ear drops)</option>
-                                    <option value="nebule">Nebule (nebulizer)</option>
-                                </optgroup>
-
-                                <optgroup label="Solid Medicines">
-                                    <option value="tablet">Tablet</option>
-                                    <option value="capsule">Capsule</option>
-                                    <option value="blister_pack">Blister Pack</option>
-                                    <option value="box">Box</option>
-                                    <option value="strip">Strip</option>
-                                    <option value="sachet">Sachet</option>
-                                </optgroup>
-
-                                <optgroup label="Injectables">
-                                    <option value="syringe">Syringe (prefilled)</option>
-                                    <option value="injection_vial">Injection Vial</option>
-                                    <option value="injection_ampoule">Injection Ampoule</option>
-                                </optgroup>
-
-                                <optgroup label="Topical">
-                                    <option value="tube">Tube (cream/ointment)</option>
-                                    <option value="jar">Jar (ointment)</option>
-                                    <option value="topical_bottle">Bottle (lotion)</option>
-                                </optgroup>
-
-                                <optgroup label="Other">
-                                    <option value="inhaler">Inhaler</option>
-                                    <option value="patch">Patch</option>
-                                    <option value="suppository">Suppository</option>
-                                    <option value="piece" selected>Piece (default)</option>
-                                    <option value="pack">Pack</option>
-                                </optgroup>
-                            </select>
-                            <label for="unit" class="form-label">Unit Type <span
-                                    class="required-indicator">*</span></label>
-                            <div class="help-text">How is this product packaged/sold?</div>
-                        </div>
-
-                        <div class="form-group">
-                            <input type="number" class="form-input" name="unit_quantity" id="unit_quantity"
-                                placeholder=" " step="0.01" min="0.01" value="1" required>
-                            <label for="unit_quantity" class="form-label">
-                                <span id="unit_quantity_label">Quantity per Unit</span>
-                            </label>
-                            <div class="help-text" id="unit_quantity_help">
-                                For tablets: 1. For 60mL bottle: 60. For 10-tablet blister: 10
-                            </div>
-                        </div>
-
-                        <div class="form-group full-width">
-                            <div
-                                style="background: #f8f9fa; border: 2px solid #e9ecef; border-radius: 8px; padding: 12px 16px; margin: 8px 0;">
-                                <label
-                                    style="font-size: 0.875rem; font-weight: 500; color: #495057; margin-bottom: 4px; display: block;">
-                                    Unit Display Preview:
-                                </label>
-                                <div style="font-size: 1rem; font-weight: 500; color: #495057; min-height: 24px;">
-                                    <span id="unit-preview-text" style="color: #6c757d; font-style: italic;">Select
-                                        unit type above</span>
-                                </div>
-                                <small class="help-text" style="margin-top: 4px;">This is how stock will be
-                                    displayed</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
                 <!-- Inventory Management -->
                 <div class="form-section">
@@ -576,39 +568,35 @@
     </div>
 
     <script type="text/javascript">
-        // Unit display mappings
+        // Unit display mappings - PACKAGING ONLY (not dosage forms)
         const unitDisplayMap = {
             'bottle': 'bottle',
-            'ml': 'mL',
-            'L': 'L',
             'vial': 'vial',
             'ampoule': 'ampoule',
             'dropper_bottle': 'dropper bottle',
             'nebule': 'nebule',
-            'tablet': 'tablet',
-            'capsule': 'capsule',
             'blister_pack': 'blister pack',
             'box': 'box',
             'strip': 'strip',
             'sachet': 'sachet',
-            'syringe': 'syringe',
-            'injection_vial': 'vial',
-            'injection_ampoule': 'ampoule',
+            'syringe': 'pre-filled syringe',
             'tube': 'tube',
             'jar': 'jar',
             'topical_bottle': 'bottle',
             'inhaler': 'inhaler',
             'patch': 'patch',
             'suppository': 'suppository',
-            'piece': 'pc',
+            'piece': 'piece',
             'pack': 'pack'
         };
 
-        // Units that typically have quantity > 1
-        const volumeUnits = ['bottle', 'ml', 'L', 'vial', 'ampoule', 'dropper_bottle',
-            'nebule', 'tube', 'jar', 'topical_bottle', 'syringe',
-            'injection_vial', 'injection_ampoule'
+        // Container units that hold volume/contents
+        const containerUnits = ['bottle', 'vial', 'ampoule', 'dropper_bottle', 'nebule',
+            'tube', 'jar', 'topical_bottle', 'syringe'
         ];
+
+        // Multi-item packaging
+        const multiItemUnits = ['blister_pack', 'strip', 'box', 'pack', 'sachet'];
 
         function updateUnitQuantityLabel() {
             const unitSelect = document.getElementById('unit');
@@ -621,19 +609,34 @@
             const selectedUnit = unitSelect.value;
             const unitDisplay = unitDisplayMap[selectedUnit] || selectedUnit;
 
-            if (volumeUnits.includes(selectedUnit)) {
+            if (!selectedUnit) {
+                quantityLabel.innerHTML = 'Contents per Package';
+                quantityHelp.textContent = 'Select packaging unit first';
+                return;
+            }
+
+            if (containerUnits.includes(selectedUnit)) {
                 quantityLabel.innerHTML = `Volume/Size per ${unitDisplay}`;
-                quantityHelp.textContent = `Enter volume (e.g., 60 for 60mL bottle, 10 for 10mL vial)`;
+                quantityHelp.textContent = `Enter the volume in mL (e.g., 60 for a 60mL bottle)`;
                 if (quantityInput.value === '1') {
                     quantityInput.value = '';
                 }
-            } else if (selectedUnit === 'blister_pack' || selectedUnit === 'strip' || selectedUnit === 'box' ||
-                selectedUnit === 'pack') {
+            } else if (selectedUnit === 'box') {
+                quantityLabel.innerHTML = `Total pieces per box`;
+                quantityHelp.innerHTML =
+                    `Enter TOTAL pieces in the box<br><small style="color: #059669;">Example: Box with 10 blister packs × 12 tablets = enter 120</small>`;
+                if (quantityInput.value === '1') {
+                    quantityInput.value = '';
+                }
+            } else if (multiItemUnits.includes(selectedUnit)) {
                 quantityLabel.innerHTML = `Items per ${unitDisplay}`;
-                quantityHelp.textContent = `How many tablets/capsules per ${unitDisplay}? (e.g., 10)`;
+                quantityHelp.textContent = `How many pieces per ${unitDisplay}? (e.g., 10 tablets per blister)`;
+                if (quantityInput.value === '1') {
+                    quantityInput.value = '';
+                }
             } else {
                 quantityLabel.innerHTML = 'Quantity per Unit';
-                quantityHelp.textContent = 'Usually 1 for individual items (tablets, capsules, etc.)';
+                quantityHelp.textContent = 'Usually 1 for individual items';
                 if (!quantityInput.value || quantityInput.value === '') {
                     quantityInput.value = '1';
                 }
@@ -645,56 +648,65 @@
         function updateUnitPreview() {
             const unitSelect = document.getElementById('unit');
             const quantityInput = document.getElementById('unit_quantity');
-            const previewText = document.getElementById('unit-preview-text');
+            const formTypeSelect = document.getElementById('form_type');
+            const previewDisplay = document.getElementById('unit-preview-display');
 
-            if (!unitSelect || !quantityInput || !previewText) return;
+            if (!unitSelect || !quantityInput || !previewDisplay) return;
 
             const selectedUnit = unitSelect.value;
-            const quantity = quantityInput.value;
+            const quantity = parseFloat(quantityInput.value) || 0;
+            const formType = formTypeSelect ? formTypeSelect.value : '';
             const unitDisplay = unitDisplayMap[selectedUnit] || selectedUnit;
 
             if (!selectedUnit) {
-                previewText.textContent = 'Select unit type above';
-                previewText.style.color = '#6c757d';
-                previewText.style.fontStyle = 'italic';
+                previewDisplay.textContent = 'Select packaging unit above';
+                previewDisplay.style.color = '#6c757d';
                 return;
             }
 
-            if (!quantity || parseFloat(quantity) <= 0) {
-                previewText.textContent = `Enter quantity for ${unitDisplay}`;
-                previewText.style.color = '#6c757d';
-                previewText.style.fontStyle = 'italic';
+            if (quantity <= 0) {
+                previewDisplay.textContent = `Enter quantity for ${unitDisplay}`;
+                previewDisplay.style.color = '#6c757d';
                 return;
             }
 
-            // Generate preview
             let preview = '';
-            const qty = parseFloat(quantity);
 
-            if (volumeUnits.includes(selectedUnit)) {
-                if (selectedUnit === 'ml' || selectedUnit === 'L') {
-                    preview = `Stock counted in: ${unitDisplay}`;
-                } else {
-                    preview = `1 ${unitDisplay} = ${qty}mL`;
+            if (containerUnits.includes(selectedUnit)) {
+                preview = `Stock counted in: ${unitDisplay}s of ${quantity}mL each`;
+                if (formType) {
+                    preview += ` (contains ${formType.toLowerCase()})`;
                 }
-            } else if (selectedUnit === 'blister_pack' || selectedUnit === 'strip' || selectedUnit === 'box' ||
-                selectedUnit === 'pack') {
-                preview = `1 ${unitDisplay} = ${qty} pcs`;
-            } else if (qty === 1) {
-                preview = `Stock counted per ${unitDisplay}`;
+            } else if (multiItemUnits.includes(selectedUnit)) {
+                // UPDATED: Better handling for nested packaging
+                if (selectedUnit === 'box') {
+                    preview = `Stock counted in: boxes of ${quantity} items each`;
+                    if (formType) {
+                        preview += ` (${formType.toLowerCase()}s)`;
+                    }
+                    preview += `\n💡 Tip: If box contains blister packs, enter total pieces per box`;
+                } else {
+                    preview = `Stock counted in: ${unitDisplay}s of ${quantity} pieces each`;
+                    if (formType) {
+                        preview += ` (${formType.toLowerCase()}s)`;
+                    }
+                }
+            } else if (quantity === 1) {
+                preview = `Stock counted per individual ${unitDisplay}`;
             } else {
-                preview = `1 ${unitDisplay} = ${qty} units`;
+                preview = `Stock counted in: ${unitDisplay}s containing ${quantity} units each`;
             }
 
-            previewText.textContent = preview;
-            previewText.style.color = '#28a745';
-            previewText.style.fontStyle = 'normal';
+            previewDisplay.textContent = preview;
+            previewDisplay.style.color = '#28a745';
+            previewDisplay.style.fontWeight = '500';
         }
 
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
             const unitSelect = document.getElementById('unit');
             const quantityInput = document.getElementById('unit_quantity');
+            const formTypeSelect = document.getElementById('form_type');
 
             if (unitSelect) {
                 unitSelect.addEventListener('change', updateUnitQuantityLabel);
@@ -702,6 +714,10 @@
 
             if (quantityInput) {
                 quantityInput.addEventListener('input', updateUnitPreview);
+            }
+
+            if (formTypeSelect) {
+                formTypeSelect.addEventListener('change', updateUnitPreview);
             }
 
             // Initialize if editing
@@ -727,6 +743,8 @@
                     reorder_level: {{ $product->reorder_level ?? 0 }},
                     supplier_id: {{ $product->supplier_id ?? 'null' }},
                     category_id: {{ $product->category_id ?? 'null' }},
+                    unit: '{{ $product->unit ?? 'piece' }}', // ADD THIS
+                    unit_quantity: {{ $product->unit_quantity ?? 1 }}, // ADD THIS
                     supplier: @if ($product->supplier)
                         {
                             name: '{{ $product->supplier->name }}'
@@ -926,7 +944,8 @@
             }
 
             // Close modals when clicking on the modal background (not the modal content)
-            const modals = document.querySelectorAll('.modal-bg');
+            // EXCLUDE the add product modal (add-modal class)
+            const modals = document.querySelectorAll('.modal-bg:not(.add-modal)');
             modals.forEach(modal => {
                 if (event.target === modal) {
                     modal.style.display = 'none';
@@ -963,11 +982,27 @@
             modal.style.display = "none";
         }
 
-        // Add form submission handler to combine dosage fields
+
         document.addEventListener('DOMContentLoaded', function() {
             const productForm = document.getElementById('productForm');
             if (productForm) {
-                productForm.addEventListener('submit', function(event) {
+                productForm.addEventListener('submit', async function(event) {
+                    event.preventDefault(); // Prevent immediate submission
+
+                    // Collect debug data
+                    const debugData = {
+                        before: {},
+                        after: {},
+                        fields: {}
+                    };
+
+                    // BEFORE manipulation
+                    const formDataBefore = new FormData(this);
+                    for (let [key, value] of formDataBefore.entries()) {
+                        debugData.before[key] = value;
+                    }
+
+                    // Handle dosage combination
                     const strengthInput = document.getElementById('dosage_strength');
                     const unitSelect = document.getElementById('dosage_unit');
 
@@ -975,7 +1010,9 @@
                         const strength = strengthInput.value.trim();
                         const unit = unitSelect.value;
 
-                        // Create or update a hidden field with combined dosage
+                        debugData.fields.dosage_strength = strength;
+                        debugData.fields.dosage_unit_select = unit;
+
                         let combinedField = document.getElementById('combined_dosage_unit');
                         if (!combinedField) {
                             combinedField = document.createElement('input');
@@ -985,7 +1022,6 @@
                             productForm.appendChild(combinedField);
                         }
 
-                        // Combine strength and unit
                         let combinedValue = '';
                         if (strength && unit) {
                             combinedValue = strength + unit;
@@ -996,11 +1032,47 @@
                         }
 
                         combinedField.value = combinedValue;
+                        debugData.fields.combined_dosage_unit = combinedValue;
 
-                        // Remove the name attribute from the original fields to prevent conflicts
                         strengthInput.removeAttribute('name');
                         unitSelect.removeAttribute('name');
                     }
+
+                    // Check unit fields
+                    const unitField = document.getElementById('unit');
+                    const unitQuantityField = document.getElementById('unit_quantity');
+
+                    debugData.fields.unit = unitField ? unitField.value : 'MISSING';
+                    debugData.fields.unit_quantity = unitQuantityField ? unitQuantityField.value :
+                        'MISSING';
+                    debugData.fields.unit_has_name_attr = unitField ? (unitField.getAttribute('name') ||
+                        'NO NAME ATTR') : 'FIELD MISSING';
+                    debugData.fields.unit_quantity_has_name_attr = unitQuantityField ? (
+                        unitQuantityField.getAttribute('name') || 'NO NAME ATTR') : 'FIELD MISSING';
+
+                    // AFTER manipulation
+                    const formDataAfter = new FormData(this);
+                    for (let [key, value] of formDataAfter.entries()) {
+                        debugData.after[key] = value;
+                    }
+
+                    // Send debug data to Laravel
+                    try {
+                        await fetch('/api/debug-log', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector(
+                                    'meta[name="csrf-token"]').content
+                            },
+                            body: JSON.stringify(debugData)
+                        });
+                    } catch (error) {
+                        console.error('Failed to send debug data:', error);
+                    }
+
+                    // Now submit the form
+                    this.submit();
                 });
             }
         });
@@ -1089,28 +1161,20 @@
                     classificationText = option.textContent;
                 }
             }
-
-            // Get unit display text
             const unitDisplayMap = {
                 'bottle': 'Bottle',
-                'ml': 'mL',
-                'L': 'Liter',
                 'vial': 'Vial',
                 'ampoule': 'Ampoule',
                 'dropper_bottle': 'Dropper Bottle',
                 'nebule': 'Nebule',
-                'tablet': 'Tablet',
-                'capsule': 'Capsule',
                 'blister_pack': 'Blister Pack',
                 'box': 'Box',
                 'strip': 'Strip',
                 'sachet': 'Sachet',
-                'syringe': 'Syringe',
-                'injection_vial': 'Injection Vial',
-                'injection_ampoule': 'Injection Ampoule',
+                'syringe': 'Pre-filled Syringe',
                 'tube': 'Tube',
                 'jar': 'Jar',
-                'topical_bottle': 'Topical Bottle',
+                'topical_bottle': 'Bottle',
                 'inhaler': 'Inhaler',
                 'patch': 'Patch',
                 'suppository': 'Suppository',

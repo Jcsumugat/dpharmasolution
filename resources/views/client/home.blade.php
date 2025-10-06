@@ -44,8 +44,8 @@
       <span class="stat-label">Support Available</span>
     </div>
     <div class="stat-item">
-      <span class="stat-number">Fast</span>
-      <span class="stat-label">Delivery Service</span>
+      <span class="stat-number">Quality</span>
+      <span class="stat-label">Products and Services</span>
     </div>
   </div>
 </div>
@@ -53,45 +53,45 @@
 <!-- Main Content -->
 <div class="container">
   <div class="main-content">
-    
+
     <!-- Services Section -->
     <section class="services-section">
       <div class="section-header">
         <h2 class="section-title">Our Services</h2>
         <p class="section-subtitle">Comprehensive healthcare solutions designed to meet your every need with professional care and convenience.</p>
       </div>
-      
+
       <div class="services-grid">
         <div class="service-card">
           <div class="service-icon">💊</div>
           <h3>Prescription Services</h3>
           <p>Fast, accurate prescription filling with automatic refill reminders and medication counseling from our licensed pharmacists.</p>
         </div>
-        
+
         <div class="service-card">
           <div class="service-icon">🚚</div>
-          <h3>Free Delivery</h3>
-          <p>Convenient home delivery service for prescriptions and over-the-counter medications with same-day delivery options available.</p>
+          <h3>Quality</h3>
+          <p>Providing quality pharmaceutical products and professional healthcare services.</p>
         </div>
-        
+
         <div class="service-card">
           <div class="service-icon">💉</div>
           <h3>Health Services</h3>
           <p>Comprehensive health screenings, vaccinations, and wellness consultations to help you maintain optimal health.</p>
         </div>
-        
+
         <div class="service-card">
           <div class="service-icon">💬</div>
           <h3>Expert Consultation</h3>
           <p>One-on-one consultations with our experienced pharmacists for medication management and health advice.</p>
         </div>
-        
+
         <div class="service-card">
           <div class="service-icon">🏥</div>
           <h3>Medical Supplies</h3>
           <p>Wide selection of medical equipment, first aid supplies, and health monitoring devices for home care.</p>
         </div>
-        
+
         <div class="service-card">
           <div class="service-icon">📱</div>
           <h3>Digital Services</h3>
@@ -106,7 +106,7 @@
         <h2>Why Choose MJ's Pharmacy?</h2>
         <p>For over 15 years, MJ's Pharmacy has been serving our community with dedication, professionalism, and genuine care. We combine traditional pharmaceutical excellence with modern convenience to provide you with the best possible healthcare experience.</p>
         <p>Our team of licensed pharmacists and healthcare professionals is committed to ensuring you receive not just the medications you need, but also the knowledge and support to use them safely and effectively.</p>
-        
+
         <div class="features-list">
           <div class="feature-item">
             <div class="feature-icon">✓</div>

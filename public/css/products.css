@@ -619,7 +619,7 @@ body:not(.modal-open) #mainContent {
 /* --- Improved Floating Label Input Styles --- */
 .form-group {
     position: relative;
-    margin-bottom: 1.2rem;
+    margin-bottom: 1rem;
 }
 
 .form-group input,
@@ -895,4 +895,125 @@ button:focus-visible,
     font-size: 14px;
     text-align: right;
     word-break: break-word;
+}
+
+/* Unit Preview Box Styles */
+.form-group.full-width {
+    grid-column: 1 / -1;
+    margin-top: 0.5rem;
+}
+
+.unit-preview-box {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border: 2px solid var(--color-border-light);
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-top: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.unit-preview-box:has(#unit-preview-display:not([style*="color: #6c757d"])) {
+    background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+    border-color: var(--color-success);
+}
+
+.preview-label {
+    display: block;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-secondary);
+    margin-bottom: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: var(--letter-spacing-wide);
+}
+
+.preview-content {
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border-light);
+    border-radius: 8px;
+    padding: 1rem;
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-medium);
+    color: #6c757d;
+    font-style: italic;
+    text-align: center;
+    min-height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.preview-content:not([style*="color: #6c757d"]) {
+    font-style: normal;
+    font-weight: var(--font-weight-semibold);
+}
+
+/* Dosage Preview Styles (similar styling) */
+.dosage-container {
+    width: 100%;
+}
+
+.dosage-input-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.dosage-strength-group,
+.dosage-unit-group {
+    margin-bottom: 0 !important;
+}
+
+.dosage-preview {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border: 2px solid var(--color-border-light);
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-bottom: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.dosage-preview-box {
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border-light);
+    border-radius: 8px;
+    padding: 1rem;
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-bold);
+    color: #6c757d;
+    font-style: italic;
+    text-align: center;
+    min-height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+/* Preview text states */
+.preview-text.empty,
+.preview-text.incomplete {
+    color: #6c757d;
+    font-style: italic;
+    font-weight: var(--font-weight-medium);
+}
+
+.preview-text.combined,
+.preview-text.unit-only {
+    color: var(--color-success);
+    font-style: normal;
+    font-weight: var(--font-weight-bold);
+}
+
+.preview-text.combined {
+    font-size: var(--font-size-xl);
+}
+
+/* When dosage has valid content */
+.dosage-preview:has(.preview-text.combined),
+.dosage-preview:has(.preview-text.unit-only) {
+    background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+    border-color: var(--color-success);
 }

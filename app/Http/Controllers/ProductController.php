@@ -83,19 +83,21 @@ class ProductController extends Controller
 
     public function store(Request $request)
     {
+        // Log incoming request for debugging
+        Log::info('Product store request', $request->all());
+
         $validated = $request->validate([
             'product_name' => 'required|string|max:100',
             'manufacturer' => 'nullable|string|max:100',
             'brand_name' => 'nullable|string|max:100',
             'generic_name' => 'nullable|string|max:100|regex:/^[a-zA-Z\s\-\.]+$/',
             'product_type' => 'required|string|max:50',
-            'dosage_strength' => 'nullable|string|max:10',
             'dosage_unit' => 'required|string|max:50',
             'unit' => 'required|string|max:50',
             'unit_quantity' => 'required|numeric|min:0.01',
             'form_type' => 'required|string|max:50',
             'storage_requirements' => 'nullable|string|max:100',
-            'classification' => 'required|integer|min:1|max:13',
+            'classification' => 'required|integer|min:1|max:22',
             'reorder_level' => 'required|integer|min:0',
             'supplier_id' => 'nullable|exists:suppliers,id',
             'category_id' => 'nullable|exists:categories,id',
@@ -106,23 +108,13 @@ class ProductController extends Controller
 
             $product_code = $this->generateUniqueProductCode();
 
-            // Combine dosage strength and unit
-            $combinedDosage = '';
-            if (!empty($validated['dosage_strength']) && !empty($validated['dosage_unit'])) {
-                $combinedDosage = $validated['dosage_strength'] . $validated['dosage_unit'];
-            } elseif (!empty($validated['dosage_unit'])) {
-                $combinedDosage = $validated['dosage_unit'];
-            } elseif (!empty($validated['dosage_strength'])) {
-                $combinedDosage = $validated['dosage_strength'];
-            }
-
             $product = Product::create([
                 'product_name' => $validated['product_name'],
                 'manufacturer' => $validated['manufacturer'],
                 'brand_name' => $validated['brand_name'],
                 'product_type' => $validated['product_type'],
                 'generic_name' => $validated['generic_name'] ? ucwords(strtolower($validated['generic_name'])) : null,
-                'dosage_unit' => $combinedDosage,
+                'dosage_unit' => $validated['dosage_unit'],
                 'unit' => $validated['unit'],
                 'unit_quantity' => $validated['unit_quantity'],
                 'form_type' => $validated['form_type'],
@@ -140,7 +132,9 @@ class ProductController extends Controller
                 'product_id' => $product->id,
                 'product_code' => $product->product_code,
                 'product_name' => $product->product_name,
-                'combined_dosage' => $combinedDosage,
+                'dosage_unit' => $product->dosage_unit,
+                'unit' => $product->unit,
+                'unit_quantity' => $product->unit_quantity,
             ]);
 
             return redirect()->route('products.index')
@@ -150,7 +144,7 @@ class ProductController extends Controller
 
             Log::error('Failed to create product', [
                 'error' => $e->getMessage(),
-                'product_name' => $validated['product_name'] ?? 'Unknown',
+                'validation_data' => $validated,
                 'trace' => $e->getTraceAsString()
             ]);
 
@@ -160,11 +154,15 @@ class ProductController extends Controller
         }
     }
 
-
-
     public function update(Request $request, $id)
     {
         $product = Product::findOrFail($id);
+
+        // Log incoming request for debugging
+        Log::info('Product update request', [
+            'product_id' => $id,
+            'request_data' => $request->all()
+        ]);
 
         $validated = $request->validate([
             'product_name' => 'required|string|max:100',
@@ -172,8 +170,7 @@ class ProductController extends Controller
             'brand_name' => 'nullable|string|max:100',
             'generic_name' => 'nullable|string|max:100|regex:/^[a-zA-Z\s\-\.]+$/',
             'product_type' => 'required|string|max:50',
-            'dosage_strength' => 'nullable|string|max:10',
-            'dosage_unit' => 'nullable|string|max:50',
+            'dosage_unit' => 'required|string|max:50',
             'unit' => 'required|string|max:50',
             'unit_quantity' => 'required|numeric|min:0.01',
             'form_type' => 'required|string|max:50',
@@ -185,28 +182,15 @@ class ProductController extends Controller
         ]);
 
         try {
-            $combinedDosage = '';
-            if (!empty($validated['dosage_unit'])) {
-                // Use the combined value from hidden field
-                $combinedDosage = $validated['dosage_unit'];
-            } else {
-                // Fallback: combine manually if hidden field is empty
-                if (!empty($validated['dosage_strength']) && !empty($validated['unit_type'])) {
-                    $combinedDosage = $validated['dosage_strength'] . $validated['unit_type'];
-                } elseif (!empty($validated['unit_type'])) {
-                    $combinedDosage = $validated['unit_type'];
-                } elseif (!empty($validated['dosage_strength'])) {
-                    $combinedDosage = $validated['dosage_strength'];
-                }
-            }
+            DB::beginTransaction();
 
-            $updateData = [
+            $product->update([
                 'product_name' => $validated['product_name'],
                 'manufacturer' => $validated['manufacturer'],
                 'brand_name' => $validated['brand_name'],
                 'product_type' => $validated['product_type'],
                 'generic_name' => $validated['generic_name'] ? ucwords(strtolower($validated['generic_name'])) : null,
-                'dosage_unit' => $combinedDosage,
+                'dosage_unit' => $validated['dosage_unit'],
                 'unit' => $validated['unit'],
                 'unit_quantity' => $validated['unit_quantity'],
                 'form_type' => $validated['form_type'],
@@ -215,22 +199,25 @@ class ProductController extends Controller
                 'reorder_level' => $validated['reorder_level'],
                 'supplier_id' => $validated['supplier_id'],
                 'category_id' => $validated['category_id'],
-            ];
+            ]);
 
-            $product->update($updateData);
+            DB::commit();
 
             Log::info('Product updated successfully', [
                 'product_id' => $product->id,
                 'product_code' => $product->product_code,
-                'combined_dosage' => $combinedDosage,
+                'updated_fields' => $validated,
             ]);
 
             return redirect()->route('products.index')
                 ->with('success', "Product '{$product->product_name}' updated successfully!");
         } catch (\Exception $e) {
+            DB::rollback();
+
             Log::error('Failed to update product', [
                 'product_id' => $id,
                 'error' => $e->getMessage(),
+                'validation_data' => $validated,
             ]);
 
             return redirect()->back()
@@ -748,5 +735,46 @@ class ProductController extends Controller
         });
 
         return view('products.expired-batches-report', compact('expiredBatches', 'summary', 'batchesByProduct'));
+    }
+    /**
+     * Get product details (for API/AJAX requests)
+     */
+    public function show($id)
+    {
+        try {
+            $product = Product::with('supplier')->findOrFail($id);
+
+            return response()->json([
+                'id' => $product->id,
+                'product_name' => $product->product_name,
+                'product_code' => $product->product_code,
+                'unit' => $product->unit ?? 'piece',
+                'unit_quantity' => $product->unit_quantity ?? 1,
+                'supplier_id' => $product->supplier_id,
+                'price' => $product->price ?? $product->getCurrentSalePriceAttribute(),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Product not found'
+            ], 404);
+        }
+    }
+
+    /**
+     * Get product details for API (used by inventory modal)
+     */
+    public function getProductDetails(Product $product)
+    {
+        return response()->json([
+            'id' => $product->id,
+            'product_code' => $product->product_code,
+            'product_name' => $product->product_name,
+            'unit' => $product->unit,
+            'unit_quantity' => $product->unit_quantity,
+            'price' => $product->price ?? $product->getCurrentSalePriceAttribute(),
+            'supplier_id' => $product->supplier_id,
+            'reorder_level' => $product->reorder_level,
+            'stock_quantity' => $product->stock_quantity,
+        ]);
     }
 }

@@ -102,6 +102,7 @@ Route::prefix('dashboard/batches')->middleware(['auth', 'admin'])->name('batches
 
 Route::middleware(['auth', 'admin'])->group(function () {
     // Inventory routes
+    Route::get('/products/{id}', [ProductController::class, 'show']);
     Route::get('/dashboard/inventory', [InventoryController::class, 'index'])->name('inventory.index');
     Route::get('/dashboard/inventory/{product}/batches', [InventoryController::class, 'viewBatches'])->name('inventory.viewBatches');
     Route::post('/dashboard/inventory/{product}/batches', [InventoryController::class, 'addBatch'])->name('inventory.addBatch');
@@ -113,6 +114,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::put('/dashboard/inventory/batches/{batch}/update-price', [InventoryController::class, 'updateBatchPrice'])
         ->name('inventory.batches.update-price');
 });
+
 
 Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/dashboard/reports', [ReportsController::class, 'index'])->name('reports.index');
@@ -312,3 +314,7 @@ Route::middleware(['auth:customer'])->prefix('api/customer/chat')->group(functio
 });
 
 
+
+
+
+Route::get('/api/products/{product}', [ProductController::class, 'getProductDetails']);

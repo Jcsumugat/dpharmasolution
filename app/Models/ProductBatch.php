@@ -19,6 +19,8 @@ class ProductBatch extends Model
         'quantity_remaining',
         'unit_cost',
         'sale_price',
+        'unit',
+        'unit_quantity',
         'received_date',
         'supplier_id',
         'notes',
@@ -39,7 +41,59 @@ class ProductBatch extends Model
         return $this->belongsTo(Product::class);
     }
 
+    /**
+     * Get the effective unit for this batch
+     * Returns batch unit if specified, otherwise product default
+     */
+    public function getEffectiveUnit(): string
+    {
+        return $this->unit ?? $this->product->unit ?? 'piece';
+    }
 
+    /**
+     * Get the effective unit quantity for this batch
+     */
+    public function getEffectiveUnitQuantity(): float
+    {
+        return $this->unit_quantity ?? $this->product->unit_quantity ?? 1;
+    }
+
+    /**
+     * Get formatted unit display
+     */
+    public function getUnitDisplay(): string
+    {
+        $unit = $this->getEffectiveUnit();
+        $quantity = $this->getEffectiveUnitQuantity();
+
+        $unitLabels = [
+            'bottle' => 'Bottle',
+            'ml' => 'mL',
+            'L' => 'L',
+            'vial' => 'Vial',
+            'ampoule' => 'Ampoule',
+            'tablet' => 'Tablet',
+            'capsule' => 'Capsule',
+            'piece' => 'Piece',
+            'pack' => 'Pack',
+            // ... add rest from your mapping
+        ];
+
+        $unitLabel = $unitLabels[$unit] ?? $unit;
+
+        if ($quantity == 1) {
+            return "1 {$unitLabel}";
+        }
+        return "{$quantity} {$unitLabel}" . ($quantity > 1 ? 's' : '');
+    }
+
+    /**
+     * Check if this batch has a unit override
+     */
+    public function hasUnitOverride(): bool
+    {
+        return !is_null($this->unit);
+    }
 
     // Get stock movements related to this batch
     public function stockMovements()
@@ -373,7 +427,7 @@ class ProductBatch extends Model
             $this->product->updateCachedFields();
         }
     }
-       public function batches()
+    public function batches()
     {
         return $this->hasMany(ProductBatch::class)->orderBy('expiration_date', 'asc');
     }
@@ -395,91 +449,91 @@ class ProductBatch extends Model
         $this->updateStockQuantity();
     }
     public function autoExpire($notes = null)
-{
-    if ($this->quantity_remaining <= 0) {
-        return false; // Already empty
-    }
-
-    $expiredQuantity = $this->quantity_remaining;
-    $lossValue = $expiredQuantity * $this->unit_cost;
-    $daysExpired = now()->diffInDays($this->expiration_date);
-
-    $defaultNotes = "Auto-expired batch: {$this->batch_number} (expired {$daysExpired} days ago, loss: ₱" . number_format($lossValue, 2) . ")";
-
-    DB::transaction(function () use ($expiredQuantity, $notes, $defaultNotes) {
-        // Create expired stock movement
-        StockMovement::createExpiredMovement(
-            $this->product_id,
-            $expiredQuantity,
-            $notes ?: $defaultNotes,
-            $this->id
-        );
-
-        // Zero out the batch
-        $this->update(['quantity_remaining' => 0]);
-
-        // Update product stock
-        $this->product->updateCachedFields();
-    });
-
-    Log::info('Batch auto-expired', [
-        'batch_id' => $this->id,
-        'batch_number' => $this->batch_number,
-        'product_id' => $this->product_id,
-        'expired_quantity' => $expiredQuantity,
-        'loss_value' => $lossValue,
-    ]);
-
-    return true;
-}
-
-/**
- * Check and auto-expire if past expiration date
- */
-public function checkAndAutoExpire()
-{
-    if ($this->isExpired() && $this->quantity_remaining > 0) {
-        return $this->autoExpire();
-    }
-
-    return false;
-}
-
-/**
- * Get expired batches that still have quantity
- */
-public static function getExpiredWithStock()
-{
-    return static::expired()->inStock()->get();
-}
-
-/**
- * Bulk process expired batches for a product
- */
-public static function processExpiredForProduct($productId)
-{
-    $expiredBatches = static::where('product_id', $productId)
-        ->expired()
-        ->inStock()
-        ->get();
-
-    $totalExpired = 0;
-    $totalLoss = 0;
-
-    foreach ($expiredBatches as $batch) {
-        $quantity = $batch->quantity_remaining;
-        $loss = $quantity * $batch->unit_cost;
-
-        if ($batch->autoExpire()) {
-            $totalExpired += $quantity;
-            $totalLoss += $loss;
+    {
+        if ($this->quantity_remaining <= 0) {
+            return false; // Already empty
         }
+
+        $expiredQuantity = $this->quantity_remaining;
+        $lossValue = $expiredQuantity * $this->unit_cost;
+        $daysExpired = now()->diffInDays($this->expiration_date);
+
+        $defaultNotes = "Auto-expired batch: {$this->batch_number} (expired {$daysExpired} days ago, loss: ₱" . number_format($lossValue, 2) . ")";
+
+        DB::transaction(function () use ($expiredQuantity, $notes, $defaultNotes) {
+            // Create expired stock movement
+            StockMovement::createExpiredMovement(
+                $this->product_id,
+                $expiredQuantity,
+                $notes ?: $defaultNotes,
+                $this->id
+            );
+
+            // Zero out the batch
+            $this->update(['quantity_remaining' => 0]);
+
+            // Update product stock
+            $this->product->updateCachedFields();
+        });
+
+        Log::info('Batch auto-expired', [
+            'batch_id' => $this->id,
+            'batch_number' => $this->batch_number,
+            'product_id' => $this->product_id,
+            'expired_quantity' => $expiredQuantity,
+            'loss_value' => $lossValue,
+        ]);
+
+        return true;
     }
 
-    return [
-        'batches_processed' => $expiredBatches->count(),
-        'total_expired_quantity' => $totalExpired,
-        'total_loss_value' => $totalLoss
-    ];
-}
+    /**
+     * Check and auto-expire if past expiration date
+     */
+    public function checkAndAutoExpire()
+    {
+        if ($this->isExpired() && $this->quantity_remaining > 0) {
+            return $this->autoExpire();
+        }
+
+        return false;
+    }
+
+    /**
+     * Get expired batches that still have quantity
+     */
+    public static function getExpiredWithStock()
+    {
+        return static::expired()->inStock()->get();
+    }
+
+    /**
+     * Bulk process expired batches for a product
+     */
+    public static function processExpiredForProduct($productId)
+    {
+        $expiredBatches = static::where('product_id', $productId)
+            ->expired()
+            ->inStock()
+            ->get();
+
+        $totalExpired = 0;
+        $totalLoss = 0;
+
+        foreach ($expiredBatches as $batch) {
+            $quantity = $batch->quantity_remaining;
+            $loss = $quantity * $batch->unit_cost;
+
+            if ($batch->autoExpire()) {
+                $totalExpired += $quantity;
+                $totalLoss += $loss;
+            }
+        }
+
+        return [
+            'batches_processed' => $expiredBatches->count(),
+            'total_expired_quantity' => $totalExpired,
+            'total_loss_value' => $totalLoss
+        ];
+    }
 }

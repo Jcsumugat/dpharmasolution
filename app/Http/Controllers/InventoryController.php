@@ -135,25 +135,6 @@ class InventoryController extends Controller
         return response()->json(['reasons' => $reasons]);
     }
 
-    // Helper method to generate batch numbers
-    private function generateBatchNumber(Product $product)
-    {
-        $prefix = strtoupper(substr($product->product_code ?: 'PRD', 0, 3));
-        $date = now()->format('Ymd');
-        $lastBatch = ProductBatch::where('product_id', $product->id)
-            ->where('batch_number', 'like', "{$prefix}-{$date}-%")
-            ->orderBy('batch_number', 'desc')
-            ->first();
-
-        if ($lastBatch) {
-            $lastNumber = intval(substr($lastBatch->batch_number, -3));
-            $newNumber = str_pad($lastNumber + 1, 3, '0', STR_PAD_LEFT);
-        } else {
-            $newNumber = '001';
-        }
-
-        return "{$prefix}-{$date}-{$newNumber}";
-    }
 
     // Helper method to get reason text
     private function getReasonText($reason)
@@ -289,65 +270,101 @@ class InventoryController extends Controller
             ], 500);
         }
     }
+    // Fixed generateBatchNumber helper method
+    private function generateBatchNumber($productId)
+    {
+        $product = Product::findOrFail($productId);
+        $prefix = strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $product->product_name), 0, 3));
+
+        if (strlen($prefix) < 3) {
+            $prefix = str_pad($prefix, 3, 'X');
+        }
+
+        $date = now()->format('ymd');
+        $existingBatches = ProductBatch::where('product_id', $productId)
+            ->where('batch_number', 'like', "{$prefix}{$date}%")
+            ->count();
+
+        $sequence = str_pad($existingBatches + 1, 3, '0', STR_PAD_LEFT);
+
+        return "{$prefix}{$date}{$sequence}";
+    }
+
     public function addBatch(Request $request, Product $product)
     {
-        $request->validate([
+        $validated = $request->validate([
             'quantity_received' => 'required|integer|min:1',
             'expiration_date' => 'required|date|after:today',
+            'received_date' => 'required|date|before_or_equal:today',
             'unit_cost' => 'required|numeric|min:0',
             'sale_price' => 'nullable|numeric|min:0',
-            'received_date' => 'required|date|before_or_equal:today',
             'supplier_id' => 'nullable|exists:suppliers,id',
             'notes' => 'nullable|string|max:1000',
+
+            // NEW: Unit override fields (optional)
+            'unit' => 'nullable|string|in:bottle,ml,L,vial,ampoule,dropper_bottle,nebule,tablet,capsule,blister_pack,box,strip,sachet,syringe,injection_vial,injection_ampoule,tube,jar,topical_bottle,inhaler,patch,suppository,piece,pack',
+            'unit_quantity' => 'nullable|numeric|min:0.01',
         ]);
 
         try {
             DB::beginTransaction();
 
-            // Create new batch using the enhanced method
-            $batch = ProductBatch::createWithMovement([
-                'product_id' => $product->id,
-                'batch_number' => $this->generateBatchNumber($product),
-                'quantity_received' => $request->quantity_received,
-                'quantity_remaining' => $request->quantity_received,
-                'expiration_date' => $request->expiration_date,
-                'unit_cost' => $request->unit_cost,
-                'sale_price' => $request->sale_price,
-                'received_date' => $request->received_date,
-                'supplier_id' => $request->supplier_id ?: $product->supplier_id,
-                'notes' => $request->notes,
-            ], StockMovement::REFERENCE_PURCHASE, null);
+            $batchNumber = $this->generateBatchNumber($product->id);
 
-            // Add quantity_received to product's stock_quantity
-            $product->increment('stock_quantity', $request->quantity_received);
+            $batchData = [
+                'product_id' => $product->id,
+                'batch_number' => $batchNumber,
+                'quantity_received' => $validated['quantity_received'],
+                'quantity_remaining' => $validated['quantity_received'],
+                'expiration_date' => $validated['expiration_date'],
+                'received_date' => $validated['received_date'],
+                'unit_cost' => $validated['unit_cost'],
+                'sale_price' => $validated['sale_price'] ?? $product->getCurrentSalePriceAttribute(),
+                'supplier_id' => $validated['supplier_id'] ?? $product->supplier_id,
+                'notes' => $validated['notes'] ?? null,
+            ];
+
+            // Add unit override only if provided
+            if (!empty($validated['unit'])) {
+                $batchData['unit'] = $validated['unit'];
+                $batchData['unit_quantity'] = $validated['unit_quantity'] ?? 1;
+            }
+
+            $batch = ProductBatch::create($batchData);
+
+            StockMovement::createMovement(
+                $product->id,
+                StockMovement::TYPE_PURCHASE,
+                $validated['quantity_received'],
+                StockMovement::REFERENCE_PURCHASE,
+                null,
+                "New batch received - Batch: {$batchNumber}",
+                $batch->id
+            );
+
+            $product->updateCachedFields();
 
             DB::commit();
 
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => "New batch added successfully! Batch #{$batch->batch_number} with {$request->quantity_received} units.",
-                    'batch' => $batch->getBatchInfo(),
-                    'updated_stock' => $product->fresh()->stock_quantity
-                ]);
-            }
-
-            return redirect()->route('inventory.index')
-                ->with('stock_action', "New batch added successfully! Batch #{$batch->batch_number} with {$request->quantity_received} units.");
+            return response()->json([
+                'success' => true,
+                'message' => 'Batch added successfully',
+                'batch' => $batch->load('product', 'supplier'),
+                'unit_display' => $batch->getUnitDisplay(),
+                'has_override' => $batch->hasUnitOverride(),
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error adding batch: ' . $e->getMessage());
 
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Error adding batch: ' . $e->getMessage()
-                ], 500);
-            }
+            Log::error('Failed to add batch', [
+                'product_id' => $product->id,
+                'error' => $e->getMessage()
+            ]);
 
-            return redirect()->back()
-                ->with('error', 'Error adding batch: ' . $e->getMessage())
-                ->withInput();
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to add batch: ' . $e->getMessage()
+            ], 500);
         }
     }
 
