@@ -20,7 +20,9 @@
             </div>
             <div class="meta-item">
                 <span class="meta-label">Total Stock</span>
-                <span class="meta-value stock-count">{{ $product->stock_quantity }}</span>
+                <span class="meta-value stock-count">
+                    {{ number_format($product->stock_quantity) }} {{ $product->getUnitDisplay() }}
+                </span>
             </div>
         </div>
     </div>
@@ -74,28 +76,49 @@
                             </td>
                             <td class="quantity received">
                                 {{ number_format($batch->quantity_received) }}
+                                <small class="text-muted">{{ $product->getUnitDisplay() }}</small>
                             </td>
                             <td class="quantity remaining">
                                 <span class="qty-value {{ $isOutOfStock ? 'out-of-stock' : 'in-stock' }}">
                                     {{ number_format($batch->quantity_remaining) }}
                                 </span>
+                                <small class="text-muted">{{ $product->getUnitDisplay() }}</small>
                             </td>
                             <td class="price cost">
-                                <span class="currency">₱</span>{{ number_format($batch->unit_cost, 2) }}
+                                <div class="price-info">
+                                    <span class="price-main">
+                                        <span class="currency">₱</span>{{ number_format($batch->unit_cost, 2) }}
+                                    </span>
+                                    <small class="text-muted">{{ $product->getUnitDisplay() }}</small>
+                                </div>
                             </td>
                             <td class="price sale">
                                 <div class="price-container">
-                                    <span class="price-main">
-                                        <span class="currency">₱</span>{{ number_format($batch->sale_price, 2) }}
-                                    </span>
+                                    <div class="price-info">
+                                        <span class="price-main">
+                                            <span class="currency">₱</span>{{ number_format($batch->sale_price, 2) }}
+                                        </span>
+                                        <small class="text-muted">{{ $product->getUnitDisplay() }}</small>
+                                    </div>
                                     @if ($batch->unit_cost > 0)
                                         @php
                                             $margin =
                                                 (($batch->sale_price - $batch->unit_cost) / $batch->unit_cost) * 100;
                                         @endphp
-                                        <span class="margin {{ $margin > 20 ? 'high-margin' : 'low-margin' }}">
-                                            {{ number_format($margin, 1) }}%
-                                        </span>
+                                        <div class="margin-wrapper">
+                                            <span class="margin {{ $margin > 20 ? 'high-margin' : 'low-margin' }}">
+                                                {{ number_format($margin, 1) }}%
+                                            </span>
+                                            <span class="margin-tooltip-trigger">
+                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                                                    stroke="currentColor" stroke-width="2">
+                                                    <circle cx="12" cy="12" r="10" />
+                                                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                                                    <line x1="12" y1="17" x2="12.01" y2="17" />
+                                                </svg>
+                                                <span class="margin-tooltip">Profit Margin (%)</span>
+                                            </span>
+                                        </div>
                                     @endif
                                 </div>
                             </td>
@@ -165,8 +188,10 @@
                 <div class="card-label">Active Batches</div>
             </div>
             <div class="summary-card">
-                <div class="card-value">{{ number_format($product->batches->sum('quantity_remaining')) }}</div>
-                <div class="card-label">Total Stock</div>
+                <div class="card-value">
+                    {{ number_format($product->batches->sum('quantity_remaining')) }}
+                </div>
+                <div class="card-label">Total Stock ({{ $product->getUnitDisplay() }})</div>
             </div>
             <div class="summary-card">
                 <div class="card-value expired">
@@ -212,13 +237,15 @@
             </div>
 
             <div class="form-group">
-                <input type="number" class="form-input" name="additional_quantity" placeholder=" " required min="1">
+                <input type="number" class="form-input" name="additional_quantity" placeholder=" " required
+                    min="1">
                 <label class="form-label">Additional Quantity <span class="required-indicator">*</span></label>
                 <div class="help-text">Quantity to add to this batch</div>
             </div>
 
             <div class="form-group">
-                <input type="number" class="form-input" name="unit_cost" id="modal_unit_cost" placeholder=" " required step="0.01" min="0">
+                <input type="number" class="form-input" name="unit_cost" id="modal_unit_cost" placeholder=" "
+                    required step="0.01" min="0">
                 <label class="form-label">Unit Cost (₱) <span class="required-indicator">*</span></label>
                 <div class="help-text">Unit cost for this existing batch (read-only)</div>
             </div>
@@ -235,7 +262,8 @@
             </div>
 
             <div class="button-group">
-                <button type="button" class="btn btn-secondary" onclick="closeAddStockToBatchModal()">Cancel</button>
+                <button type="button" class="btn btn-secondary"
+                    onclick="closeAddStockToBatchModal()">Cancel</button>
                 <button type="submit" class="btn btn-primary">Add Stock</button>
             </div>
         </form>
@@ -258,13 +286,15 @@
             </div>
 
             <div class="form-group">
-                <input type="number" class="form-input" name="unit_cost" id="price_unit_cost" placeholder=" " required step="0.01" min="0">
+                <input type="number" class="form-input" name="unit_cost" id="price_unit_cost" placeholder=" "
+                    required step="0.01" min="0">
                 <label class="form-label">Unit Cost (₱) <span class="required-indicator">*</span></label>
                 <div class="help-text">Original purchase cost for this batch (read-only)</div>
             </div>
 
             <div class="form-group">
-                <input type="number" class="form-input" name="sale_price" id="price_sale_price" placeholder=" " required step="0.01" min="0">
+                <input type="number" class="form-input" name="sale_price" id="price_sale_price" placeholder=" "
+                    required step="0.01" min="0">
                 <label class="form-label">Sale Price (₱) <span class="required-indicator">*</span></label>
             </div>
 

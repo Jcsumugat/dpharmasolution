@@ -103,9 +103,12 @@
                                 <div class="dropdown-container">
                                     <button class="dropdown-toggle" onclick="toggleDropdown(event)">&#8943;</button>
                                     <div class="dropdown-menu">
-                                        <button class="dropdown-item" onclick="showProductInfo({{ $product->id }})">Product Information</button>
-                                        <button class="dropdown-item" onclick="showBatches({{ $product->id }})">View Batches</button>
-                                        <button class="dropdown-item" onclick="editProduct({{ $product->id }})">Edit Product</button>
+                                        <button class="dropdown-item"
+                                            onclick="showProductInfo({{ $product->id }})">Product Information</button>
+                                        <button class="dropdown-item" onclick="showBatches({{ $product->id }})">View
+                                            Batches</button>
+                                        <button class="dropdown-item" onclick="editProduct({{ $product->id }})">Edit
+                                            Product</button>
                                         <form action="{{ route('products.destroy', $product->id) }}" method="POST"
                                             onsubmit="return confirm('Are you sure you want to delete this product and all its batches?');">
                                             @csrf
@@ -154,7 +157,8 @@
                             <input type="text" class="form-input" name="generic_name" id="generic_name"
                                 placeholder=" " value="{{ old('generic_name') }}" list="generic_names_list">
                             <label for="generic_name" class="form-label">Generic Name</label>
-                            <div class="help-text">Active pharmaceutical ingredient (API) name (e.g., Paracetamol, Ibuprofen)</div>
+                            <div class="help-text">Active pharmaceutical ingredient (API) name (e.g., Paracetamol,
+                                Ibuprofen)</div>
                             <datalist id="generic_names_list">
                                 <option value="Paracetamol">
                                 <option value="Ibuprofen">
@@ -179,8 +183,8 @@
                             </datalist>
                         </div>
                         <div class="form-group">
-                            <input type="text" class="form-input" name="brand_name" id="brand_name" placeholder=" "
-                                value="{{ old('brand_name') }}">
+                            <input type="text" class="form-input" name="brand_name" id="brand_name"
+                                placeholder=" " value="{{ old('brand_name') }}">
                             <label for="brand_name" class="form-label">Brand Name</label>
                             <div class="help-text">Commercial brand or trade name (Optional).</div>
                         </div>
@@ -295,7 +299,8 @@
                                             <option value="drops">drops</option>
                                             <option value="ratio">ratio</option>
                                         </select>
-                                        <label for="dosage_unit" class="form-label">Unit <span class="required-indicator">*</span></label>
+                                        <label for="dosage_unit" class="form-label">Unit <span
+                                                class="required-indicator">*</span></label>
                                     </div>
                                 </div>
                                 <div class="dosage-preview">
@@ -348,7 +353,9 @@
                                     class="required-indicator">*</span></label>
                         </div>
                     </div>
+
                 </div>
+
 
                 <!-- Storage and Handling -->
                 <div class="form-section">
@@ -372,6 +379,90 @@
                                 <option value="Special Handling">Special Handling Required</option>
                             </select>
                             <label for="storage_requirements" class="form-label">Storage Requirements</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Packaging & Units -->
+                <div class="form-section">
+                    <h2 class="section-title">
+                        <span class="section-icon">📦</span>
+                        Packaging & Units
+                    </h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <select class="form-select" name="unit" id="unit" required>
+                                <option value="">Select Unit Type</option>
+
+                                <optgroup label="Liquid Medicines">
+                                    <option value="bottle">Bottle (e.g., syrup bottle)</option>
+                                    <option value="ml">mL (milliliter - for dosing)</option>
+                                    <option value="L">L (liter - bulk)</option>
+                                    <option value="vial">Vial (injection vial)</option>
+                                    <option value="ampoule">Ampoule (sealed glass)</option>
+                                    <option value="dropper_bottle">Dropper Bottle (eye/ear drops)</option>
+                                    <option value="nebule">Nebule (nebulizer)</option>
+                                </optgroup>
+
+                                <optgroup label="Solid Medicines">
+                                    <option value="tablet">Tablet</option>
+                                    <option value="capsule">Capsule</option>
+                                    <option value="blister_pack">Blister Pack</option>
+                                    <option value="box">Box</option>
+                                    <option value="strip">Strip</option>
+                                    <option value="sachet">Sachet</option>
+                                </optgroup>
+
+                                <optgroup label="Injectables">
+                                    <option value="syringe">Syringe (prefilled)</option>
+                                    <option value="injection_vial">Injection Vial</option>
+                                    <option value="injection_ampoule">Injection Ampoule</option>
+                                </optgroup>
+
+                                <optgroup label="Topical">
+                                    <option value="tube">Tube (cream/ointment)</option>
+                                    <option value="jar">Jar (ointment)</option>
+                                    <option value="topical_bottle">Bottle (lotion)</option>
+                                </optgroup>
+
+                                <optgroup label="Other">
+                                    <option value="inhaler">Inhaler</option>
+                                    <option value="patch">Patch</option>
+                                    <option value="suppository">Suppository</option>
+                                    <option value="piece" selected>Piece (default)</option>
+                                    <option value="pack">Pack</option>
+                                </optgroup>
+                            </select>
+                            <label for="unit" class="form-label">Unit Type <span
+                                    class="required-indicator">*</span></label>
+                            <div class="help-text">How is this product packaged/sold?</div>
+                        </div>
+
+                        <div class="form-group">
+                            <input type="number" class="form-input" name="unit_quantity" id="unit_quantity"
+                                placeholder=" " step="0.01" min="0.01" value="1" required>
+                            <label for="unit_quantity" class="form-label">
+                                <span id="unit_quantity_label">Quantity per Unit</span>
+                            </label>
+                            <div class="help-text" id="unit_quantity_help">
+                                For tablets: 1. For 60mL bottle: 60. For 10-tablet blister: 10
+                            </div>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <div
+                                style="background: #f8f9fa; border: 2px solid #e9ecef; border-radius: 8px; padding: 12px 16px; margin: 8px 0;">
+                                <label
+                                    style="font-size: 0.875rem; font-weight: 500; color: #495057; margin-bottom: 4px; display: block;">
+                                    Unit Display Preview:
+                                </label>
+                                <div style="font-size: 1rem; font-weight: 500; color: #495057; min-height: 24px;">
+                                    <span id="unit-preview-text" style="color: #6c757d; font-style: italic;">Select
+                                        unit type above</span>
+                                </div>
+                                <small class="help-text" style="margin-top: 4px;">This is how stock will be
+                                    displayed</small>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -485,6 +576,140 @@
     </div>
 
     <script type="text/javascript">
+        // Unit display mappings
+        const unitDisplayMap = {
+            'bottle': 'bottle',
+            'ml': 'mL',
+            'L': 'L',
+            'vial': 'vial',
+            'ampoule': 'ampoule',
+            'dropper_bottle': 'dropper bottle',
+            'nebule': 'nebule',
+            'tablet': 'tablet',
+            'capsule': 'capsule',
+            'blister_pack': 'blister pack',
+            'box': 'box',
+            'strip': 'strip',
+            'sachet': 'sachet',
+            'syringe': 'syringe',
+            'injection_vial': 'vial',
+            'injection_ampoule': 'ampoule',
+            'tube': 'tube',
+            'jar': 'jar',
+            'topical_bottle': 'bottle',
+            'inhaler': 'inhaler',
+            'patch': 'patch',
+            'suppository': 'suppository',
+            'piece': 'pc',
+            'pack': 'pack'
+        };
+
+        // Units that typically have quantity > 1
+        const volumeUnits = ['bottle', 'ml', 'L', 'vial', 'ampoule', 'dropper_bottle',
+            'nebule', 'tube', 'jar', 'topical_bottle', 'syringe',
+            'injection_vial', 'injection_ampoule'
+        ];
+
+        function updateUnitQuantityLabel() {
+            const unitSelect = document.getElementById('unit');
+            const quantityInput = document.getElementById('unit_quantity');
+            const quantityLabel = document.getElementById('unit_quantity_label');
+            const quantityHelp = document.getElementById('unit_quantity_help');
+
+            if (!unitSelect || !quantityInput) return;
+
+            const selectedUnit = unitSelect.value;
+            const unitDisplay = unitDisplayMap[selectedUnit] || selectedUnit;
+
+            if (volumeUnits.includes(selectedUnit)) {
+                quantityLabel.innerHTML = `Volume/Size per ${unitDisplay}`;
+                quantityHelp.textContent = `Enter volume (e.g., 60 for 60mL bottle, 10 for 10mL vial)`;
+                if (quantityInput.value === '1') {
+                    quantityInput.value = '';
+                }
+            } else if (selectedUnit === 'blister_pack' || selectedUnit === 'strip' || selectedUnit === 'box' ||
+                selectedUnit === 'pack') {
+                quantityLabel.innerHTML = `Items per ${unitDisplay}`;
+                quantityHelp.textContent = `How many tablets/capsules per ${unitDisplay}? (e.g., 10)`;
+            } else {
+                quantityLabel.innerHTML = 'Quantity per Unit';
+                quantityHelp.textContent = 'Usually 1 for individual items (tablets, capsules, etc.)';
+                if (!quantityInput.value || quantityInput.value === '') {
+                    quantityInput.value = '1';
+                }
+            }
+
+            updateUnitPreview();
+        }
+
+        function updateUnitPreview() {
+            const unitSelect = document.getElementById('unit');
+            const quantityInput = document.getElementById('unit_quantity');
+            const previewText = document.getElementById('unit-preview-text');
+
+            if (!unitSelect || !quantityInput || !previewText) return;
+
+            const selectedUnit = unitSelect.value;
+            const quantity = quantityInput.value;
+            const unitDisplay = unitDisplayMap[selectedUnit] || selectedUnit;
+
+            if (!selectedUnit) {
+                previewText.textContent = 'Select unit type above';
+                previewText.style.color = '#6c757d';
+                previewText.style.fontStyle = 'italic';
+                return;
+            }
+
+            if (!quantity || parseFloat(quantity) <= 0) {
+                previewText.textContent = `Enter quantity for ${unitDisplay}`;
+                previewText.style.color = '#6c757d';
+                previewText.style.fontStyle = 'italic';
+                return;
+            }
+
+            // Generate preview
+            let preview = '';
+            const qty = parseFloat(quantity);
+
+            if (volumeUnits.includes(selectedUnit)) {
+                if (selectedUnit === 'ml' || selectedUnit === 'L') {
+                    preview = `Stock counted in: ${unitDisplay}`;
+                } else {
+                    preview = `1 ${unitDisplay} = ${qty}mL`;
+                }
+            } else if (selectedUnit === 'blister_pack' || selectedUnit === 'strip' || selectedUnit === 'box' ||
+                selectedUnit === 'pack') {
+                preview = `1 ${unitDisplay} = ${qty} pcs`;
+            } else if (qty === 1) {
+                preview = `Stock counted per ${unitDisplay}`;
+            } else {
+                preview = `1 ${unitDisplay} = ${qty} units`;
+            }
+
+            previewText.textContent = preview;
+            previewText.style.color = '#28a745';
+            previewText.style.fontStyle = 'normal';
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const unitSelect = document.getElementById('unit');
+            const quantityInput = document.getElementById('unit_quantity');
+
+            if (unitSelect) {
+                unitSelect.addEventListener('change', updateUnitQuantityLabel);
+            }
+
+            if (quantityInput) {
+                quantityInput.addEventListener('input', updateUnitPreview);
+            }
+
+            // Initialize if editing
+            if (unitSelect && unitSelect.value) {
+                updateUnitQuantityLabel();
+            }
+        });
+
         window.productData = {
             @foreach ($products as $product)
                 '{{ $product->id }}': {
@@ -502,11 +727,26 @@
                     reorder_level: {{ $product->reorder_level ?? 0 }},
                     supplier_id: {{ $product->supplier_id ?? 'null' }},
                     category_id: {{ $product->category_id ?? 'null' }},
-                    supplier: @if($product->supplier) { name: '{{ $product->supplier->name }}' } @else null @endif,
-                    category: @if($product->category) { name: '{{ $product->category->name }}' } @else null @endif,
+                    supplier: @if ($product->supplier)
+                        {
+                            name: '{{ $product->supplier->name }}'
+                        }
+                    @else
+                        null
+                    @endif ,
+                    category: @if ($product->category)
+                        {
+                            name: '{{ $product->category->name }}'
+                        }
+                    @else
+                        null
+                    @endif ,
                     created_at: '{{ $product->created_at }}',
                     updated_at: '{{ $product->updated_at }}'
-                }@if (!$loop->last),@endif
+                }
+                @if (!$loop->last)
+                    ,
+                @endif
             @endforeach
         };
 
@@ -562,7 +802,7 @@
         }
     </script>
 
-<script>
+    <script>
         let currentBatchId = null;
         let maxQuantity = 0;
         let currentProductId = null;
@@ -577,7 +817,10 @@
         // Add this function to split combined dosage units
         function splitDosageUnit(combinedDosage) {
             if (!combinedDosage) {
-                return { strength: '', unit: '' };
+                return {
+                    strength: '',
+                    unit: ''
+                };
             }
 
             // Define common units to look for
@@ -589,17 +832,26 @@
             for (let unit of sortedUnits) {
                 if (combinedDosage.endsWith(unit)) {
                     const strength = combinedDosage.substring(0, combinedDosage.length - unit.length);
-                    return { strength: strength, unit: unit };
+                    return {
+                        strength: strength,
+                        unit: unit
+                    };
                 }
             }
 
             // If no unit is found, check if it's all numeric (strength only)
             if (/^\d+\.?\d*$/.test(combinedDosage)) {
-                return { strength: combinedDosage, unit: '' };
+                return {
+                    strength: combinedDosage,
+                    unit: ''
+                };
             }
 
             // If it's not numeric and no unit found, treat as unit only
-            return { strength: '', unit: combinedDosage };
+            return {
+                strength: '',
+                unit: combinedDosage
+            };
         }
 
         // Dosage preview functionality
@@ -809,6 +1061,10 @@
                     previewText.className = 'preview-text empty';
                 }
             }
+            // Set unit fields
+            document.getElementById("unit").value = product.unit || 'piece';
+            document.getElementById("unit_quantity").value = product.unit_quantity || '1';
+            updateUnitQuantityLabel();
         }
 
         function showProductInfo(productId) {
@@ -834,91 +1090,149 @@
                 }
             }
 
+            // Get unit display text
+            const unitDisplayMap = {
+                'bottle': 'Bottle',
+                'ml': 'mL',
+                'L': 'Liter',
+                'vial': 'Vial',
+                'ampoule': 'Ampoule',
+                'dropper_bottle': 'Dropper Bottle',
+                'nebule': 'Nebule',
+                'tablet': 'Tablet',
+                'capsule': 'Capsule',
+                'blister_pack': 'Blister Pack',
+                'box': 'Box',
+                'strip': 'Strip',
+                'sachet': 'Sachet',
+                'syringe': 'Syringe',
+                'injection_vial': 'Injection Vial',
+                'injection_ampoule': 'Injection Ampoule',
+                'tube': 'Tube',
+                'jar': 'Jar',
+                'topical_bottle': 'Topical Bottle',
+                'inhaler': 'Inhaler',
+                'patch': 'Patch',
+                'suppository': 'Suppository',
+                'piece': 'Piece',
+                'pack': 'Pack'
+            };
+
+            const unitText = unitDisplayMap[product.unit] || product.unit || 'Piece';
+            const unitQuantity = product.unit_quantity || 1;
+
+            // Build unit description
+            let unitDescription = unitText;
+            const volumeUnits = ['bottle', 'ml', 'L', 'vial', 'ampoule', 'dropper_bottle',
+                'nebule', 'tube', 'jar', 'topical_bottle', 'syringe',
+                'injection_vial', 'injection_ampoule'
+            ];
+
+            if (volumeUnits.includes(product.unit) && unitQuantity != 1) {
+                if (product.unit === 'ml' || product.unit === 'L') {
+                    unitDescription = `${unitQuantity} ${unitText}`;
+                } else {
+                    unitDescription = `${unitText} (${unitQuantity}mL)`;
+                }
+            } else if (['blister_pack', 'strip', 'box', 'pack'].includes(product.unit) && unitQuantity != 1) {
+                unitDescription = `${unitText} (${unitQuantity} pcs)`;
+            } else if (unitQuantity != 1) {
+                unitDescription = `${unitText} (${unitQuantity} units)`;
+            }
+
             content.innerHTML = `
-                <div class="info-section">
-                    <h3>Basic Information</h3>
-                    <div class="info-item">
-                        <span class="info-label">Product Code:</span>
-                        <span class="info-value">${product.product_code || '-'}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Product Name:</span>
-                        <span class="info-value">${product.product_name || '-'}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Generic Name:</span>
-                        <span class="info-value">${product.generic_name || '-'}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Brand Name:</span>
-                        <span class="info-value">${product.brand_name || '-'}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Manufacturer:</span>
-                        <span class="info-value">${product.manufacturer || '-'}</span>
-                    </div>
-                </div>
+        <div class="info-section">
+            <h3>Basic Information</h3>
+            <div class="info-item">
+                <span class="info-label">Product Code:</span>
+                <span class="info-value">${product.product_code || '-'}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Product Name:</span>
+                <span class="info-value">${product.product_name || '-'}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Generic Name:</span>
+                <span class="info-value">${product.generic_name || '-'}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Brand Name:</span>
+                <span class="info-value">${product.brand_name || '-'}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Manufacturer:</span>
+                <span class="info-value">${product.manufacturer || '-'}</span>
+            </div>
+        </div>
 
-                <div class="info-section">
-                    <h3>Classification</h3>
-                    <div class="info-item">
-                        <span class="info-label">Product Type:</span>
-                        <span class="info-value">${product.product_type || '-'}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Category:</span>
-                        <span class="info-value">${product.category ? product.category.name : '-'}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Classification:</span>
-                        <span class="info-value">${classificationText}</span>
-                    </div>
-                </div>
+        <div class="info-section">
+            <h3>Classification</h3>
+            <div class="info-item">
+                <span class="info-label">Product Type:</span>
+                <span class="info-value">${product.product_type || '-'}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Category:</span>
+                <span class="info-value">${product.category ? product.category.name : '-'}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Classification:</span>
+                <span class="info-value">${classificationText}</span>
+            </div>
+        </div>
 
-                <div class="info-section">
-                    <h3>Dosage & Form</h3>
-                    <div class="info-item">
-                        <span class="info-label">Form Type:</span>
-                        <span class="info-value">${product.form_type || '-'}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Dosage Strength:</span>
-                        <span class="info-value">${product.dosage_strength || '-'}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Dosage Unit:</span>
-                        <span class="info-value">${product.dosage_unit || '-'}</span>
-                    </div>
-                </div>
+        <div class="info-section">
+            <h3>Dosage & Form</h3>
+            <div class="info-item">
+                <span class="info-label">Form Type:</span>
+                <span class="info-value">${product.form_type || '-'}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Dosage:</span>
+                <span class="info-value">${product.dosage_unit || '-'}</span>
+            </div>
+        </div>
 
-                <div class="info-section">
-                    <h3>Storage & Supply</h3>
-                    <div class="info-item">
-                        <span class="info-label">Storage Requirements:</span>
-                        <span class="info-value">${product.storage_requirements || '-'}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Reorder Level:</span>
-                        <span class="info-value">${product.reorder_level ? product.reorder_level + ' units' : '-'}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Supplier:</span>
-                        <span class="info-value">${product.supplier ? product.supplier.name : '-'}</span>
-                    </div>
-                </div>
+        <div class="info-section">
+            <h3>Packaging & Units</h3>
+            <div class="info-item">
+                <span class="info-label">Unit Type:</span>
+                <span class="info-value">${unitDescription}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Stock Counted In:</span>
+                <span class="info-value">${unitText}</span>
+            </div>
+        </div>
 
-                <div class="info-section">
-                    <h3>System Information</h3>
-                    <div class="info-item">
-                        <span class="info-label">Created:</span>
-                        <span class="info-value">${formatDate(product.created_at)}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Last Updated:</span>
-                        <span class="info-value">${formatDate(product.updated_at)}</span>
-                    </div>
-                </div>
-            `;
+        <div class="info-section">
+            <h3>Storage & Supply</h3>
+            <div class="info-item">
+                <span class="info-label">Storage Requirements:</span>
+                <span class="info-value">${product.storage_requirements || '-'}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Reorder Level:</span>
+                <span class="info-value">${product.reorder_level ? product.reorder_level + ' ' + unitText.toLowerCase() : '-'}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Supplier:</span>
+                <span class="info-value">${product.supplier ? product.supplier.name : '-'}</span>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <h3>System Information</h3>
+            <div class="info-item">
+                <span class="info-label">Created:</span>
+                <span class="info-value">${formatDate(product.created_at)}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Last Updated:</span>
+                <span class="info-value">${formatDate(product.updated_at)}</span>
+            </div>
+        </div>
+    `;
 
             modal.style.display = 'flex';
         }
@@ -1113,5 +1427,6 @@
     </script>
     @stack('scripts')
 </body>
+@include('admin.admin-footer')
 
 </html>

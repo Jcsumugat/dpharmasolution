@@ -17,6 +17,8 @@ class Product extends Model
         'product_type',
         'form_type',
         'dosage_unit',
+        'unit',
+        'unit_quantity',
         'classification',
         'storage_requirements',
         'reorder_level',
@@ -482,5 +484,82 @@ class Product extends Model
             ->where('expiration_date', '<=', now()->addDays($days))
             ->orderBy('expiration_date')
             ->get();
+    }
+    /**
+     * Get display name for the unit type
+     */
+    public function getUnitDisplay()
+    {
+        $unitMap = [
+            'bottle' => 'bottle',
+            'ml' => 'mL',
+            'L' => 'L',
+            'vial' => 'vial',
+            'ampoule' => 'ampoule',
+            'dropper_bottle' => 'dropper bottle',
+            'nebule' => 'nebule',
+            'tablet' => 'tablet',
+            'capsule' => 'capsule',
+            'blister_pack' => 'blister pack',
+            'box' => 'box',
+            'strip' => 'strip',
+            'sachet' => 'sachet',
+            'syringe' => 'syringe',
+            'injection_vial' => 'vial',
+            'injection_ampoule' => 'ampoule',
+            'tube' => 'tube',
+            'jar' => 'jar',
+            'topical_bottle' => 'bottle',
+            'inhaler' => 'inhaler',
+            'patch' => 'patch',
+            'suppository' => 'suppository',
+            'piece' => 'pcs',
+            'pack' => 'pack',
+        ];
+
+        $display = $unitMap[$this->unit] ?? $this->unit;
+
+        // For volume units, show the quantity
+        $volumeUnits = [
+            'bottle',
+            'ml',
+            'L',
+            'vial',
+            'ampoule',
+            'dropper_bottle',
+            'nebule',
+            'tube',
+            'jar',
+            'topical_bottle',
+            'syringe',
+            'injection_vial',
+            'injection_ampoule'
+        ];
+
+        if (in_array($this->unit, $volumeUnits) && $this->unit_quantity && $this->unit_quantity != 1) {
+            if ($this->unit === 'ml' || $this->unit === 'L') {
+                return $display;
+            }
+            return $display . ' (' . number_format($this->unit_quantity, 0) . 'mL)';
+        }
+
+        // For packs, show items per pack
+        if (in_array($this->unit, ['blister_pack', 'strip', 'box', 'pack']) && $this->unit_quantity && $this->unit_quantity != 1) {
+            return $display . ' (' . number_format($this->unit_quantity, 0) . ' pcs)';
+        }
+
+        return $display;
+    }
+
+    /**
+     * Get full unit description for detailed display
+     */
+    public function getFullUnitDescription()
+    {
+        if (!$this->unit || $this->unit === 'piece') {
+            return 'per piece';
+        }
+
+        return 'per ' . $this->getUnitDisplay();
     }
 }

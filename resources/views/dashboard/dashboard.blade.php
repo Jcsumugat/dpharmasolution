@@ -647,5 +647,5 @@
         });
     </script>
 </body>
-
+@include('admin.admin-footer')
 </html>

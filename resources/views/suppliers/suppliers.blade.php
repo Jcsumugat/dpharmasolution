@@ -391,5 +391,5 @@
 
     @stack('scripts')
 </body>
-
+@include('admin.admin-footer')
 </html>

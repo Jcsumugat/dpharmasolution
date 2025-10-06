@@ -20,7 +20,7 @@
                 <button class="filter-btn" data-filter="prescription">Prescriptions</button>
                 <button class="filter-btn" data-filter="online_order">Non Prescriptions</button>
                 <button class="filter-btn filter-duplicate" data-filter="duplicate">
-                    ⚠️ Duplicates/Similar
+                    Duplicate Warnings
                 </button>
             </div>
         </div>
@@ -37,11 +37,6 @@
                 <div class="stat-label">Total Orders</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number" id="pending-orders">{{ $prescriptions->where('status', 'pending')->count() }}
-                </div>
-                <div class="stat-label">Pending</div>
-            </div>
-            <div class="stat-card">
                 <div class="stat-number" id="prescription-count">
                     {{ $prescriptions->where('order_type', 'prescription')->count() }}</div>
                 <div class="stat-label">Prescriptions Orders</div>
@@ -50,6 +45,12 @@
                 <div class="stat-number" id="online-order-count">
                     {{ $prescriptions->where('order_type', 'online_order')->count() }}</div>
                 <div class="stat-label">Non Prescription Orders</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="duplicate-count">
+                    {{ $prescriptions->whereIn('duplicate_check_status', ['duplicate', 'suspicious'])->count() }}
+                </div>
+                <div class="stat-label">Duplicate warnings</div>
             </div>
         </div>
 
@@ -889,13 +890,23 @@
                     const searchData = row.dataset.search || '';
                     const orderStatus = row.dataset.status;
                     const orderType = row.dataset.orderType;
+                    const isDuplicate = row.dataset.duplicate === 'true';
 
                     const matchesSearch = !searchTerm || searchData.includes(searchTerm);
                     const matchesStatus = statusFilterValue === 'all' || orderStatus === statusFilterValue;
-                    const matchesType = activeTypeFilter === 'all' || orderType === activeTypeFilter;
-                    const isDuplicate = row.dataset.duplicate === 'true';
-                    const matchesDuplicateFilter = activeTypeFilter !== 'duplicate' || isDuplicate;
-                    const shouldShow = matchesSearch && matchesStatus && matchesType && matchesDuplicateFilter;
+
+                    // Handle type filter logic
+                    let matchesType = true;
+                    if (activeTypeFilter === 'duplicate') {
+                        // Show only duplicates/similar orders
+                        matchesType = isDuplicate;
+                    } else if (activeTypeFilter !== 'all') {
+                        // Show specific order type (prescription or online_order)
+                        matchesType = orderType === activeTypeFilter;
+                    }
+                    // If 'all' is selected, matchesType stays true
+
+                    const shouldShow = matchesSearch && matchesStatus && matchesType;
 
                     row.style.display = shouldShow ? '' : 'none';
                     if (shouldShow) visibleCount++;
@@ -2358,5 +2369,5 @@
     </script>
     @stack('scripts')
 </body>
-
+@include('admin.admin-footer')
 </html>

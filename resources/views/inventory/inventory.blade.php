@@ -106,12 +106,15 @@
                                         class="{{ $isLowStock ? 'text-danger' : ($availableStock <= 0 ? 'text-danger' : '') }}">
                                         <strong>{{ number_format($availableStock) }}</strong>
                                     </span>
+                                    <small class="text-muted">{{ $product->getUnitDisplay() }}</small>
+
                                     @if ($expiredStock > 0)
                                         <br><small class="text-danger">{{ number_format($expiredStock) }}
                                             expired</small>
                                     @endif
                                     @if ($product->reorder_level)
-                                        <br><small class="text-muted">Min: {{ $product->reorder_level }}</small>
+                                        <br><small class="text-muted">Min: {{ $product->reorder_level }}
+                                            {{ $product->getUnitDisplay() }}</small>
                                     @endif
                                 </div>
                             </td>
@@ -1170,5 +1173,6 @@
         window.showNotification = showNotification;
     </script>
 </body>
+@include('admin.admin-footer')
 
 </html>

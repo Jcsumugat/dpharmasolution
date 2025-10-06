@@ -115,7 +115,7 @@
                                                 <span class="timer-text">Calculating...</span>
                                             </span>
                                         @endif
-                                    @break 
+                                    @break
 
                                     @case('deactivated')
                                         <span class="status-badge status-inactive">
@@ -710,5 +710,6 @@
         </script>
         @stack('scripts')
     </body>
+    @include('admin.admin-footer')
 
     </html>
