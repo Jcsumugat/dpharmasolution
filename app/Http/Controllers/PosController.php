@@ -48,61 +48,65 @@ class PosController extends Controller
         return view('pos.pos', compact('products', 'categories', 'search', 'category'));
     }
 
-   public function searchProducts(Request $request)
-{
-    $search = $request->input('search');
-    $category = $request->input('category');
-    $form = $request->input('form');
+    public function searchProducts(Request $request)
+    {
+        $search = $request->input('search');
+        $category = $request->input('category');
+        $form = $request->input('form');
 
-    $query = Product::query();
+        $query = Product::query();
 
-    if ($search) {
-        $query->where(function ($q) use ($search) {
-            $q->where('product_name', 'LIKE', "%{$search}%")
-                ->orWhere('brand_name', 'LIKE', "%{$search}%")
-                ->orWhere('generic_name', 'LIKE', "%{$search}%");
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('product_name', 'LIKE', "%{$search}%")
+                    ->orWhere('brand_name', 'LIKE', "%{$search}%")
+                    ->orWhere('generic_name', 'LIKE', "%{$search}%");
+            });
+        }
+
+        if ($category) {
+            $query->whereHas('category', function ($q) use ($category) {
+                $q->where('name', $category);
+            });
+        }
+
+        if ($form) {
+            $query->where('form_type', 'LIKE', "%{$form}%");
+        }
+
+        $products = $query->with(['category', 'batches'])->get();
+
+        // Transform the data to match frontend expectations
+        $transformedProducts = $products->map(function ($product) {
+            return [
+                'id' => $product->id,
+                'product_name' => $product->product_name,
+                'brand_name' => $product->brand_name,
+                'generic_name' => $product->generic_name,
+                'unit_price' => $product->batches->first()->sale_price ?? 0, // Get price from first batch
+                'total_stock' => $product->stock_quantity ?? 0,
+                'batches' => $product->batches,
+                'category' => $product->category,
+            ];
         });
+
+        return response()->json([
+            'success' => true,
+            'products' => $transformedProducts
+        ]);
     }
-
-    if ($category) {
-        $query->whereHas('category', function ($q) use ($category) {
-            $q->where('name', $category);
-        });
-    }
-
-    if ($form) {
-        $query->where('form_type', 'LIKE', "%{$form}%");
-    }
-
-    $products = $query->with(['category', 'batches'])->get();
-
-    // Transform the data to match frontend expectations
-    $transformedProducts = $products->map(function ($product) {
-        return [
-            'id' => $product->id,
-            'product_name' => $product->product_name,
-            'brand_name' => $product->brand_name,
-            'generic_name' => $product->generic_name,
-            'unit_price' => $product->batches->first()->sale_price ?? 0, // Get price from first batch
-            'total_stock' => $product->stock_quantity ?? 0,
-            'batches' => $product->batches,
-            'category' => $product->category,
-        ];
-    });
-
-    return response()->json([
-        'success' => true,
-        'products' => $transformedProducts
-    ]);
-}
 
     public function getProduct($id)
     {
-        $product = Product::with(['batches' => function ($query) {
-            $query->where('quantity_remaining', '>', 0)
-                ->where('expiration_date', '>', now())
-                ->orderBy('expiration_date', 'asc');
-        }])->findOrFail($id);
+        $product = Product::with([
+            'batches' => function ($query) {
+                $query->where('quantity_remaining', '>', 0)
+                    ->where('expiration_date', '>', now())
+                    ->orderBy('expiration_date', 'asc');
+            },
+            'supplier',
+            'category' // Added category relationship
+        ])->findOrFail($id);
 
         if ($product->batches->isEmpty()) {
             return response()->json([

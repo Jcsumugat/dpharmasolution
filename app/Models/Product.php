@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Schema;
-
+use Illuminate\Support\Facades\Log;
 class Product extends Model
 {
     use HasFactory;
@@ -301,6 +301,11 @@ class Product extends Model
     /**
      * UPDATED: Update cached fields including stock_quantity (if column exists)
      */
+    // In your Product.php model
+
+    /**
+     * UPDATED: Update cached fields including stock_quantity (if column exists)
+     */
     public function updateCachedFields()
     {
         $availableBatches = $this->availableBatches()->get();
@@ -330,16 +335,24 @@ class Product extends Model
         }
 
         if (Schema::hasColumn('products', 'lowest_sale_price')) {
-            $updates['lowest_sale_price'] = $availableBatches->min('sale_price');
+            $updates['lowest_sale_price'] = $availableBatches->min('sale_price') ?? 0;
         }
 
         if (Schema::hasColumn('products', 'highest_sale_price')) {
-            $updates['highest_sale_price'] = $availableBatches->max('sale_price');
+            $updates['highest_sale_price'] = $availableBatches->max('sale_price') ?? 0;
         }
 
         if (!empty($updates)) {
             $this->update($updates);
+
+            Log::info('Product cached fields updated', [
+                'product_id' => $this->id,
+                'product_name' => $this->product_name,
+                'updates' => $updates
+            ]);
         }
+
+        return $this;
     }
 
     /**

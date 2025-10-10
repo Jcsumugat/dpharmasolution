@@ -76,20 +76,20 @@
                             </td>
                             <td class="quantity received">
                                 {{ number_format($batch->quantity_received) }}
-                                <small class="text-muted">{{ $product->getUnitDisplay() }}</small>
+                                <small class="text-muted">pieces</small>
+
                             </td>
                             <td class="quantity remaining">
                                 <span class="qty-value {{ $isOutOfStock ? 'out-of-stock' : 'in-stock' }}">
                                     {{ number_format($batch->quantity_remaining) }}
                                 </span>
-                                <small class="text-muted">{{ $product->getUnitDisplay() }}</small>
+                                <small class="text-muted">pieces</small>
                             </td>
                             <td class="price cost">
                                 <div class="price-info">
                                     <span class="price-main">
                                         <span class="currency">₱</span>{{ number_format($batch->unit_cost, 2) }}
                                     </span>
-                                    <small class="text-muted">{{ $product->getUnitDisplay() }}</small>
                                 </div>
                             </td>
                             <td class="price sale">
@@ -98,7 +98,6 @@
                                         <span class="price-main">
                                             <span class="currency">₱</span>{{ number_format($batch->sale_price, 2) }}
                                         </span>
-                                        <small class="text-muted">{{ $product->getUnitDisplay() }}</small>
                                     </div>
                                     @if ($batch->unit_cost > 0)
                                         @php

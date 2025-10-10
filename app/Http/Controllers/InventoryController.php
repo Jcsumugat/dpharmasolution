@@ -9,6 +9,7 @@ use App\Models\Supplier;
 use App\Models\StockMovement;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class InventoryController extends Controller
 {
@@ -289,7 +290,6 @@ class InventoryController extends Controller
 
         return "{$prefix}{$date}{$sequence}";
     }
-
     public function addBatch(Request $request, Product $product)
     {
         $validated = $request->validate([
@@ -332,6 +332,7 @@ class InventoryController extends Controller
 
             $batch = ProductBatch::create($batchData);
 
+            // Create stock movement
             StockMovement::createMovement(
                 $product->id,
                 StockMovement::TYPE_PURCHASE,
@@ -342,9 +343,35 @@ class InventoryController extends Controller
                 $batch->id
             );
 
+            // Update product cached fields including stock_quantity
             $product->updateCachedFields();
 
+            // CRITICAL: Ensure stock_quantity is updated immediately
+            // Calculate total available stock (non-expired batches only)
+            $totalAvailableStock = ProductBatch::where('product_id', $product->id)
+                ->where('quantity_remaining', '>', 0)
+                ->where('expiration_date', '>', now())
+                ->sum('quantity_remaining');
+
+            // Force update the stock_quantity column if it exists
+            if (Schema::hasColumn('products', 'stock_quantity')) {
+                DB::table('products')
+                    ->where('id', $product->id)
+                    ->update(['stock_quantity' => $totalAvailableStock]);
+            }
+
             DB::commit();
+
+            // Refresh product to get updated values
+            $product->refresh();
+
+            Log::info('Batch added successfully', [
+                'product_id' => $product->id,
+                'batch_number' => $batchNumber,
+                'quantity_added' => $validated['quantity_received'],
+                'new_stock_quantity' => $product->stock_quantity ?? $totalAvailableStock,
+                'total_available_stock' => $totalAvailableStock
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -352,13 +379,15 @@ class InventoryController extends Controller
                 'batch' => $batch->load('product', 'supplier'),
                 'unit_display' => $batch->getUnitDisplay(),
                 'has_override' => $batch->hasUnitOverride(),
+                'updated_stock' => $totalAvailableStock,
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
 
             Log::error('Failed to add batch', [
                 'product_id' => $product->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([

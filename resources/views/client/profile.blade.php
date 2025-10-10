@@ -155,5 +155,5 @@
 
     @stack('scripts')
 </body>
-
+@include('client.client-footer')
 </html>

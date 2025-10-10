@@ -598,6 +598,73 @@
         // Multi-item packaging
         const multiItemUnits = ['blister_pack', 'strip', 'box', 'pack', 'sachet'];
 
+        function formatStockDisplay(quantity, unit, unitQuantity) {
+            const unitDisplayMap = {
+                'bottle': 'Bottle',
+                'vial': 'Vial',
+                'ampoule': 'Ampoule',
+                'dropper_bottle': 'Dropper Bottle',
+                'nebule': 'Nebule',
+                'blister_pack': 'Blister Pack',
+                'box': 'Box',
+                'strip': 'Strip',
+                'sachet': 'Sachet',
+                'syringe': 'Pre-filled Syringe',
+                'tube': 'Tube',
+                'jar': 'Jar',
+                'topical_bottle': 'Bottle',
+                'inhaler': 'Inhaler',
+                'patch': 'Patch',
+                'suppository': 'Suppository',
+                'piece': 'Piece',
+                'pack': 'Pack'
+            };
+
+            const multiItemUnits = ['blister_pack', 'strip', 'box', 'pack', 'sachet'];
+            const volumeUnits = ['bottle', 'vial', 'ampoule', 'dropper_bottle', 'nebule',
+                'tube', 'jar', 'topical_bottle', 'syringe'
+            ];
+
+            const unitText = unitDisplayMap[unit] || unit || 'Piece';
+            const qty = parseFloat(quantity) || 0;
+            const unitQty = parseFloat(unitQuantity) || 1;
+
+            // For multi-item packaging (boxes, blister packs, etc.)
+            if (multiItemUnits.includes(unit) && unitQty > 1) {
+                const packageCount = qty / unitQty;
+                const wholePacks = Math.floor(packageCount);
+                const remainingPieces = qty % unitQty;
+
+                if (remainingPieces === 0) {
+                    // Exact packages
+                    const plural = wholePacks !== 1 ? 'es' : '';
+                    return `${wholePacks} ${unitText}${plural}`;
+                } else {
+                    // Mixed packages and pieces
+                    if (wholePacks > 0) {
+                        const plural = wholePacks !== 1 ? 'es' : '';
+                        return `${wholePacks} ${unitText}${plural} + ${remainingPieces} pcs`;
+                    } else {
+                        return `${remainingPieces} pieces`;
+                    }
+                }
+            }
+
+            // For volume containers (bottles, vials, etc.)
+            if (volumeUnits.includes(unit)) {
+                const plural = qty !== 1 ? 's' : '';
+                if (unitQty > 1) {
+                    return `${qty} ${unitText}${plural} (${unitQty}mL each)`;
+                } else {
+                    return `${qty} ${unitText}${plural}`;
+                }
+            }
+
+            // For individual pieces or single items
+            const plural = qty !== 1 ? 's' : '';
+            return `${qty} ${unitText}${plural}`;
+        }
+
         function updateUnitQuantityLabel() {
             const unitSelect = document.getElementById('unit');
             const quantityInput = document.getElementById('unit_quantity');
@@ -743,8 +810,9 @@
                     reorder_level: {{ $product->reorder_level ?? 0 }},
                     supplier_id: {{ $product->supplier_id ?? 'null' }},
                     category_id: {{ $product->category_id ?? 'null' }},
-                    unit: '{{ $product->unit ?? 'piece' }}', // ADD THIS
-                    unit_quantity: {{ $product->unit_quantity ?? 1 }}, // ADD THIS
+                    unit: '{{ $product->unit ?? 'piece' }}',
+                    unit_quantity: {{ $product->unit_quantity ?? 1 }},
+                    stock_quantity: {{ $product->stock_quantity ?? 0 }}, // ADD THIS LINE
                     supplier: @if ($product->supplier)
                         {
                             name: '{{ $product->supplier->name }}'
@@ -1257,15 +1325,16 @@
             </div>
         </div>
 
-        <div class="info-section">
+<div class="info-section">
             <h3>Packaging & Units</h3>
             <div class="info-item">
                 <span class="info-label">Unit Type:</span>
                 <span class="info-value">${unitDescription}</span>
             </div>
+
             <div class="info-item">
                 <span class="info-label">Stock Counted In:</span>
-                <span class="info-value">${unitText}</span>
+                <span class="info-value">${product.stock_quantity} pieces</span>
             </div>
         </div>
 
@@ -1275,10 +1344,10 @@
                 <span class="info-label">Storage Requirements:</span>
                 <span class="info-value">${product.storage_requirements || '-'}</span>
             </div>
-            <div class="info-item">
-                <span class="info-label">Reorder Level:</span>
-                <span class="info-value">${product.reorder_level ? product.reorder_level + ' ' + unitText.toLowerCase() : '-'}</span>
-            </div>
+        <div class="info-item">
+            <span class="info-label">Reorder Level</span>
+            <span class="info-value">${product.reorder_level ? product.reorder_level + ' pieces' : '-'}</span>
+        </div>
             <div class="info-item">
                 <span class="info-label">Supplier:</span>
                 <span class="info-value">${product.supplier ? product.supplier.name : '-'}</span>

@@ -215,12 +215,27 @@
         let cachedProducts = [];
         let isSearching = false;
 
-        function saveCartToStorage() {
-            try {
-                localStorage.setItem('pos_cart', JSON.stringify(cart));
-                localStorage.setItem('pos_cart_timestamp', Date.now().toString());
-            } catch (error) {
-                console.error('Failed to save cart to storage:', error);
+        let cartBackup = null;
+        let lastActivity = Date.now();
+
+        function backupCart() {
+            cartBackup = JSON.stringify(cart);
+            lastActivity = Date.now();
+        }
+
+        function restoreCartIfRecent() {
+            const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+            if (cartBackup && (Date.now() - lastActivity < SESSION_TIMEOUT)) {
+                try {
+                    cart = JSON.parse(cartBackup);
+                    updateCartDisplay();
+                    if (cart.length > 0) {
+                        showNotification('Cart restored', 'success');
+                    }
+                } catch (error) {
+                    console.error('Failed to restore cart:', error);
+                    cart = [];
+                }
             }
         }
 
@@ -257,6 +272,15 @@
                 localStorage.removeItem('pos_cart_timestamp');
             } catch (error) {
                 console.error('Failed to clear cart storage:', error);
+            }
+        }
+
+        function saveCartToStorage() {
+            try {
+                localStorage.setItem('pos_cart', JSON.stringify(cart));
+                localStorage.setItem('pos_cart_timestamp', Date.now().toString());
+            } catch (error) {
+                console.error('Failed to save cart to storage:', error);
             }
         }
 
@@ -304,17 +328,17 @@
         function showCartRecoveryNotification(itemCount) {
             const notification = document.createElement('div');
             notification.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background: var(--color-success);
-                color: white;
-                padding: 10px 15px;
-                border-radius: var(--border-radius);
-                z-index: 1000;
-                font-size: 14px;
-                box-shadow: var(--shadow-medium);
-            `;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--color-success);
+            color: white;
+            padding: 10px 15px;
+            border-radius: var(--border-radius);
+            z-index: 1000;
+            font-size: 14px;
+            box-shadow: var(--shadow-medium);
+        `;
             notification.textContent = `Cart recovered with ${itemCount} items`;
             document.body.appendChild(notification);
 
@@ -347,6 +371,23 @@
             window.addEventListener('beforeunload', function() {
                 if (cart.length > 0) {
                     saveCartToStorage();
+                }
+            });
+            document.addEventListener('keydown', function(e) {
+                // F2 - Focus search
+                if (e.key === 'F2') {
+                    e.preventDefault();
+                    document.getElementById('productSearch').focus();
+                }
+                // F9 - Complete sale
+                if (e.key === 'F9' && !document.getElementById('submitBtn').disabled) {
+                    e.preventDefault();
+                    processTransaction();
+                }
+                // ESC - Clear search
+                if (e.key === 'Escape') {
+                    document.getElementById('productSearch').value = '';
+                    searchProducts();
                 }
             });
         });
@@ -403,53 +444,53 @@
 
             if (products.length === 0) {
                 productList.innerHTML = `
-                    <div class="no-results-message">
-                        No products found matching your criteria
-                    </div>
-                `;
+                <div class="no-results-message">
+                    No products found matching your criteria
+                </div>
+            `;
                 return;
             }
 
             const tableHTML = `
-                <table class="product-table">
-                    <thead>
-                        <tr>
-                            <th>Product</th>
-                            <th>Price</th>
-                            <th>Stock</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${products.map(product => `
-                                                <tr data-id="${product.id}">
-                                                    <td>
-                                                        <div class="product-name">${highlightMatch(product.product_name, searchTerm)}</div>
-                                                        <div class="product-brand">${highlightMatch(product.brand_name, searchTerm)}</div>
-                                                        ${product.batches && product.batches[0] && new Date(product.batches[0].expiration_date) <= new Date(Date.now() + 30*24*60*60*1000) ?
-                                                            `<div class="product-expiry">Expires: ${new Date(product.batches[0].expiration_date).toLocaleDateString()}</div>` : ''}
-                                                    </td>
-                                                    <td>
-                                                        <div class="product-price">₱${parseFloat(product.unit_price || 0).toFixed(2)}</div>
-                                                    </td>
-                                                    <td>
-                                                        <div class="product-stock">${product.total_stock || 0}</div>
-                                                    </td>
-                                                    <td class="action-cell">
-                                                        <div class="action-buttons-group">
-                                                            <button type="button" class="btn-view-details" onclick="showProductDetails(${product.id})">
-                                                                Details
-                                                            </button>
-                                                            <button type="button" class="btn-add-to-cart" onclick="addToCart(${product.id})">
-                                                                Add
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            `).join('')}
-                    </tbody>
-                </table>
-            `;
+            <table class="product-table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Price</th>
+                        <th>Stock</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${products.map(product => `
+                                                                <tr data-id="${product.id}">
+                                                                    <td>
+                                                                        <div class="product-name">${highlightMatch(product.product_name, searchTerm)}</div>
+                                                                        <div class="product-brand">${highlightMatch(product.brand_name, searchTerm)}</div>
+                                                                        ${product.batches && product.batches[0] && new Date(product.batches[0].expiration_date) <= new Date(Date.now() + 30*24*60*60*1000) ?
+                                                                            `<div class="product-expiry">Expires: ${new Date(product.batches[0].expiration_date).toLocaleDateString()}</div>` : ''}
+                                                                    </td>
+                                                                    <td>
+                                                                        <div class="product-price">₱${parseFloat(product.unit_price || 0).toFixed(2)}</div>
+                                                                    </td>
+                                                                    <td>
+                                                                        <div class="product-stock">${product.total_stock || 0}</div>
+                                                                    </td>
+                                                                    <td class="action-cell">
+                                                                        <div class="action-buttons-group">
+                                                                            <button type="button" class="btn-view-details" onclick="showProductDetails(${product.id})">
+                                                                                Details
+                                                                            </button>
+                                                                            <button type="button" class="btn-add-to-cart" onclick="addToCart(${product.id})">
+                                                                                Add
+                                                                            </button>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            `).join('')}
+                </tbody>
+            </table>
+        `;
 
             productList.innerHTML = tableHTML;
         }
@@ -465,6 +506,61 @@
 
         function escapeRegex(string) {
             return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        function formatUnitDisplay(unit, quantity) {
+            if (!unit) return 'Piece';
+
+            const unitDisplayMap = {
+                'bottle': 'Bottle',
+                'vial': 'Vial',
+                'ampoule': 'Ampoule',
+                'dropper_bottle': 'Dropper Bottle',
+                'nebule': 'Nebule',
+                'blister_pack': 'Blister Pack',
+                'box': 'Box',
+                'strip': 'Strip',
+                'sachet': 'Sachet',
+                'syringe': 'Pre-filled Syringe',
+                'tube': 'Tube',
+                'jar': 'Jar',
+                'topical_bottle': 'Bottle',
+                'inhaler': 'Inhaler',
+                'patch': 'Patch',
+                'suppository': 'Suppository',
+                'piece': 'Piece',
+                'pack': 'Pack'
+            };
+
+            const unitLabel = unitDisplayMap[unit] || unit;
+            const qty = parseFloat(quantity) || 1;
+
+            if (qty === 1) {
+                return `1 ${unitLabel}`;
+            } else {
+                return `${qty} ${unitLabel}${qty > 1 ? 's' : ''}`;
+            }
+        }
+
+        function formatStockDisplay(totalPieces, unit, unitQuantity) {
+            if (!totalPieces || totalPieces === 0) return '0';
+
+            const qty = parseFloat(unitQuantity) || 1;
+
+            if (qty === 1) {
+                return `${totalPieces} ${formatUnitDisplay(unit, qty)}`;
+            }
+
+            const packageCount = Math.floor(totalPieces / qty);
+            const remainingPieces = totalPieces % qty;
+
+            const unitLabel = formatUnitDisplay(unit, qty);
+
+            if (remainingPieces === 0) {
+                return `${packageCount} ${unitLabel}${packageCount > 1 ? 's' : ''}`;
+            } else {
+                return `${packageCount} ${unitLabel}${packageCount > 1 ? 's' : ''} + ${remainingPieces} pcs`;
+            }
         }
 
         async function showProductDetails(productId) {
@@ -486,102 +582,147 @@
                     title.textContent = `${product.product_name} - Product Information`;
 
                     content.innerHTML = `
-                <div class="info-section">
-                    <h3>Basic Information</h3>
-                    <div class="info-item">
-                        <span class="info-label">Product Code</span>
-                        <span class="info-value">${product.product_code || '-'}</span>
+                    <div class="info-section">
+                        <h3>Basic Information</h3>
+                        <div class="info-item">
+                            <span class="info-label">Product Code</span>
+                            <span class="info-value">${product.product_code || '-'}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Product Name</span>
+                            <span class="info-value">${product.product_name || '-'}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Generic Name</span>
+                            <span class="info-value">${product.generic_name || '-'}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Brand Name</span>
+                            <span class="info-value">${product.brand_name || '-'}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Manufacturer</span>
+                            <span class="info-value">${product.manufacturer || '-'}</span>
+                        </div>
                     </div>
-                    <div class="info-item">
-                        <span class="info-label">Product Name</span>
-                        <span class="info-value">${product.product_name || '-'}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Generic Name</span>
-                        <span class="info-value">${product.generic_name || '-'}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Brand Name</span>
-                        <span class="info-value">${product.brand_name || '-'}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Manufacturer</span>
-                        <span class="info-value">${product.manufacturer || '-'}</span>
-                    </div>
-                </div>
 
-                <div class="info-section">
-                    <h3>Classification</h3>
-                    <div class="info-item">
-                        <span class="info-label">Product Type</span>
-                        <span class="info-value">${product.product_type || '-'}</span>
+                    <div class="info-section">
+                        <h3>Classification</h3>
+                        <div class="info-item">
+                            <span class="info-label">Product Type</span>
+                            <span class="info-value">${product.product_type || '-'}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Category:</span>
+                            <span class="info-value">${product.category ? product.category.name : '-'}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Classification</span>
+                            <span class="info-value">${getClassificationName(product.classification)}</span>
+                        </div>
                     </div>
-                    <div class="info-item">
-                        <span class="info-label">Category</span>
-                        <span class="info-value">${product.category ? product.category.name : '-'}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Classification</span>
-                        <span class="info-value">${product.classification || '-'}</span>
-                    </div>
-                </div>
 
-                <div class="info-section">
-                    <h3>Dosage & Form</h3>
-                    <div class="info-item">
-                        <span class="info-label">Form Type</span>
-                        <span class="info-value">${product.form_type || '-'}</span>
+                    <div class="info-section">
+                        <h3>Dosage & Form</h3>
+                        <div class="info-item">
+                            <span class="info-label">Form Type</span>
+                            <span class="info-value">${product.form_type || '-'}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Dosage</span>
+                            <span class="info-value">${product.dosage_unit || '-'}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Unit Type</span>
+                            <span class="info-value">${formatUnitDisplay(product.unit, product.unit_quantity)}</span>
+                        </div>
                     </div>
-                    <div class="info-item">
-                        <span class="info-label">Dosage Strength</span>
-                        <span class="info-value">${product.dosage_strength || '-'}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Dosage Unit</span>
-                        <span class="info-value">${product.dosage_unit || '-'}</span>
-                    </div>
-                </div>
 
-                <div class="info-section">
-                    <h3>Pricing & Stock</h3>
-                    <div class="info-item">
-                        <span class="info-label">Unit Price</span>
-                        <span class="info-value">₱${parseFloat(product.unit_price || 0).toFixed(2)}</span>
+                    <div class="info-section">
+                        <h3>Pricing & Stock</h3>
+                        <div class="info-item">
+                            <span class="info-label">Unit Price</span>
+                            <span class="info-value">₱${parseFloat(product.unit_price || 0).toFixed(2)}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Available Stock</span>
+                            <span class="info-value">${formatStockDisplay(product.total_stock, product.unit, product.unit_quantity)}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Reorder Level</span>
+                            <span class="info-value">${product.reorder_level ? product.reorder_level + ' pieces' : '-'}</span>
+                        </div>
                     </div>
-                    <div class="info-item">
-                        <span class="info-label">Total Stock</span>
-                        <span class="info-value">${product.total_stock || 0} units</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Reorder Level</span>
-                        <span class="info-value">${product.reorder_level ? product.reorder_level + ' units' : '-'}</span>
-                    </div>
-                </div>
 
-                <div class="info-section">
-                    <h3>Storage & Supply</h3>
-                    <div class="info-item">
-                        <span class="info-label">Storage Requirements</span>
-                        <span class="info-value">${product.storage_requirements || '-'}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Supplier</span>
-                        <span class="info-value">${product.supplier ? product.supplier.name : '-'}</span>
-                    </div>
-                </div>
+                    ${product.batches && product.batches.length > 0 ? `
+                                                                <div class="info-section">
+                                                                    <h3>Available Batches</h3>
+                                                                    <div style="overflow-x: auto;">
+                                                                        <table style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">
+                                                                            <thead>
+                                                                                <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+                                                                                    <th style="padding: 8px; text-align: left;">Batch #</th>
+                                                                                    <th style="padding: 8px; text-align: left;">Expiry Date</th>
+                                                                                    <th style="padding: 8px; text-align: right;">Stock</th>
+                                                                                    <th style="padding: 8px; text-align: right;">Price</th>
+                                                                                </tr>
+                                                                            </thead>
+                                                                            <tbody>
+                                                                                ${product.batches.map(batch => {
+                                                                                    const expiryDate = new Date(batch.expiration_date);
+                                                                                    const today = new Date();
+                                                                                    const daysUntilExpiry = Math.floor((expiryDate - today) / (1000 * 60 * 60 * 24));
+                                                                                    const isExpiringSoon = daysUntilExpiry <= 30 && daysUntilExpiry > 0;
+                                                                                    const isExpired = daysUntilExpiry <= 0;
 
-                <div class="info-section">
-                    <h3>System Information</h3>
-                    <div class="info-item">
-                        <span class="info-label">Created</span>
-                        <span class="info-value">${formatDate(product.created_at)}</span>
+                                                                                    return `
+                                                <tr style="border-bottom: 1px solid #e5e7eb;">
+                                                    <td style="padding: 8px;">${batch.batch_number || '-'}</td>
+                                                    <td style="padding: 8px; color: ${isExpired ? '#dc2626' : isExpiringSoon ? '#f59e0b' : '#374151'};">
+                                                        ${expiryDate.toLocaleDateString()}
+                                                        ${isExpiringSoon ? '<br><small style="font-size: 0.75rem;">(Expiring soon)</small>' : ''}
+                                                        ${isExpired ? '<br><small style="font-size: 0.75rem;">(Expired)</small>' : ''}
+                                                    </td>
+                                                    <td style="padding: 8px; text-align: right;">
+                                                        ${batch.quantity_remaining} pcs
+                                                        <br><small style="font-size: 0.75rem; color: #6b7280;">
+                                                            (${formatStockDisplay(batch.quantity_remaining, product.unit, product.unit_quantity)})
+                                                        </small>
+                                                    </td>
+                                                    <td style="padding: 8px; text-align: right;">₱${parseFloat(batch.sale_price || 0).toFixed(2)}</td>
+                                                </tr>
+                                            `;
+                                                                                }).join('')}
+                                                                            </tbody>
+                                                                        </table>
+                                                                    </div>
+                                                                </div>
+                                                            ` : ''}
+
+                    <div class="info-section">
+                        <h3>Storage & Supply</h3>
+                        <div class="info-item">
+                            <span class="info-label">Storage Requirements</span>
+                            <span class="info-value">${product.storage_requirements || '-'}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Supplier</span>
+                            <span class="info-value">${product.supplier ? product.supplier.name : '-'}</span>
+                        </div>
                     </div>
-                    <div class="info-item">
-                        <span class="info-label">Last Updated</span>
-                        <span class="info-value">${formatDate(product.updated_at)}</span>
+
+                    <div class="info-section">
+                        <h3>System Information</h3>
+                        <div class="info-item">
+                            <span class="info-label">Created</span>
+                            <span class="info-value">${formatDate(product.created_at)}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Last Updated</span>
+                            <span class="info-value">${formatDate(product.updated_at)}</span>
+                        </div>
                     </div>
-                </div>
-            `;
+                `;
                 } else {
                     content.innerHTML =
                         '<div style="text-align: center; padding: 40px; color: #ef4444;">Failed to load product details.</div>';
@@ -597,6 +738,59 @@
             document.getElementById('productInfoModal').style.display = 'none';
         }
 
+        function getClassificationName(classificationId) {
+            const classificationMap = {
+                1: "Antibiotic - Bacterial infections",
+                2: "Analgesic - Pain relief",
+                3: "Antipyretic - Fever reduction",
+                4: "Anti-inflammatory - Inflammation",
+                5: "Antacid - Stomach acid neutralizer",
+                6: "Antihistamine - Allergic reactions",
+                7: "Antihypertensive - High blood pressure",
+                8: "Antidiabetic - Diabetes management",
+                9: "Cardiovascular - Heart conditions",
+                10: "Respiratory - Breathing disorders",
+                11: "Gastrointestinal - Digestive system",
+                12: "Dermatological - Skin conditions",
+                13: "Neurological - Nervous system",
+                14: "Psychiatric - Mental health",
+                15: "Hormonal - Endocrine system",
+                16: "Vitamin - Nutritional supplement",
+                17: "Mineral - Essential minerals",
+                18: "Immunosuppressant - Immune system",
+                19: "Anticoagulant - Blood thinner",
+                20: "Antifungal - Fungal infections",
+                21: "Antiviral - Viral infections",
+                22: "Other"
+            };
+
+            return classificationMap[classificationId] || 'Not specified';
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        z-index: 10000;
+        font-size: 14px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        animation: slideIn 0.3s ease-out;
+    `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease-in';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
         function formatDate(dateString) {
             if (!dateString) return '-';
             const date = new Date(dateString);
@@ -604,6 +798,11 @@
         }
 
         function addToCart(productId) {
+            const button = event.target;
+            const originalText = button.textContent;
+            button.disabled = true;
+            button.textContent = 'Adding...';
+
             fetch(`/pos/product/${productId}`)
                 .then(response => response.json())
                 .then(data => {
@@ -616,8 +815,9 @@
                                 existingItem.quantity++;
                                 updateCartDisplay();
                                 saveCartToStorage();
+                                showNotification('Quantity updated', 'success');
                             } else {
-                                alert('Cannot add more items. Insufficient stock.');
+                                showNotification('Insufficient stock', 'error');
                             }
                         } else {
                             cart.push({
@@ -630,14 +830,19 @@
                             });
                             updateCartDisplay();
                             saveCartToStorage();
+                            showNotification('Added to cart', 'success');
                         }
                     } else {
-                        alert(data.message);
+                        showNotification(data.message, 'error');
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    alert('Error adding item to cart');
+                    showNotification('Error adding item to cart', 'error');
+                })
+                .finally(() => {
+                    button.disabled = false;
+                    button.textContent = originalText;
                 });
         }
 
@@ -679,22 +884,22 @@
             }
 
             cartItemsContainer.innerHTML = cart.map(item => `
-                <div class="cart-item">
-                    <div class="item-info">
-                        <h5>${item.name}</h5>
-                        <p class="brand">${item.brand}</p>
-                        <p class="price">₱${item.price.toFixed(2)} each</p>
-                    </div>
-                    <div class="item-controls">
-                        <button class="btn-quantity" onclick="updateQuantity(${item.id}, ${item.quantity - 1})">-</button>
-                        <input type="number" value="${item.quantity}" min="1" max="${item.maxStock}"
-                               data-id="${item.id}" onchange="updateQuantity(${item.id}, parseInt(this.value))">
-                        <button class="btn-quantity" onclick="updateQuantity(${item.id}, ${item.quantity + 1})">+</button>
-                        <button class="btn-remove" onclick="removeFromCart(${item.id})">✕</button>
-                    </div>
-                    <div class="item-total">₱${(item.price * item.quantity).toFixed(2)}</div>
+            <div class="cart-item">
+                <div class="item-info">
+                    <h5>${item.name}</h5>
+                    <p class="brand">${item.brand}</p>
+                    <p class="price">₱${item.price.toFixed(2)} each</p>
                 </div>
-            `).join('');
+                <div class="item-controls">
+                    <button class="btn-quantity" onclick="updateQuantity(${item.id}, ${item.quantity - 1})">-</button>
+                    <input type="number" value="${item.quantity}" min="1" max="${item.maxStock}" data-id="${item.id}" onchange="updateQuantity(${item.id}, parseInt(this.value))">
+                    <button class="btn-quantity" onclick="updateQuantity(${item.id}, ${item.quantity + 1})">+</button>
+                    <button class="btn-remove" onclick="removeFromCart(${item.id})">✕</button>
+                </div>
+                <div class="item-total">₱${(item.price * item.quantity).toFixed(2)}</div>
+            </div>
+        `).join('');
+
             cartSummary.style.display = 'block';
             paymentSection.style.display = 'block';
 
@@ -815,82 +1020,81 @@
             const receiptContent = document.getElementById('receiptContent');
 
             receiptContent.innerHTML = `
-        <div class="receipt-body">
-            <div class="receipt">
-                <div class="receipt-business-info">
-                    <h3>MJ's Pharmacy</h3>
-                    <p>Your Trusted Healthcare Partner</p>
-                </div>
-
-                <div class="receipt-transaction-info">
-                    <p><strong>Transaction ID:</strong> ${transaction.transaction_id}</p>
-                    <p><strong>Date:</strong> ${new Date().toLocaleString()}</p>
-                    ${transaction.customer_name ? `<p><strong>Customer:</strong> ${transaction.customer_name}</p>` : ''}
-                    <p><strong>Payment:</strong> ${transaction.payment_method.toUpperCase()}</p>
-                </div>
-
-                <div class="receipt-items">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Item</th>
-                                <th>Qty</th>
-                                <th>Price</th>
-                                <th>Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${transaction.items.map(item => `
-                                        <tr>
-                                            <td>
-                                                <div class="item-name">${item.product_name}</div>
-                                                <div class="item-brand">${item.brand_name}</div>
-                                            </td>
-                                            <td>${item.quantity}</td>
-                                            <td>₱${parseFloat(item.unit_price).toFixed(2)}</td>
-                                            <td>₱${parseFloat(item.total_price).toFixed(2)}</td>
-                                        </tr>
-                                    `).join('')}
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="receipt-summary">
-                    <div class="summary-line">
-                        <span>Subtotal:</span>
-                        <span>₱${parseFloat(transaction.subtotal).toFixed(2)}</span>
+            <div class="receipt-body">
+                <div class="receipt">
+                    <div class="receipt-business-info">
+                        <h3>MJ's Pharmacy</h3>
+                        <p>Your Trusted Healthcare Partner</p>
                     </div>
-                    ${parseFloat(transaction.discount_amount) > 0 ? `
-                                <div class="summary-line">
-                                    <span>Discount:</span>
-                                    <span>-₱${parseFloat(transaction.discount_amount).toFixed(2)}</span>
-                                </div>
-                            ` : ''}
-                    <div class="summary-line total-line">
-                        <span><strong>Total:</strong></span>
-                        <span><strong>₱${parseFloat(transaction.total_amount).toFixed(2)}</strong></span>
-                    </div>
-                    <div class="summary-line">
-                        <span>Amount Paid:</span>
-                        <span>₱${parseFloat(transaction.amount_paid).toFixed(2)}</span>
-                    </div>
-                    <div class="summary-line">
-                        <span>Change:</span>
-                        <span>₱${parseFloat(transaction.change_amount).toFixed(2)}</span>
-                    </div>
-                </div>
 
-                <div class="receipt-footer">
-                    <p>Thank you for choosing MJ's Pharmacy!</p>
-                    <p>Please keep this receipt for your records</p>
+                    <div class="receipt-transaction-info">
+                        <p><strong>Transaction ID:</strong> ${transaction.transaction_id}</p>
+                        <p><strong>Date:</strong> ${new Date().toLocaleString()}</p>
+                        ${transaction.customer_name ? `<p><strong>Customer:</strong> ${transaction.customer_name}</p>` : ''}
+                        <p><strong>Payment:</strong> ${transaction.payment_method.toUpperCase()}</p>
+                    </div>
+
+                    <div class="receipt-items">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Qty</th>
+                                    <th>Price</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${transaction.items.map(item => `
+                                                                            <tr>
+                                                                                <td>
+                                                                                    <div class="item-name">${item.product_name}</div>
+                                                                                    <div class="item-brand">${item.brand_name}</div>
+                                                                                </td>
+                                                                                <td>${item.quantity}</td>
+                                                                                <td>₱${parseFloat(item.unit_price).toFixed(2)}</td>
+                                                                                <td>₱${parseFloat(item.total_price).toFixed(2)}</td>
+                                                                            </tr>
+                                                                        `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="receipt-summary">
+                        <div class="summary-line">
+                            <span>Subtotal:</span>
+                            <span>₱${parseFloat(transaction.subtotal).toFixed(2)}</span>
+                        </div>
+                        ${parseFloat(transaction.discount_amount) > 0 ? `
+                                                                    <div class="summary-line">
+                                        <span>Discount:</span>
+                                                                        <span>-₱${parseFloat(transaction.discount_amount).toFixed(2)}</span>
+                                                                    </div>
+                                                                ` : ''}
+                        <div class="summary-line total-line">
+                            <span><strong>Total:</strong></span>
+                            <span><strong>₱${parseFloat(transaction.total_amount).toFixed(2)}</strong></span>
+                        </div>
+                        <div class="summary-line">
+                            <span>Amount Paid:</span>
+                            <span>₱${parseFloat(transaction.amount_paid).toFixed(2)}</span>
+                        </div>
+                        <div class="summary-line">
+                            <span>Change:</span>
+                            <span>₱${parseFloat(transaction.change_amount).toFixed(2)}</span>
+                        </div>
+                    </div>
+
+                    <div class="receipt-footer">
+                        <p>Thank you for choosing MJ's Pharmacy!</p>
+                        <p>Please keep this receipt for your records</p>
+                    </div>
                 </div>
             </div>
-        </div>
-    `;
+        `;
 
             document.getElementById('receiptModal').classList.add('active');
         }
-
 
         function hideReceiptModal() {
             document.getElementById('receiptModal').classList.remove('active');
@@ -901,28 +1105,73 @@
             const printWindow = window.open('', '_blank');
 
             printWindow.document.write(`
-                <html>
+            <html>
                 <head>
                     <title>Receipt - MJ's Pharmacy</title>
                     <style>
-                        body { font-family: Arial, sans-serif; max-width: 300px; margin: 0 auto;}
-                        .receipt { padding: 20px; }
-                        .receipt-business-info { text-align: center; margin-bottom: 20px; }
-                        .receipt-business-info h3 { margin: 0; font-size: 18px; }
-                        .receipt-transaction-info p { margin: 5px 0; font-size: 12px; }
-                        .receipt-items table { width: 100%; border-collapse: collapse; font-size: 12px; }
-                        .receipt-items th, .receipt-items td { padding: 5px; border-bottom: 1px solid #ddd; }
-                        .receipt-items th { text-align: left; background: #f5f5f5; }
-                        .item-brand { font-size: 10px; color: #666; }
-                        .receipt-summary { margin-top: 15px; font-size: 12px; }
-                        .summary-line { display: flex; justify-content: space-between; margin: 3px 0; }
-                        .total-line { border-top: 2px solid #000; padding-top: 5px; font-weight: bold; }
-                        .receipt-footer { text-align: center; margin-top: 20px; font-size: 10px; }
+                        body {
+                            font-family: Arial, sans-serif;
+                            max-width: 300px;
+                            margin: 0 auto;
+                        }
+                        .receipt {
+                            padding: 20px;
+                        }
+                        .receipt-business-info {
+                            text-align: center;
+                            margin-bottom: 20px;
+                        }
+                        .receipt-business-info h3 {
+                            margin: 0;
+                            font-size: 18px;
+                        }
+                        .receipt-transaction-info p {
+                            margin: 5px 0;
+                            font-size: 12px;
+                        }
+                        .receipt-items table {
+                            width: 100%;
+                            border-collapse: collapse;
+                            font-size: 12px;
+                        }
+                        .receipt-items th, .receipt-items td {
+                            padding: 5px;
+                            border-bottom: 1px solid #ddd;
+                        }
+                        .receipt-items th {
+                            text-align: left;
+                            background: #f5f5f5;
+                        }
+                        .item-brand {
+                            font-size: 10px;
+                            color: #666;
+                        }
+                        .receipt-summary {
+                            margin-top: 15px;
+                            font-size: 12px;
+                        }
+                        .summary-line {
+                            display: flex;
+                            justify-content: space-between;
+                            margin: 3px 0;
+                        }
+                        .total-line {
+                            border-top: 2px solid #000;
+                            padding-top: 5px;
+                            font-weight: bold;
+                        }
+                        .receipt-footer {
+                            text-align: center;
+                            margin-top: 20px;
+                            font-size: 10px;
+                        }
                     </style>
                 </head>
-                <body>${receiptContent}</body>
-                </html>
-            `);
+                <body>
+                    ${receiptContent}
+                </body>
+            </html>
+        `);
 
             printWindow.document.close();
             printWindow.print();
@@ -963,4 +1212,5 @@
 
 </body>
 @include('admin.admin-footer')
+
 </html>

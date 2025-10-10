@@ -555,6 +555,9 @@
                     if (product.price) {
                         document.getElementById('inventory_sale_price').value = product.price;
                     }
+
+                    // Update package calculator with correct unit info
+                    updatePackageCalculation();
                 })
                 .catch(error => {
                     console.error('Error fetching product details:', error);

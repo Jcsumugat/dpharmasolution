@@ -12,7 +12,7 @@
 
 <body>
     @include('client.client-header')
-    
+
     <div class="container">
         <div class="page-header">
             <div class="page-header-content">
@@ -47,39 +47,39 @@
 
             <div class="notification-list">
                 @forelse ($notifications as $notification)
-                    <div class="notification-item {{ !$notification->is_read ? 'unread' : '' }}" 
+                    <div class="notification-item {{ !$notification->is_read ? 'unread' : '' }}"
                          data-id="{{ $notification->id }}"
                          @if(!$notification->is_read) style="cursor: pointer;" onclick="markAsRead({{ $notification->id }})" @endif>
-                        
+
                         <div class="notification-header">
                             <h4 class="notification-title">
                                 @switch($notification->type)
                                     @case('order_received')
-                                        📨 
+                                        📨
                                         @break
                                     @case('order_approved')
-                                        ✅ 
+                                        ✅
                                         @break
                                     @case('order_partially_approved')
-                                        ⚠️ 
+                                        ⚠️
                                         @break
                                     @case('order_ready')
-                                        🎉 
+                                        🎉
                                         @break
                                     @case('order_cancelled')
-                                        ❌ 
+                                        ❌
                                         @break
                                     @case('order_delayed')
-                                        ⏰ 
+                                        ⏰
                                         @break
                                     @default
-                                        🔔 
+                                        🔔
                                 @endswitch
                                 {{ $notification->title }}
                             </h4>
                             <span class="notification-time">{{ $notification->created_at->diffForHumans() }}</span>
                         </div>
-                        
+
                         <p class="notification-description">{{ $notification->message }}</p>
 
                         @if($notification->prescription)
@@ -130,7 +130,7 @@
         async function markAsRead(notificationId) {
             try {
                 const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-                
+
                 const response = await fetch(`/home/notifications/read/${notificationId}`, {
                     method: 'POST',
                     headers: {
@@ -148,14 +148,14 @@
                         notificationCard.classList.remove('unread');
                         notificationCard.removeAttribute('onclick');
                         notificationCard.style.cursor = 'default';
-                        
+
                         // Remove mark as read button
                         const actionBtn = notificationCard.querySelector('.mark-read-btn');
                         if (actionBtn) {
                             actionBtn.remove();
                         }
                     }
-                    
+
                     // Update counts and hide mark all button if needed
                     updateUIAfterMarkingRead();
                 } else {
@@ -170,7 +170,7 @@
         async function markAllAsRead() {
             try {
                 const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-                
+
                 const response = await fetch('/home/notifications/mark-all-read', {
                     method: 'POST',
                     headers: {
@@ -188,20 +188,20 @@
                         card.classList.remove('unread');
                         card.removeAttribute('onclick');
                         card.style.cursor = 'default';
-                        
+
                         // Remove action buttons
                         const actionBtn = card.querySelector('.mark-read-btn');
                         if (actionBtn) {
                             actionBtn.remove();
                         }
                     });
-                    
+
                     // Hide the "Mark all as read" button
                     const markAllBtn = document.querySelector('.notifications-actions');
                     if (markAllBtn) {
                         markAllBtn.style.display = 'none';
                     }
-                    
+
                     // Update unread count display
                     const unreadCountSpan = document.querySelector('.unread-count');
                     if (unreadCountSpan) {
@@ -221,7 +221,7 @@
         // Update UI after marking notifications as read
         function updateUIAfterMarkingRead() {
             const unreadCards = document.querySelectorAll('.notification-item.unread').length;
-            
+
             // Update unread count display
             const unreadCountSpan = document.querySelector('.unread-count');
             if (unreadCountSpan) {
@@ -231,7 +231,7 @@
                     unreadCountSpan.style.display = 'none';
                 }
             }
-            
+
             // Hide mark all button if no unread notifications
             const markAllBtn = document.querySelector('.notifications-actions');
             if (markAllBtn && unreadCards === 0) {
@@ -255,8 +255,8 @@
             }
         }
     </script>
-    
+
     @stack('scripts')
 </body>
-
+@include('client.client-footer')
 </html>

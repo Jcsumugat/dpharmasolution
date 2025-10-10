@@ -7,6 +7,8 @@
     <title>Sales Report | MJ's Pharmacy</title>
     <link rel="stylesheet" href="{{ asset('css/reports.css') }}">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 </head>
 
 <body>
@@ -21,13 +23,14 @@
 
                 <form id="reportForm">
                     <label for="start_date">Start Date</label>
-                    <input type="date" id="start_date" name="start_date" required>
+                    <input type="text" id="start_date" name="start_date" placeholder="MM/DD/YYYY" required>
 
                     <label for="end_date">End Date</label>
-                    <input type="date" id="end_date" name="end_date" required>
+                    <input type="text" id="end_date" name="end_date" placeholder="MM/DD/YYYY" required>
 
                     <label for="report_type">Report Type</label>
-                    <select id="report_type" name="report_type" style="padding: 10px; width: 100%; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
+                    <select id="report_type" name="report_type"
+                        style="padding: 10px; width: 100%; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
                         <option value="sales">Sales Report</option>
                         <option value="inventory">Inventory Report</option>
                         <option value="products">Product Report</option>
@@ -36,7 +39,8 @@
                     <!-- New Sales Source Filter -->
                     <div id="sales_source_container" style="display: block;">
                         <label for="sales_source">Sales Source</label>
-                        <select id="sales_source" name="sales_source" style="padding: 10px; width: 100%; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
+                        <select id="sales_source" name="sales_source"
+                            style="padding: 10px; width: 100%; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
                             <option value="all">All Sales (Online + Walk-in)</option>
                             <option value="online">Online Orders Only</option>
                             <option value="walkin">Walk-in Sales Only</option>
@@ -76,7 +80,8 @@
                 </div>
 
                 <h2>Sales Report — MJ's Pharmacy</h2>
-                <p><strong>Date Range:</strong> <span id="reportRange">Please select date range and generate report</span></p>
+                <p><strong>Date Range:</strong> <span id="reportRange">Please select date range and generate
+                        report</span></p>
                 <p><strong>Sales Source:</strong> <span id="reportSource">All Sales</span></p>
                 <p><strong>Generated On:</strong> {{ \Carbon\Carbon::now()->format('F j, Y g:i A') }}</p>
 
@@ -118,20 +123,130 @@
         let currentDateRange = null;
         let currentSalesSource = null;
 
-        // Set CSRF token for AJAX requests
         document.addEventListener('DOMContentLoaded', function() {
             const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-            // Set max date to today
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('start_date').setAttribute('max', today);
-            document.getElementById('end_date').setAttribute('max', today);
+            // Show/hide sales source filter based on report type
+            document.getElementById('report_type').addEventListener('change', function() {
+                const salesSourceContainer = document.getElementById('sales_source_container');
+                if (this.value === 'sales') {
+                    salesSourceContainer.style.display = 'block';
+                } else {
+                    salesSourceContainer.style.display = 'none';
+                }
+            });
+        });
 
-            // Set default dates (last 30 days)
-            const thirtyDaysAgo = new Date();
-            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-            document.getElementById('start_date').value = thirtyDaysAgo.toISOString().split('T')[0];
-            document.getElementById('end_date').value = today;
+        document.addEventListener('DOMContentLoaded', function() {
+            const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            const today = new Date();
+            const thirtyDaysAgo = new Date(today.getTime() - (30 * 24 * 60 * 60 * 1000));
+
+            // Auto-format function for MM/DD/YYYY
+            function autoFormatDate(input) {
+                let value = input.value.replace(/\D/g, ''); // Remove non-digits
+
+                if (value.length >= 2) {
+                    value = value.substring(0, 2) + '/' + value.substring(2);
+                }
+                if (value.length >= 5) {
+                    value = value.substring(0, 5) + '/' + value.substring(5, 9);
+                }
+
+                input.value = value;
+            }
+
+            // Validate and parse MM/DD/YYYY format
+            function parseManualDate(dateStr) {
+                const parts = dateStr.split('/');
+                if (parts.length === 3) {
+                    const month = parseInt(parts[0], 10);
+                    const day = parseInt(parts[1], 10);
+                    const year = parseInt(parts[2], 10);
+
+                    if (month >= 1 && month <= 12 && day >= 1 && day <= 31 && year >= 1900) {
+                        return new Date(year, month - 1, day);
+                    }
+                }
+                return null;
+            }
+            // Initialize Flatpickr for start date
+            const startDatePicker = flatpickr("#start_date", {
+                dateFormat: "m/d/Y",
+                maxDate: today,
+                allowInput: true,
+                clickOpens: false,
+                onChange: function(selectedDates, dateStr) {
+                    const endDatePicker = document.querySelector("#end_date")._flatpickr;
+                    if (endDatePicker && selectedDates.length > 0) {
+                        endDatePicker.set('minDate', selectedDates[0]);
+                    }
+                }
+            });
+
+            // Initialize Flatpickr for end date
+            const endDatePicker = flatpickr("#end_date", {
+                dateFormat: "m/d/Y",
+                maxDate: today,
+                allowInput: true,
+                clickOpens: false,
+            });
+
+            // Add auto-formatting to start date
+            const startInput = document.getElementById('start_date');
+            startInput.addEventListener('input', function(e) {
+                autoFormatDate(this);
+            });
+
+            startInput.addEventListener('blur', function() {
+                const date = parseManualDate(this.value);
+                if (date && !isNaN(date.getTime())) {
+                    startDatePicker.setDate(date);
+                } else if (this.value && this.value.length === 10) {
+                    alert('Invalid date format. Please use MM/DD/YYYY');
+                    this.value = '';
+                }
+            });
+
+            // Add auto-formatting to end date
+            const endInput = document.getElementById('end_date');
+            endInput.addEventListener('input', function(e) {
+                autoFormatDate(this);
+            });
+
+            endInput.addEventListener('blur', function() {
+                const date = parseManualDate(this.value);
+                if (date && !isNaN(date.getTime())) {
+                    endDatePicker.setDate(date);
+                } else if (this.value && this.value.length === 10) {
+                    alert('Invalid date format. Please use MM/DD/YYYY');
+                    this.value = '';
+                }
+            });
+
+            [startInput, endInput].forEach(input => {
+                input.addEventListener('keypress', function(e) {
+                    if ([8, 9, 27, 13, 46].indexOf(e.keyCode) !== -1 ||
+                        // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+                        (e.keyCode === 65 && e.ctrlKey === true) ||
+                        (e.keyCode === 67 && e.ctrlKey === true) ||
+                        (e.keyCode === 86 && e.ctrlKey === true) ||
+                        (e.keyCode === 88 && e.ctrlKey === true)) {
+                        return;
+                    }
+                    // Ensure it's a number
+                    if ((e.keyCode < 48 || e.keyCode > 57) && (e.keyCode < 96 || e.keyCode > 105)) {
+                        e.preventDefault();
+                    }
+                });
+
+                // Limit to 10 characters (MM/DD/YYYY)
+                input.addEventListener('keydown', function(e) {
+                    if (this.value.length >= 10 && e.keyCode !== 8 && e.keyCode !== 46) {
+                        e.preventDefault();
+                    }
+                });
+            });
 
             // Show/hide sales source filter based on report type
             document.getElementById('report_type').addEventListener('change', function() {
@@ -196,21 +311,30 @@
             btnLoading.style.display = 'inline';
             generateBtn.disabled = true;
 
-            // Update date range display
-            const rangeText = new Date(startDate).toLocaleDateString('en-US', {
+            // Update date range display with days count
+            const startDateObj = new Date(startDate);
+            const endDateObj = new Date(endDate);
+            const daysDifference = Math.round((endDateObj - startDateObj) / (1000 * 60 * 60 * 24)) + 1;
+
+            const rangeText = startDateObj.toLocaleDateString('en-US', {
                 year: 'numeric',
-                month: 'long',
+                month: 'short',
                 day: 'numeric'
-            }) + " – " + new Date(endDate).toLocaleDateString('en-US', {
+            }) + " to " + endDateObj.toLocaleDateString('en-US', {
                 year: 'numeric',
-                month: 'long',
+                month: 'short',
                 day: 'numeric'
-            });
+            }) + ` (${daysDifference} ${daysDifference === 1 ? 'day' : 'days'})`;
+
             document.getElementById("reportRange").innerText = rangeText;
 
-            // Update sales source display
-            const sourceText = getSalesSourceText(salesSource);
-            document.getElementById("reportSource").innerText = sourceText;
+            if (reportType === 'sales') {
+                const sourceText = getSalesSourceText(salesSource);
+                document.getElementById("reportSource").innerText = sourceText;
+                document.getElementById("reportSource").parentElement.style.display = 'block';
+            } else {
+                document.getElementById("reportSource").parentElement.style.display = 'none';
+            }
 
             // Store current report parameters
             currentReportType = reportType;
@@ -256,11 +380,14 @@
         }
 
         function getSalesSourceText(source) {
-            switch(source) {
-                case 'online': return 'Online Orders Only';
-                case 'walkin': return 'Walk-in Sales Only';
+            switch (source) {
+                case 'online':
+                    return 'Online Orders Only';
+                case 'walkin':
+                    return 'Walk-in Sales Only';
                 case 'all':
-                default: return 'All Sales (Online + Walk-in)';
+                default:
+                    return 'All Sales (Online + Walk-in)';
             }
         }
 
@@ -416,63 +543,65 @@
                 </div>
 
                 ${data.breakdown && salesSource === 'all' ? `
-                <div class="sales-breakdown">
-                    <h3>Sales Breakdown by Source</h3>
-                    <div class="breakdown-grid">
-                        <div class="breakdown-card">
-                            <h4>Online Orders</h4>
-                            <p class="breakdown-amount">₱${data.breakdown.online_sales || '0.00'}</p>
-                            <small>${data.breakdown.online_transactions || 0} transactions</small>
-                        </div>
-                        <div class="breakdown-card">
-                            <h4>Walk-in Sales</h4>
-                            <p class="breakdown-amount">₱${data.breakdown.walkin_sales || '0.00'}</p>
-                            <small>${data.breakdown.walkin_transactions || 0} transactions</small>
-                        </div>
-                    </div>
-                </div>
-                ` : ''}
+                                                                <div class="sales-breakdown">
+                                                                    <h3>Sales Breakdown by Source</h3>
+                                                                    <div class="breakdown-grid">
+                                                                        <div class="breakdown-card">
+                                                                            <h4>Online Orders</h4>
+                                                                            <p class="breakdown-amount">₱${data.breakdown.online_sales || '0.00'}</p>
+                                                                            <small>${data.breakdown.online_transactions || 0} transactions</small>
+                                                                        </div>
+                                                                        <div class="breakdown-card">
+                                                                            <h4>Walk-in Sales</h4>
+                                                                            <p class="breakdown-amount">₱${data.breakdown.walkin_sales || '0.00'}</p>
+                                                                            <small>${data.breakdown.walkin_transactions || 0} transactions</small>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                ` : ''}
 
                 ${data.low_stock && data.low_stock.length > 0 ? `
-                <div class="low-stock-alert">
-                    <h3>Low Stock Alerts</h3>
-                    <ul>
-                        ${data.low_stock.map(item => `
+                                                                <div class="low-stock-alert">
+                                                                    <h3>Low Stock Alerts</h3>
+                                                                    <ul>
+                                                                        ${data.low_stock.map(item => `
                             <li>${item.name} — Only ${item.quantity_remaining || item.quantity} left</li>
                         `).join('')}
-                    </ul>
-                </div>
-                ` : ''}
+                                                                    </ul>
+                                                                </div>
+                                                                ` : ''}
 
-                <h3>Detailed Sales Report</h3>
-                ${data.sales && data.sales.length > 0 ? `
-                <table class="report-table">
-                    <thead>
-                        <tr>
-                            <th>Product</th>
-                            <th>Quantity Sold</th>
-                            <th>Unit Price</th>
-                            <th>Total Amount</th>
-                            <th>Source</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${data.sales.map(sale => `
-                            <tr>
-                                <td>${sale.product_name}</td>
-                                <td>${sale.quantity_sold}</td>
-                                <td>₱${sale.unit_price}</td>
-                                <td>₱${sale.total_amount}</td>
-                                <td>
-                                    <span class="source-badge ${sale.source}">
-                                        ${sale.source === 'online' ? 'Online' : 'Walk-in'}
-                                    </span>
-                                </td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-                ` : '<p>No sales data found for the selected period and source.</p>'}
+<h3>Detailed Sales Report</h3>
+${data.sales && data.sales.length > 0 ? `
+                                        <div class="table-wrapper">
+                                            <table class="report-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Product</th>
+                                                        <th>Quantity Sold</th>
+                                                        <th>Unit Price</th>
+                                                        <th>Total Amount</th>
+                                                        <th>Source</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    ${data.sales.map(sale => `
+                    <tr>
+                        <td>${sale.product_name}</td>
+                        <td>${sale.quantity_sold}</td>
+                        <td>₱${sale.unit_price}</td>
+                        <td>₱${sale.total_amount}</td>
+                        <td>
+                            <span class="source-badge ${sale.source}">
+                                ${sale.source === 'online' ? 'Online' : 'Walk-in'}
+                            </span>
+                        </td>
+                    </tr>
+                `).join('')}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    ` : '<p>No sales data found for the selected period and source.</p>'}
             `;
             } else if (reportType === 'inventory') {
                 reportContent.innerHTML = `
@@ -497,22 +626,22 @@
 
                 <h3>Inventory Report</h3>
                 ${data.inventory && data.inventory.length > 0 ? `
-                <table class="report-table">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Product Name</th>
-                            <th>Brand Name</th>
-                            <th>Category</th>
-                            <th>Batch Number</th>
-                            <th>Stock Remaining</th>
-                            <th>Sale Price</th>
-                            <th>Total Value</th>
-                            <th>Expiry Date</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${data.inventory.map(item => `
+                                                                <table class="report-table">
+                                                                    <thead>
+                                                                        <tr>
+                                                                            <th>ID</th>
+                                                                            <th>Product Name</th>
+                                                                            <th>Brand Name</th>
+                                                                            <th>Category</th>
+                                                                            <th>Batch Number</th>
+                                                                            <th>Stock Remaining</th>
+                                                                            <th>Sale Price</th>
+                                                                            <th>Total Value</th>
+                                                                            <th>Expiry Date</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        ${data.inventory.map(item => `
                             <tr>
                                 <td>${item.id}</td>
                                 <td>${item.product_name}</td>
@@ -525,44 +654,40 @@
                                 <td>${item.expiry_date || 'N/A'}</td>
                             </tr>
                         `).join('')}
-                    </tbody>
-                </table>
-                ` : '<p>No inventory data found.</p>'}
+                                                                    </tbody>
+                                                                </table>
+                                                                ` : '<p>No inventory data found.</p>'}
             `;
             } else if (reportType === 'products') {
                 reportContent.innerHTML = `
                 <h3>Product Performance Report</h3>
                 ${data.products && data.products.length > 0 ? `
-                <table class="report-table">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Product Name</th>
-                            <th>Brand Name</th>
-                            <th>Category</th>
-                            <th>Current Stock</th>
-                            <th>Latest Price</th>
-                            <th>Total Sold</th>
-                            <th>Total Revenue</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${data.products.map(product => `
+                                                                <table class="report-table">
+                                                                    <thead>
+                                                                        <tr>
+                                                                            <th>ID</th>
+                                                                            <th>Product Name</th>
+                                                                            <th>Current Stock</th>
+                                                                            <th>Latest Price</th>
+                                                                            <th>Total Sold</th>
+                                                                            <th>Total Revenue</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        ${data.products.map(product => `
                             <tr>
                                 <td>${product.id}</td>
                                 <td>${product.product_name}</td>
-                                <td>${product.brand_name}</td>
-                                <td>${product.category}</td>
                                 <td>${product.current_stock || product.quantity_remaining || '0'}</td>
                                 <td>₱${product.latest_price || product.unit_price || '0.00'}</td>
                                 <td>${product.total_sold || '0'}</td>
                                 <td>₱${product.total_revenue || '0.00'}</td>
                             </tr>
                         `).join('')}
-                    </tbody>
-                </table>
+                                                                    </tbody>
+                                                                </table>
 
-                ${data.categories && data.categories.length > 0 ? `
+                                                                ${data.categories && data.categories.length > 0 ? `
                 <h3>Category Performance</h3>
                 <table class="report-table">
                     <thead>
@@ -576,18 +701,18 @@
                     </thead>
                     <tbody>
                         ${data.categories.map(category => `
-                            <tr>
-                                <td>${category.category}</td>
-                                <td>${category.product_count}</td>
-                                <td>${category.total_stock || '0'}</td>
-                                <td>${category.total_sold}</td>
-                                <td>₱${category.total_revenue}</td>
-                            </tr>
-                        `).join('')}
+                                                                            <tr>
+                                                                                <td>${category.category}</td>
+                                                                                <td>${category.product_count}</td>
+                                                                                <td>${category.total_stock || '0'}</td>
+                                                                                <td>${category.total_sold}</td>
+                                                                                <td>₱${category.total_revenue}</td>
+                                                                            </tr>
+                                                                        `).join('')}
                     </tbody>
                 </table>
                 ` : ''}
-                ` : '<p>No product data found for the selected period.</p>'}
+                                                                ` : '<p>No product data found for the selected period.</p>'}
             `;
             }
         }
@@ -602,7 +727,8 @@
         `;
         }
     </script>
-@stack('scripts')
+    @stack('scripts')
 </body>
 @include('admin.admin-footer')
+
 </html>

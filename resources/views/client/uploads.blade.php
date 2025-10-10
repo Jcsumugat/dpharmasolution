@@ -1152,7 +1152,8 @@
             background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             color: white;
             padding: 30px;
-            border-radius: 15px;
+            border-radius: 8px;
+            overflow: hidden;
             max-width: 500px;
             text-align: center;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
@@ -1284,5 +1285,5 @@
 
     @stack('scripts')
 </body>
-
+@include('client.client-footer')
 </html>

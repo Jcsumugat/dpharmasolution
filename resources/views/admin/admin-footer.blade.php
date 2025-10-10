@@ -147,7 +147,13 @@
 </head>
 
 <body>
-
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
     <footer class="admin-footer">
         <div class="footer-content">
             <div class="footer-section">
@@ -185,7 +191,7 @@
                     <span class="icon">📍</span>
                     <div>
                         <strong>Address:</strong><br>
-                        Quezon City, Metro Manila<br>
+                        Malabor, Tibiao Antique<br>
                         Philippines
                     </div>
                 </div>

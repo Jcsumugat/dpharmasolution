@@ -79,7 +79,7 @@
                 <div class="feedback-icon">✉️</div>
                 <h3>Share Your Feedback</h3>
                 <p>Your opinion matters to us. Help us improve our services by sharing your experience.</p>
-                <a href="/home/messages" class="feedback-link">Click Here</a>
+                <a href="/feedback" class="feedback-link">Click Here</a>
               </div>
             </div>
           </div>
@@ -89,4 +89,5 @@
   </section>
   @stack('scripts')
 </body>
+@include('client.client-footer')
 </html>

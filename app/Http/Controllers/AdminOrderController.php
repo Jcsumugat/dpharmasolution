@@ -17,10 +17,7 @@ use App\Services\NotificationService;
 use App\Models\SaleItem;
 use App\Models\StockMovement;
 use App\Models\ProductBatch;
-use App\Models\CancelledOrder;
-use Illuminate\Validation\ValidationException;
-use Carbon\Carbon;
-use Notification;
+use App\Models\PosTransaction;
 
 class AdminOrderController extends Controller
 {
@@ -722,90 +719,90 @@ class AdminOrderController extends Controller
         }
     }
 
-    public function sales()
-    {
-        $sales = Sale::with('customer')->get();
-        $completedOrders = Order::where('status', 'completed')
-            ->with(['items.product', 'customer', 'prescription', 'sale'])
-            ->orderByDesc('updated_at')
-            ->get();
+   // In your SalesController.php
 
-        $completedOrders->each(function ($order) {
-            $total = $order->items->sum(function ($item) {
-                // For completed sales, we can use historical pricing from sale_items
-                // But if not available, get from non-expired batches
-                $latestBatch = ProductBatch::where('product_id', $item->product_id)
-                    ->where('quantity_remaining', '>', 0)
-                    ->where('expiration_date', '>', now()) // Exclude expired batches
-                    ->orderBy('expiration_date', 'asc')
-                    ->first();
+public function sales()
+{
+    $sales = Sale::with(['customer', 'prescription.customer', 'items'])
+        ->orderBy('created_at', 'desc')
+        ->get();
 
-                $price = $latestBatch ? $latestBatch->sale_price : 0;
-                $qty = $item->approved_quantity ?? $item->quantity;
+    $posTransactions = POSTransaction::with('items.product')
+        ->where('status', 'completed')
+        ->orderBy('created_at', 'desc')
+        ->get();
 
-                return $qty * $price;
-            });
+    // Prescription sales stats
+    $salesStats = [
+        'total_sales' => Sale::where('status', 'completed')->sum('total_amount'),
+        'today_sales' => Sale::where('status', 'completed')
+            ->whereDate('created_at', today())
+            ->sum('total_amount'),
+        'completed_count' => Sale::where('status', 'completed')->count(),
+        'today_count' => Sale::where('status', 'completed')
+            ->whereDate('created_at', today())
+            ->count(),
+        'pending_count' => Sale::where('status', 'pending')->count(),
+        'pending_value' => Sale::where('status', 'pending')->sum('total_amount'),
+        'average_order' => Sale::where('status', 'completed')->count() > 0
+            ? Sale::where('status', 'completed')->sum('total_amount') / Sale::where('status', 'completed')->count()
+            : 0
+    ];
 
-            $paymentMethod = $order->sale->payment_method ?? 'cash';
+    // POS sales stats
+    $posStats = [
+        'total_sales' => POSTransaction::where('status', 'completed')->sum('total_amount'),
+        'today_sales' => POSTransaction::where('status', 'completed')
+            ->whereDate('created_at', today())
+            ->sum('total_amount'),
+        'total_count' => POSTransaction::where('status', 'completed')->count(),
+        'today_count' => POSTransaction::where('status', 'completed')
+            ->whereDate('created_at', today())
+            ->count(),
+    ];
 
-            $order->setAttribute('total_amount', $total);
-            $order->setAttribute('sale_date', $order->updated_at ?? $order->created_at);
-            $order->setAttribute('payment_method', $paymentMethod);
-        });
+    return view('sales.sales', compact('sales', 'posTransactions', 'salesStats', 'posStats'));
+}
 
-        $totalSales = $completedOrders->sum('total_amount');
-        $completedCount = $completedOrders->count();
+public function getPOSTransactionDetails($id)
+{
+    try {
+        $transaction = POSTransaction::with(['items.product'])
+            ->findOrFail($id);
 
-        $todayStart = now()->startOfDay();
-        $todayOrders = $completedOrders->filter(function ($o) use ($todayStart) {
-            $dt = $o->sale_date ?? ($o->updated_at ?? $o->created_at);
-            return $dt >= $todayStart;
-        });
-
-        $todaySales = $todayOrders->sum('total_amount');
-        $todayCount = $todayOrders->count();
-
-        $pendingOrders = Order::where('status', 'pending')
-            ->with(['items.product', 'sale'])
-            ->get();
-
-        $pendingOrders->each(function ($order) {
-            $total = $order->items->sum(function ($item) {
-                // Calculate using current non-expired batch prices
-                $latestBatch = ProductBatch::where('product_id', $item->product_id)
-                    ->where('quantity_remaining', '>', 0)
-                    ->where('expiration_date', '>', now()) // Exclude expired batches
-                    ->orderBy('expiration_date', 'asc')
-                    ->first();
-
-                $price = $latestBatch ? $latestBatch->sale_price : 0;
-                $qty = $item->approved_quantity ?? $item->quantity;
-
-                return $qty * $price;
-            });
-
-            $order->setAttribute('total_amount', $total);
-        });
-
-        $pendingCount = $pendingOrders->count();
-        $pendingValue = $pendingOrders->sum('total_amount');
-
-        $averageOrder = $completedCount > 0 ? $totalSales / $completedCount : 0;
-
-        $salesStats = [
-            'total_sales' => $totalSales,
-            'completed_count' => $completedCount,
-            'today_sales' => $todaySales,
-            'today_count' => $todayCount,
-            'pending_count' => $pendingCount,
-            'pending_value' => $pendingValue,
-            'average_order' => $averageOrder,
-        ];
-
-        $sales = $completedOrders;
-
-        return view('sales.sales', compact('sales', 'salesStats'));
+        return response()->json([
+            'success' => true,
+            'transaction' => [
+                'id' => $transaction->id,
+                'transaction_id' => $transaction->transaction_id,
+                'customer_name' => $transaction->customer_name,
+                'customer_type' => $transaction->customer_type,
+                'subtotal' => $transaction->subtotal,
+                'discount_amount' => $transaction->discount_amount,
+                'total_amount' => $transaction->total_amount,
+                'amount_paid' => $transaction->amount_paid,
+                'change_amount' => $transaction->change_amount,
+                'payment_method' => $transaction->payment_method,
+                'status' => $transaction->status,
+                'notes' => $transaction->notes,
+                'created_at' => $transaction->created_at->format('M d, Y h:i A'),
+                'items' => $transaction->items->map(function($item) {
+                    return [
+                        'product_name' => $item->product->product_name ?? 'Unknown Product',
+                        'quantity' => $item->quantity,
+                        'unit_price' => $item->unit_price,
+                        'total_price' => $item->total_price,
+                    ];
+                })
+            ]
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Transaction not found: ' . $e->getMessage()
+        ], 404);
     }
+}
 
     public function showOrders()
     {

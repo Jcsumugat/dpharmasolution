@@ -158,6 +158,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/sales', [AdminOrderController::class, 'sales'])->name('sales.index');
     Route::get('/admin/sales/{id}/details', [AdminOrderController::class, 'getSaleDetails']);
     Route::get('/admin/products', [AdminOrderController::class, 'getProducts'])->name('admin.products.index');
+    Route::get('/admin/sales/pos/{id}/details', [AdminOrderController::class, 'getPOSTransactionDetails']);
 });
 
 Route::middleware(['auth', 'admin'])->group(function () {

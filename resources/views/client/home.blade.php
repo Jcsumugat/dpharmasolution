@@ -69,7 +69,7 @@
         </div>
 
         <div class="service-card">
-          <div class="service-icon">🚚</div>
+          <div class="service-icon">📋</div>
           <h3>Quality</h3>
           <p>Providing quality pharmaceutical products and professional healthcare services.</p>
         </div>
@@ -156,4 +156,5 @@
 </div>
 @stack('scripts')
 </body>
+@include('client.client-footer')
 </html>
