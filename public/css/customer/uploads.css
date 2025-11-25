@@ -8,7 +8,7 @@ body {
     font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
     background: linear-gradient(135deg, #f8fdff 0%, #e8f4f8 100%);
     color: #2c3e50;
-    padding-top: 118px;
+    margin-top: 2rem;
 }
 
 .main-container {

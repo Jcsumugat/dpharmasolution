@@ -297,13 +297,13 @@ Route::prefix('api/admin/chat')->group(function () {
 Route::middleware(['auth', 'verified'])->group(function () {
     // Chat Dashboard (existing)
     Route::get('/chat', [ChatViewController::class, 'chatSupport'])->name('chat.index');
-
-    // Customer Chat Page (new)
-    Route::get('/home/messages', [ChatViewController::class, 'customerChat'])->name('customer-chat.index');
-
     // View specific conversation (existing)
     Route::get('/chat/conversation/{id}', [ChatConversationController::class, 'show'])->name('chat.show');
 });
+
+ // Customer Chat Page (new)
+    Route::get('/home/messages', [ChatViewController::class, 'customerChat'])->name('customer-chat.index');
+
 
 // Customer Chat API Routes
 Route::middleware(['auth:customer'])->prefix('api/customer/chat')->group(function () {
@@ -318,4 +318,4 @@ Route::middleware(['auth:customer'])->prefix('api/customer/chat')->group(functio
 
 
 
-Route::get('/api/products/{product}', [ProductController::class, 'getProductDetails']);
+Route::get(uri: '/api/products/{product}', action: [ProductController::class, 'getProductDetails']);

@@ -34,14 +34,15 @@
             class="nav-button {{ request()->routeIs('suppliers.*') ? 'active' : '' }}">Suppliers</a>
         <a href="{{ route('reports.index') }}"
             class="nav-button {{ request()->routeIs('reports.*') ? 'active' : '' }}">Reports</a>
+
+    </div>
+
+    <div class="header-actions">
         <div class="nav-button-wrapper">
             <a href="{{ route('chat.index') }}"
                 class="nav-button-chat {{ request()->routeIs('chat.*') ? 'active' : '' }}">🗨️</a>
             <span class="chat-alert-badge" id="chatAlertBadge" style="display: none;"></span>
         </div>
-    </div>
-
-    <div class="header-actions">
         <div class="notifications-dropdown">
             <button class="notifications-toggle" aria-label="Notifications" id="notificationsToggle">
                 <span class="notification-icon">🔔</span>
@@ -94,7 +95,8 @@
                     @endif
                 </div>
                 <div class="menu-divider"></div>
-                <a href="{{ route('admin.profile') }}" class="menu-item" style="text-decoration: none; color: inherit; display: block;">👤 Profile</a>
+                <a href="{{ route('admin.profile') }}" class="menu-item"
+                    style="text-decoration: none; color: inherit; display: block;">👤 Profile</a>
                 <button class="menu-item" id="themeToggle">🌙 Dark Mode</button>
                 <div class="menu-divider"></div>
                 <button class="menu-item logout-item" onclick="showLogoutModal()">🚪 Logout</button>

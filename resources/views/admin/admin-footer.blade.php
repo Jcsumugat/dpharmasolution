@@ -151,9 +151,6 @@
 <br>
 <br>
 <br>
-<br>
-<br>
-<br>
     <footer class="admin-footer">
         <div class="footer-content">
             <div class="footer-section">

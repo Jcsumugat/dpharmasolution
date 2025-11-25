@@ -96,7 +96,7 @@ header {
     padding: 4 rem 5rem;
     font-size: 0.8rem;
     display: flex;
-    margin-left: 18rem;
+    justify-content: flex-end;
     text-decoration: none;
     font-size: x-large;
 }
