@@ -63,7 +63,12 @@
                     </div>
                 </div>
                 <div class="notifications-footer">
-                    <a href="#" class="view-all-notifications">View All Notifications</a>
+                    <a href="{{ route('notifications.all') }}" class="view-all-notifications"
+                        style="display: block; text-align: center; padding: 12px; color: #3b82f6;
+              font-weight: 600; text-decoration: none; border-top: 1px solid #e5e7eb;
+              transition: background 0.2s;">
+                        View All Notifications
+                    </a>
                 </div>
             </div>
         </div>

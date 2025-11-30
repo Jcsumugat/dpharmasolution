@@ -6,112 +6,66 @@ use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class NotificationController extends Controller
 {
     /**
      * Get notifications for the current user (API endpoint)
      */
-    public function index(Request $request)
+    public function index()
     {
         try {
-            $user = Auth::user();
-
-            if (!$user) {
-                return response()->json([
-                    'error' => 'Unauthorized',
-                    'notifications' => [],
-                    'unread_count' => 0
-                ], 401);
-            }
-
-            // Get notifications for the current user, ordered by newest first
-            $notifications = Notification::where('user_id', $user->id)
+            $notifications = DB::table('notifications')
                 ->orderBy('created_at', 'desc')
-                ->limit(50) // Limit to last 50 notifications for dropdown
+                ->limit(50)
                 ->get();
 
-            // Count unread notifications
-            $unreadCount = Notification::where('user_id', $user->id)
+            $unreadCount = DB::table('notifications')
                 ->where('is_read', false)
                 ->count();
 
-            // Log for debugging
-            Log::info('Notifications fetched', [
-                'user_id' => $user->id,
-                'count' => $notifications->count(),
-                'unread_count' => $unreadCount
-            ]);
+            // If it's an AJAX request for the dropdown
+            if (request()->wantsJson() || request()->ajax()) {
+                return response()->json([
+                    'notifications' => $notifications,
+                    'unread_count' => $unreadCount
+                ]);
+            }
 
+            // If it's a page request for all notifications
             return response()->json([
-                'success' => true,
-                'notifications' => $notifications,
+                'notifications' => DB::table('notifications')
+                    ->orderBy('created_at', 'desc')
+                    ->get(),
                 'unread_count' => $unreadCount
             ]);
-
         } catch (\Exception $e) {
-            Log::error('Error fetching notifications: ' . $e->getMessage());
+            Log::error('Load notifications error: ' . $e->getMessage());
 
             return response()->json([
-                'error' => 'Failed to fetch notifications: ' . $e->getMessage(),
                 'notifications' => [],
-                'unread_count' => 0
+                'unread_count' => 0,
+                'error' => 'Failed to load notifications'
             ], 500);
         }
     }
-
-    /**
-     * Display all notifications page (Blade view)
-     */
-    public function showAll(Request $request)
+    public function showAll()
     {
         try {
             $user = Auth::user();
 
             if (!$user) {
-                return redirect()->route('admin.login')->with('error', 'Please log in to access notifications.');
+                return redirect()->route('login')->with('error', 'Please log in to access notifications.');
             }
 
-            // Get per page setting from request or default to 20
-            $perPage = $request->get('per_page', 20);
-
-            // Get status filter (all, unread, read)
-            $status = $request->get('status', 'all');
-
-            // Build query
-            $query = Notification::where('user_id', $user->id)
-                ->orderBy('created_at', 'desc');
-
-            // Apply status filter
-            if ($status === 'unread') {
-                $query->where('is_read', false);
-            } elseif ($status === 'read') {
-                $query->where('is_read', true);
-            }
-
-            // Get paginated notifications
-            $notifications = $query->paginate($perPage);
-
-            // Get counts for filter tabs
-            $totalCount = Notification::where('user_id', $user->id)->count();
-            $unreadCount = Notification::where('user_id', $user->id)->where('is_read', false)->count();
-            $readCount = $totalCount - $unreadCount;
-
-            return view('admin.notifications.index', compact(
-                'notifications',
-                'totalCount',
-                'unreadCount',
-                'readCount',
-                'status',
-                'perPage'
-            ));
-
+            // Return the view - make sure this path matches your actual file location
+            return view('admin.notifications-all');
         } catch (\Exception $e) {
             Log::error('Error displaying notifications page: ' . $e->getMessage());
             return back()->with('error', 'Failed to load notifications page.');
         }
     }
-
     /**
      * Mark a specific notification as read
      */
@@ -147,7 +101,6 @@ class NotificationController extends Controller
                 'message' => 'Notification marked as read',
                 'notification' => $notification
             ]);
-
         } catch (\Exception $e) {
             Log::error('Error marking notification as read: ' . $e->getMessage());
 
@@ -183,7 +136,6 @@ class NotificationController extends Controller
                 'message' => 'All notifications marked as read',
                 'updated_count' => $updatedCount
             ]);
-
         } catch (\Exception $e) {
             Log::error('Error marking all notifications as read: ' . $e->getMessage());
 
@@ -213,7 +165,6 @@ class NotificationController extends Controller
                 'success' => true,
                 'unread_count' => $unreadCount
             ]);
-
         } catch (\Exception $e) {
             Log::error('Error getting unread count: ' . $e->getMessage());
 
@@ -259,7 +210,6 @@ class NotificationController extends Controller
             } else {
                 return back()->with('success', 'Notification deleted successfully.');
             }
-
         } catch (\Exception $e) {
             Log::error('Error deleting notification: ' . $e->getMessage());
 
@@ -274,9 +224,55 @@ class NotificationController extends Controller
     }
 
     /**
-     * Bulk delete notifications
+     * Delete multiple notifications at once
      */
     public function bulkDelete(Request $request)
+    {
+        $ids = $request->input('ids', []);
+
+        if (empty($ids)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No notifications selected'
+            ], 400);
+        }
+
+        try {
+            $user = Auth::user();
+
+            if (!$user) {
+                return response()->json(['error' => 'Unauthorized'], 401);
+            }
+
+            // Only delete notifications that belong to the current user
+            $deleted = Notification::whereIn('id', $ids)
+                ->where('user_id', $user->id)
+                ->delete();
+
+            Log::info('Bulk delete notifications', [
+                'user_id' => $user->id,
+                'deleted_count' => $deleted
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => $deleted . ' notification(s) deleted successfully',
+                'deleted_count' => $deleted
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Bulk delete notifications error: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete notifications'
+            ], 500);
+        }
+    }
+
+    /**
+     * Clear all read notifications for current user
+     */
+    public function clearRead()
     {
         try {
             $user = Auth::user();
@@ -285,79 +281,27 @@ class NotificationController extends Controller
                 return response()->json(['error' => 'Unauthorized'], 401);
             }
 
-            $request->validate([
-                'notification_ids' => 'required|array',
-                'notification_ids.*' => 'integer|exists:notifications,id'
-            ]);
-
-            $deletedCount = Notification::where('user_id', $user->id)
-                ->whereIn('id', $request->notification_ids)
+            $deleted = Notification::where('user_id', $user->id)
+                ->where('is_read', true)
                 ->delete();
 
-            Log::info('Bulk notifications deleted', [
+            Log::info('Clear read notifications', [
                 'user_id' => $user->id,
-                'deleted_count' => $deletedCount
+                'deleted_count' => $deleted
             ]);
 
             return response()->json([
                 'success' => true,
-                'message' => "Successfully deleted {$deletedCount} notifications",
-                'deleted_count' => $deletedCount
+                'message' => $deleted . ' read notification(s) cleared successfully',
+                'deleted_count' => $deleted
             ]);
-
         } catch (\Exception $e) {
-            Log::error('Error bulk deleting notifications: ' . $e->getMessage());
+            Log::error('Clear read notifications error: ' . $e->getMessage());
 
             return response()->json([
-                'error' => 'Failed to delete notifications: ' . $e->getMessage()
+                'success' => false,
+                'message' => 'Failed to clear read notifications'
             ], 500);
-        }
-    }
-
-    /**
-     * Clear all read notifications for the current user
-     */
-    public function clearRead(Request $request)
-    {
-        try {
-            $user = Auth::user();
-
-            if (!$user) {
-                if ($request->expectsJson()) {
-                    return response()->json(['error' => 'Unauthorized'], 401);
-                }
-                return back()->with('error', 'Unauthorized access.');
-            }
-
-            $deletedCount = Notification::where('user_id', $user->id)
-                ->where('is_read', true)
-                ->delete();
-
-            Log::info('All read notifications cleared', [
-                'user_id' => $user->id,
-                'deleted_count' => $deletedCount
-            ]);
-
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => "Successfully cleared {$deletedCount} read notifications",
-                    'deleted_count' => $deletedCount
-                ]);
-            } else {
-                return back()->with('success', "Successfully cleared {$deletedCount} read notifications.");
-            }
-
-        } catch (\Exception $e) {
-            Log::error('Error clearing read notifications: ' . $e->getMessage());
-
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'error' => 'Failed to clear read notifications'
-                ], 500);
-            } else {
-                return back()->with('error', 'Failed to clear read notifications.');
-            }
         }
     }
 }
