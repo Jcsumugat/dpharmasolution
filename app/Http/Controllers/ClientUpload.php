@@ -55,9 +55,9 @@ class ClientUpload extends Controller
             $fileSize = $file->getSize();
             $originalName = $file->getClientOriginalName();
 
-            // Calculate both hashes
-            $frontendHash = $validated['file_hash'] ?? null;
-            $backendHash = md5_file($filePath);
+            // Calculate both hashes - NORMALIZE TO LOWERCASE
+            $frontendHash = !empty($validated['file_hash']) ? strtolower($validated['file_hash']) : null;
+            $backendHash = strtolower(md5_file($filePath));
 
             // Use frontend hash as primary (more consistent), backend as fallback
             $primaryHash = $frontendHash ?: $backendHash;
@@ -79,15 +79,16 @@ class ClientUpload extends Controller
                 'first_100_bytes' => $firstBytesArray
             ]);
 
-            // Check for EXACT duplicate using BOTH hashes to catch browser-modified files
+            // FIXED: Check for EXACT duplicate using case-insensitive comparison
             $isConfirmedDuplicate = false;
             $existingDuplicate = Prescription::where('customer_id', $customerId)
+                ->whereNotNull('file_hash')
                 ->where(function ($query) use ($frontendHash, $backendHash) {
                     if ($frontendHash) {
-                        $query->where('file_hash', $frontendHash);
+                        $query->whereRaw('LOWER(file_hash) = ?', [$frontendHash]);
                     }
                     if ($backendHash && $frontendHash !== $backendHash) {
-                        $query->orWhere('file_hash', $backendHash);
+                        $query->orWhereRaw('LOWER(file_hash) = ?', [$backendHash]);
                     }
                 })
                 ->first();
@@ -563,16 +564,15 @@ class ClientUpload extends Controller
     /**
      * Quick duplicate check using file hash (client-side)
      */
-
     public function quickDuplicateCheck(Request $request)
     {
         try {
-            // Validate input - MAKE IT REQUIRED
+            // Validate input
             $validated = $request->validate([
-                'file_hash' => ['required', 'string', 'regex:/^[a-f0-9]{32}$/i'], // Changed to required
+                'file_hash' => ['required', 'string', 'regex:/^[a-f0-9]{32}$/i'],
             ]);
 
-            $fileHash = $validated['file_hash'];
+            $fileHash = strtolower($validated['file_hash']); // Normalize to lowercase
 
             // Check authentication
             if (!Auth::guard('customer')->check()) {
@@ -590,9 +590,10 @@ class ClientUpload extends Controller
                 'file_hash' => $fileHash
             ]);
 
-            // Check for exact duplicate using the hash
-            $existingPrescription = Prescription::where('file_hash', $fileHash)
-                ->where('customer_id', $customerId)
+            // FIXED: Use case-insensitive comparison with LOWER()
+            $existingPrescription = Prescription::where('customer_id', $customerId)
+                ->whereNotNull('file_hash')
+                ->whereRaw('LOWER(file_hash) = ?', [$fileHash])
                 ->first();
 
             if ($existingPrescription) {
@@ -601,9 +602,11 @@ class ClientUpload extends Controller
 
                 Log::warning('Duplicate file detected via API', [
                     'customer_id' => $customerId,
-                    'file_hash' => $fileHash,
+                    'file_hash_searched' => $fileHash,
                     'existing_prescription_id' => $existingPrescription->id,
-                    'existing_order_id' => $orderId
+                    'existing_order_id' => $orderId,
+                    'existing_file_hash' => $existingPrescription->file_hash,
+                    'hashes_match' => strtolower($existingPrescription->file_hash) === $fileHash
                 ]);
 
                 return response()->json([
@@ -613,7 +616,8 @@ class ClientUpload extends Controller
                         'prescription_id' => $existingPrescription->id,
                         'order_id' => $orderId,
                         'uploaded_at' => $uploadDate,
-                        'uploaded_at_human' => $existingPrescription->created_at->diffForHumans()
+                        'uploaded_at_human' => $existingPrescription->created_at->diffForHumans(),
+                        'status' => $existingPrescription->status
                     ]
                 ]);
             }
@@ -627,6 +631,16 @@ class ClientUpload extends Controller
                 'is_duplicate' => false,
                 'message' => 'File is unique and ready to upload.'
             ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('Validation failed in quick duplicate check', [
+                'errors' => $e->errors()
+            ]);
+
+            return response()->json([
+                'is_duplicate' => false,
+                'message' => 'File is ready to upload.',
+                'error' => 'validation_failed'
+            ], 422);
         } catch (\Exception $e) {
             Log::error('Quick duplicate check failed', [
                 'error' => $e->getMessage(),

@@ -243,14 +243,11 @@
     font-weight: 600;
     padding: 0.60rem 1.35rem;
     border-radius: 25px;
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
     position: relative;
-    overflow: visible;
     text-transform: uppercase;
     font-size: 0.875rem;
     letter-spacing: 0.5px;
-    white-space: nowrap;
-    min-width: fit-content;
 }
 
 .nav-button:hover,
@@ -654,6 +651,7 @@ body {
         padding-top: 48px;
     }
 }
+
 /* Sidebar responsive adjustments */
 @media (max-width: 768px) {
     .mobile-sidebar {

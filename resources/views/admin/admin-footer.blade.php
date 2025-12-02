@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Footer Example</title>
+    <title>Footer</title>
     <style>
         body {
             overflow-x: hidden;
@@ -14,7 +14,7 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             padding: 30px 20px 20px;
-            margin: 20px 0 0 0;
+            margin: 50px 0 0 0;
             box-sizing: border-box;
         }
 
@@ -24,6 +24,7 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 30px;
+
         }
 
         .footer-section h3 {

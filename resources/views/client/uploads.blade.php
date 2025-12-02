@@ -479,118 +479,110 @@
         </div>
     </div>
 
-   <script src="https://cdnjs.cloudflare.com/ajax/libs/blueimp-md5/2.19.0/js/md5.min.js"></script>
-<script>
-    // Restriction data from server
-    const isRestricted = {{ $isRestricted ? 'true' : 'false' }};
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/blueimp-md5/2.19.0/js/md5.min.js"></script>
+    <script>
+        // Restriction data from server
+        const isRestricted = {{ $isRestricted ? 'true' : 'false' }};
 
-    // Store prescription data for modal display
-    const prescriptionsData = {
-        @foreach ($prescriptions as $prescription)
-            '{{ $prescription->id }}': {
-                id: '{{ $prescription->id }}',
-                orderId: '{{ $prescription->order->order_id ?? 'N/A' }}',
-                orderType: '{{ $prescription->order_type ?? 'prescription' }}',
-                status: '{{ $prescription->status ?? 'completed' }}',
-                createdAt: '{{ $prescription->created_at->format('M d, Y') }}',
-                createdAtTime: '{{ $prescription->created_at->format('h:i A') }}',
-                timeAgo: '{{ $prescription->created_at->diffForHumans() }}',
-                notes: {!! json_encode($prescription->notes ?? '') !!},
-                adminMessage: {!! json_encode($prescription->admin_message ?? '') !!},
-                originalFilename: {!! json_encode($prescription->original_filename ?? '') !!},
-                fileSize: '{{ $prescription->file_size ? number_format($prescription->file_size / 1024, 1) . ' KB' : '' }}',
-                isEncrypted: {{ $prescription->is_encrypted ? 'true' : 'false' }},
-                hasFile: {{ $prescription->file_path || ($prescription->is_encrypted && $prescription->original_filename) ? 'true' : 'false' }},
-                hasQrCode: {{ $prescription->qr_code_path ? 'true' : 'false' }}
-            },
-        @endforeach
-    };
+        // Store prescription data for modal display
+        const prescriptionsData = {
+            @foreach ($prescriptions as $prescription)
+                '{{ $prescription->id }}': {
+                    id: '{{ $prescription->id }}',
+                    orderId: '{{ $prescription->order->order_id ?? 'N/A' }}',
+                    orderType: '{{ $prescription->order_type ?? 'prescription' }}',
+                    status: '{{ $prescription->status ?? 'completed' }}',
+                    createdAt: '{{ $prescription->created_at->format('M d, Y') }}',
+                    createdAtTime: '{{ $prescription->created_at->format('h:i A') }}',
+                    timeAgo: '{{ $prescription->created_at->diffForHumans() }}',
+                    notes: {!! json_encode($prescription->notes ?? '') !!},
+                    adminMessage: {!! json_encode($prescription->admin_message ?? '') !!},
+                    originalFilename: {!! json_encode($prescription->original_filename ?? '') !!},
+                    fileSize: '{{ $prescription->file_size ? number_format($prescription->file_size / 1024, 1) . ' KB' : '' }}',
+                    isEncrypted: {{ $prescription->is_encrypted ? 'true' : 'false' }},
+                    hasFile: {{ $prescription->file_path || ($prescription->is_encrypted && $prescription->original_filename) ? 'true' : 'false' }},
+                    hasQrCode: {{ $prescription->qr_code_path ? 'true' : 'false' }}
+                },
+            @endforeach
+        };
 
-    // Global variables for file handling
-    let selectedFileHash = null;
-    let isDuplicateFile = false;
-    let duplicateConfirmed = false;
+        // Global variables for file handling
+        let selectedFileHash = null;
+        let isDuplicateFile = false;
+        let duplicateConfirmed = false;
 
-    // Timer function for restriction countdown
-    function updateRestrictionTimer() {
-        const timerElement = document.getElementById('restriction-timer');
-        if (!timerElement) return;
+        // Timer function for restriction countdown
+        function updateRestrictionTimer() {
+            const timerElement = document.getElementById('restriction-timer');
+            if (!timerElement) return;
 
-        const restoreTime = new Date(timerElement.dataset.restoreTime).getTime();
-        const now = new Date().getTime();
-        const distance = restoreTime - now;
+            const restoreTime = new Date(timerElement.dataset.restoreTime).getTime();
+            const now = new Date().getTime();
+            const distance = restoreTime - now;
 
-        if (distance < 0) {
-            timerElement.textContent = 'Restriction expired - Please refresh the page';
-            return;
+            if (distance < 0) {
+                timerElement.textContent = 'Restriction expired - Please refresh the page';
+                return;
+            }
+
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+            let timeString = '';
+            if (days > 0) {
+                timeString = `${days} day${days > 1 ? 's' : ''}, ${hours} hour${hours > 1 ? 's' : ''}`;
+            } else if (hours > 0) {
+                timeString = `${hours} hour${hours > 1 ? 's' : ''}, ${minutes} minute${minutes > 1 ? 's' : ''}`;
+            } else if (minutes > 0) {
+                timeString = `${minutes} minute${minutes > 1 ? 's' : ''}, ${seconds} second${seconds > 1 ? 's' : ''}`;
+            } else {
+                timeString = `${seconds} second${seconds > 1 ? 's' : ''}`;
+            }
+
+            timerElement.textContent = timeString;
         }
 
-        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
-        let timeString = '';
-        if (days > 0) {
-            timeString = `${days} day${days > 1 ? 's' : ''}, ${hours} hour${hours > 1 ? 's' : ''}`;
-        } else if (hours > 0) {
-            timeString = `${hours} hour${hours > 1 ? 's' : ''}, ${minutes} minute${minutes > 1 ? 's' : ''}`;
-        } else if (minutes > 0) {
-            timeString = `${minutes} minute${minutes > 1 ? 's' : ''}, ${seconds} second${seconds > 1 ? 's' : ''}`;
-        } else {
-            timeString = `${seconds} second${seconds > 1 ? 's' : ''}`;
-        }
-
-        timerElement.textContent = timeString;
-    }
-
-    // Start the timer if restriction exists
-    if (isRestricted) {
-        updateRestrictionTimer();
-        setInterval(updateRestrictionTimer, 1000);
-    }
-
-    // Handle button clicks for restricted accounts
-    document.getElementById('submit-btn').addEventListener('click', function(e) {
+        // Start the timer if restriction exists
         if (isRestricted) {
-            e.preventDefault();
-            showRestrictionModal();
-            return false;
-        }
-    });
-
-    function showRestrictionModal() {
-        const modal = document.getElementById('restrictionModal');
-        const message = document.getElementById('restriction-message');
-        const timerElement = document.getElementById('restriction-timer');
-
-        if (timerElement && timerElement.dataset.restoreTime) {
-            const duration = timerElement.textContent;
-            message.innerHTML =
-                `Your account has been restricted for <strong>${duration}</strong> and you cannot place orders until it's unrestricted. Please wait or contact the pharmacy for more information.`;
-        } else {
-            message.innerHTML =
-                'Your account has been restricted and you cannot place orders until it\'s unrestricted. Please contact the pharmacy for more information.';
+            updateRestrictionTimer();
+            setInterval(updateRestrictionTimer, 1000);
         }
 
-        modal.classList.add('show');
-    }
 
-    function closeRestrictionModal() {
-        document.getElementById('restrictionModal').classList.remove('show');
-    }
+        function showRestrictionModal() {
+            const modal = document.getElementById('restrictionModal');
+            const message = document.getElementById('restriction-message');
+            const timerElement = document.getElementById('restriction-timer');
 
-    // View order details in modal
-    function viewOrderDetails(prescriptionId) {
-        const data = prescriptionsData[prescriptionId];
-        if (!data) return;
+            if (timerElement && timerElement.dataset.restoreTime) {
+                const duration = timerElement.textContent;
+                message.innerHTML =
+                    `Your account has been restricted for <strong>${duration}</strong> and you cannot place orders until it's unrestricted. Please wait or contact the pharmacy for more information.`;
+            } else {
+                message.innerHTML =
+                    'Your account has been restricted and you cannot place orders until it\'s unrestricted. Please contact the pharmacy for more information.';
+            }
 
-        const orderTypeLabel = data.orderType === 'online_order' ? 'Medicine List' : 'Prescription';
-        const orderTypeIcon = data.orderType === 'online_order' ? 'fas fa-list' : 'fas fa-prescription-bottle-alt';
-        const statusIcon = data.status === 'completed' ? 'fas fa-check-circle' :
-            data.status === 'cancelled' ? 'fas fa-times-circle' : 'fas fa-clock';
+            modal.classList.add('show');
+        }
 
-        let modalContent = `
+        function closeRestrictionModal() {
+            document.getElementById('restrictionModal').classList.remove('show');
+        }
+
+        // View order details in modal
+        function viewOrderDetails(prescriptionId) {
+            const data = prescriptionsData[prescriptionId];
+            if (!data) return;
+
+            const orderTypeLabel = data.orderType === 'online_order' ? 'Medicine List' : 'Prescription';
+            const orderTypeIcon = data.orderType === 'online_order' ? 'fas fa-list' : 'fas fa-prescription-bottle-alt';
+            const statusIcon = data.status === 'completed' ? 'fas fa-check-circle' :
+                data.status === 'cancelled' ? 'fas fa-times-circle' : 'fas fa-clock';
+
+            let modalContent = `
             <div class="detail-section">
                 <h4 class="section-title"><i class="fas fa-info-circle"></i> Order Information</h4>
                 <div class="detail-row">
@@ -624,8 +616,8 @@
             </div>
         `;
 
-        if (data.notes) {
-            modalContent += `
+            if (data.notes) {
+                modalContent += `
                 <div class="detail-section">
                     <h4 class="section-title"><i class="fas fa-sticky-note"></i> Notes</h4>
                     <div class="detail-row">
@@ -633,10 +625,10 @@
                     </div>
                 </div>
             `;
-        }
+            }
 
-        if (data.adminMessage) {
-            modalContent += `
+            if (data.adminMessage) {
+                modalContent += `
                 <div class="detail-section">
                     <div class="admin-message-section">
                         <h4 class="section-title" style="margin-bottom: 12px;">
@@ -646,10 +638,10 @@
                     </div>
                 </div>
             `;
-        }
+            }
 
-        if (data.hasFile) {
-            modalContent += `
+            if (data.hasFile) {
+                modalContent += `
                 <div class="detail-section">
                     <h4 class="section-title"><i class="fas fa-file"></i> Document</h4>
                     <div class="file-info">
@@ -664,312 +656,210 @@
                     </div>
                 </div>
             `;
-        }
+            }
 
-        let actionButtons = '';
-        if (data.hasFile) {
-            actionButtons += `<button class="btn-primary" onclick="viewDocument('${data.id}')">
+            let actionButtons = '';
+            if (data.hasFile) {
+                actionButtons += `<button class="btn-primary" onclick="viewDocument('${data.id}')">
                 <i class="fas fa-eye"></i> View Document
             </button>`;
-        }
-        if (data.hasQrCode) {
-            actionButtons += `<button class="btn-primary" onclick="viewQR('${data.id}')">
+            }
+            if (data.hasQrCode) {
+                actionButtons += `<button class="btn-primary" onclick="viewQR('${data.id}')">
                 <i class="fas fa-qrcode"></i> View QR Code
             </button>`;
-        }
+            }
 
-        if (actionButtons) {
-            modalContent += `
+            if (actionButtons) {
+                modalContent += `
                 <div class="modal-actions">
                     <button class="btn-secondary" onclick="closeModal()">Close</button>
                     ${actionButtons}
                 </div>
             `;
-        } else {
-            modalContent += `
+            } else {
+                modalContent += `
                 <div class="modal-actions">
                     <button class="btn-secondary" onclick="closeModal()">Close</button>
                 </div>
             `;
-        }
-
-        document.getElementById('modal-body-content').innerHTML = modalContent;
-        document.getElementById('orderModal').classList.add('show');
-    }
-
-    function closeModal() {
-        document.getElementById('orderModal').classList.remove('show');
-    }
-
-    window.onclick = function(event) {
-        const modal = document.getElementById('orderModal');
-        const restrictionModal = document.getElementById('restrictionModal');
-
-        if (event.target === modal) {
-            closeModal();
-        }
-        if (event.target === restrictionModal) {
-            closeRestrictionModal();
-        }
-    }
-
-    function updateOrderTypeUI() {
-        if (isRestricted) return;
-
-        const prescriptionRadio = document.getElementById('prescription');
-        const onlineOrderRadio = document.getElementById('online_order');
-        const fileLabel = document.getElementById('file-label');
-        const securityNote = document.getElementById('file-security-note');
-
-        document.querySelectorAll('.order-type-option').forEach(option => {
-            option.classList.remove('selected');
-        });
-
-        if (prescriptionRadio.checked) {
-            prescriptionRadio.closest('.order-type-option').classList.add('selected');
-            fileLabel.innerHTML = '<i class="fas fa-file-upload"></i> Upload Prescription (JPG, PNG, PDF)';
-            securityNote.innerHTML =
-                '<i class="fas fa-shield-alt"></i> Your prescription will be securely encrypted and can only be viewed by authorized pharmacy staff.';
-        } else if (onlineOrderRadio.checked) {
-            onlineOrderRadio.closest('.order-type-option').classList.add('selected');
-            fileLabel.innerHTML = '<i class="fas fa-file-upload"></i> Upload Medicine List (JPG, PNG, PDF)';
-            securityNote.innerHTML =
-                '<i class="fas fa-shield-alt"></i> Your medicine list will be securely encrypted and processed by our pharmacy staff.';
-        }
-    }
-
-    function filterOrders() {
-        const statusFilter = document.getElementById('status-filter').value;
-        const typeFilter = document.getElementById('type-filter').value;
-        const dateFilter = document.getElementById('date-filter').value;
-        const searchTerm = document.getElementById('order-search').value.toLowerCase();
-        const rows = document.querySelectorAll('.history-row');
-        let visibleCount = 0;
-
-        rows.forEach(row => {
-            const rowStatus = row.dataset.status;
-            const rowType = row.dataset.type;
-            const rowDate = new Date(row.dataset.date);
-            const rowSearch = row.dataset.search;
-            const today = new Date();
-
-            let showRow = true;
-
-            if (statusFilter !== 'all' && rowStatus !== statusFilter) {
-                showRow = false;
             }
 
-            if (typeFilter !== 'all' && rowType !== typeFilter) {
-                showRow = false;
+            document.getElementById('modal-body-content').innerHTML = modalContent;
+            document.getElementById('orderModal').classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('orderModal').classList.remove('show');
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('orderModal');
+            const restrictionModal = document.getElementById('restrictionModal');
+
+            if (event.target === modal) {
+                closeModal();
             }
+            if (event.target === restrictionModal) {
+                closeRestrictionModal();
+            }
+        }
 
-            if (dateFilter !== 'all') {
-                const daysDiff = Math.floor((today - rowDate) / (1000 * 60 * 60 * 24));
+        function updateOrderTypeUI() {
+            if (isRestricted) return;
 
-                switch (dateFilter) {
-                    case 'today':
-                        if (daysDiff > 0) showRow = false;
-                        break;
-                    case 'week':
-                        if (daysDiff > 7) showRow = false;
-                        break;
-                    case 'month':
-                        if (daysDiff > 30) showRow = false;
-                        break;
-                    case '3months':
-                        if (daysDiff > 90) showRow = false;
-                        break;
+            const prescriptionRadio = document.getElementById('prescription');
+            const onlineOrderRadio = document.getElementById('online_order');
+            const fileLabel = document.getElementById('file-label');
+            const securityNote = document.getElementById('file-security-note');
+
+            document.querySelectorAll('.order-type-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+
+            if (prescriptionRadio.checked) {
+                prescriptionRadio.closest('.order-type-option').classList.add('selected');
+                fileLabel.innerHTML = '<i class="fas fa-file-upload"></i> Upload Prescription (JPG, PNG, PDF)';
+                securityNote.innerHTML =
+                    '<i class="fas fa-shield-alt"></i> Your prescription will be securely encrypted and can only be viewed by authorized pharmacy staff.';
+            } else if (onlineOrderRadio.checked) {
+                onlineOrderRadio.closest('.order-type-option').classList.add('selected');
+                fileLabel.innerHTML = '<i class="fas fa-file-upload"></i> Upload Medicine List (JPG, PNG, PDF)';
+                securityNote.innerHTML =
+                    '<i class="fas fa-shield-alt"></i> Your medicine list will be securely encrypted and processed by our pharmacy staff.';
+            }
+        }
+
+        function filterOrders() {
+            const statusFilter = document.getElementById('status-filter').value;
+            const typeFilter = document.getElementById('type-filter').value;
+            const dateFilter = document.getElementById('date-filter').value;
+            const searchTerm = document.getElementById('order-search').value.toLowerCase();
+            const rows = document.querySelectorAll('.history-row');
+            let visibleCount = 0;
+
+            rows.forEach(row => {
+                const rowStatus = row.dataset.status;
+                const rowType = row.dataset.type;
+                const rowDate = new Date(row.dataset.date);
+                const rowSearch = row.dataset.search;
+                const today = new Date();
+
+                let showRow = true;
+
+                if (statusFilter !== 'all' && rowStatus !== statusFilter) {
+                    showRow = false;
                 }
-            }
 
-            if (searchTerm && !rowSearch.includes(searchTerm)) {
-                showRow = false;
-            }
+                if (typeFilter !== 'all' && rowType !== typeFilter) {
+                    showRow = false;
+                }
 
-            if (showRow) {
-                row.style.display = 'table-row';
-                visibleCount++;
-            } else {
-                row.style.display = 'none';
-            }
-        });
+                if (dateFilter !== 'all') {
+                    const daysDiff = Math.floor((today - rowDate) / (1000 * 60 * 60 * 24));
 
-        const noResults = document.getElementById('no-results');
-        const tableContainer = document.getElementById('table-container');
-        const hasRows = rows.length > 0;
-
-        if (visibleCount === 0 && hasRows) {
-            noResults.style.display = 'block';
-            tableContainer.classList.add('hidden');
-        } else {
-            noResults.style.display = 'none';
-            tableContainer.classList.remove('hidden');
-        }
-    }
-
-    function clearFilters() {
-        document.getElementById('status-filter').value = 'all';
-        document.getElementById('type-filter').value = 'all';
-        document.getElementById('date-filter').value = 'all';
-        document.getElementById('order-search').value = '';
-        filterOrders();
-    }
-
-    function viewDocument(prescriptionId) {
-        const documentUrl = `{{ url('/prescription/document/') }}/${prescriptionId}`;
-        window.open(documentUrl, '_blank');
-    }
-
-    function viewQR(prescriptionId) {
-        window.open(`{{ url('/prescription/qr/') }}/${prescriptionId}`, '_blank');
-    }
-
-    function calculateFileHash(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const arrayBuffer = e.target.result;
-                    const uint8Array = new Uint8Array(arrayBuffer);
-
-                    console.log('File info:', {
-                        name: file.name,
-                        size: file.size,
-                        type: file.type,
-                        lastModified: file.lastModified,
-                        arrayBufferSize: arrayBuffer.byteLength
-                    });
-
-                    let binaryString = '';
-                    for (let i = 0; i < uint8Array.length; i++) {
-                        binaryString += String.fromCharCode(uint8Array[i]);
+                    switch (dateFilter) {
+                        case 'today':
+                            if (daysDiff > 0) showRow = false;
+                            break;
+                        case 'week':
+                            if (daysDiff > 7) showRow = false;
+                            break;
+                        case 'month':
+                            if (daysDiff > 30) showRow = false;
+                            break;
+                        case '3months':
+                            if (daysDiff > 90) showRow = false;
+                            break;
                     }
-
-                    const hash = md5(binaryString);
-                    console.log('MD5 hash calculated:', hash);
-                    console.log('First 100 bytes:', Array.from(uint8Array.slice(0, 100)));
-                    resolve(hash);
-                } catch (error) {
-                    console.error('Hash calculation error:', error);
-                    reject(error);
-                }
-            };
-            reader.onerror = reject;
-            reader.readAsArrayBuffer(file);
-        });
-    }
-
-    // File input change handler
-    document.getElementById('prescription_file').addEventListener('change', async function(e) {
-        if (isRestricted) {
-            e.preventDefault();
-            showRestrictionModal();
-            this.value = '';
-            return;
-        }
-
-        const file = e.target.files[0];
-        const fileInfo = document.getElementById('file-info');
-        const submitBtn = document.getElementById('submit-btn');
-
-        // Reset state
-        duplicateConfirmed = false;
-        isDuplicateFile = false;
-        selectedFileHash = null;
-
-        if (file) {
-            const fileSize = file.size;
-            const maxSize = 5 * 1024 * 1024;
-
-            if (fileSize > maxSize) {
-                alert('File size must be less than 5MB');
-                e.target.value = '';
-                fileInfo.style.display = 'none';
-                submitBtn.disabled = true;
-                return;
-            }
-
-            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
-            if (!allowedTypes.includes(file.type)) {
-                alert('Please upload only JPG, PNG, or PDF files');
-                e.target.value = '';
-                fileInfo.style.display = 'none';
-                submitBtn.disabled = true;
-                return;
-            }
-
-            fileInfo.innerHTML = `
-                <div class="file-preview" style="background: #f0f9ff; border: 2px dashed #0284c7; padding: 15px; border-radius: 8px;">
-                    <i class="fas fa-spinner fa-spin" style="color: #0284c7; font-size: 24px;"></i>
-                    <div class="file-details" style="margin-left: 15px;">
-                        <strong>Checking for duplicates...</strong><br>
-                        <small>Please wait while we verify this file.</small>
-                    </div>
-                </div>
-            `;
-            fileInfo.style.display = 'block';
-            submitBtn.disabled = true;
-
-            try {
-                console.log('Starting hash calculation...');
-                const hash = await calculateFileHash(file);
-                selectedFileHash = hash;
-
-                console.log('Hash calculated:', hash);
-                console.log('Sending API request to check duplicate...');
-
-                const response = await fetch('/prescription/quick-duplicate-check', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json'
-                    },
-                    credentials: 'same-origin',
-                    body: JSON.stringify({
-                        file_hash: hash
-                    })
-                });
-
-                console.log('API Response status:', response.status);
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
 
-                const result = await response.json();
-                console.log('API Response data:', result);
+                if (searchTerm && !rowSearch.includes(searchTerm)) {
+                    showRow = false;
+                }
 
-                if (result.is_duplicate) {
-                    console.log('Duplicate detected!');
-                    isDuplicateFile = true;
-                    showDuplicateWarning(file, fileSize, result.message, result.details);
+                if (showRow) {
+                    row.style.display = 'table-row';
+                    visibleCount++;
                 } else {
-                    console.log('File is unique');
-                    isDuplicateFile = false;
-                    showFileSuccess(file, fileSize);
+                    row.style.display = 'none';
                 }
-            } catch (error) {
-                console.error('Duplicate check failed:', error);
-                isDuplicateFile = false;
-                showFileSuccess(file, fileSize);
+            });
+
+            const noResults = document.getElementById('no-results');
+            const tableContainer = document.getElementById('table-container');
+            const hasRows = rows.length > 0;
+
+            if (visibleCount === 0 && hasRows) {
+                noResults.style.display = 'block';
+                tableContainer.classList.add('hidden');
+            } else {
+                noResults.style.display = 'none';
+                tableContainer.classList.remove('hidden');
             }
-        } else {
-            fileInfo.style.display = 'none';
-            selectedFileHash = null;
-            isDuplicateFile = false;
-            duplicateConfirmed = false;
-            submitBtn.disabled = true;
         }
-    });
 
-    function showDuplicateWarning(file, fileSize, message, details) {
-        const fileInfo = document.getElementById('file-info');
-        const submitBtn = document.getElementById('submit-btn');
-        const fileName = file.name;
-        const fileSizeKB = (fileSize / 1024).toFixed(1);
+        function clearFilters() {
+            document.getElementById('status-filter').value = 'all';
+            document.getElementById('type-filter').value = 'all';
+            document.getElementById('date-filter').value = 'all';
+            document.getElementById('order-search').value = '';
+            filterOrders();
+        }
 
-        const warningHTML = `
+        function viewDocument(prescriptionId) {
+            const documentUrl = `{{ url('/prescription/document/') }}/${prescriptionId}`;
+            window.open(documentUrl, '_blank');
+        }
+
+        function viewQR(prescriptionId) {
+            window.open(`{{ url('/prescription/qr/') }}/${prescriptionId}`, '_blank');
+        }
+
+        function calculateFileHash(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const arrayBuffer = e.target.result;
+                        const uint8Array = new Uint8Array(arrayBuffer);
+
+                        console.log('File info:', {
+                            name: file.name,
+                            size: file.size,
+                            type: file.type,
+                            lastModified: file.lastModified,
+                            arrayBufferSize: arrayBuffer.byteLength
+                        });
+
+                        let binaryString = '';
+                        for (let i = 0; i < uint8Array.length; i++) {
+                            binaryString += String.fromCharCode(uint8Array[i]);
+                        }
+
+                        const hash = md5(binaryString);
+                        console.log('MD5 hash calculated:', hash);
+                        console.log('First 100 bytes:', Array.from(uint8Array.slice(0, 100)));
+                        resolve(hash);
+                    } catch (error) {
+                        console.error('Hash calculation error:', error);
+                        reject(error);
+                    }
+                };
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+    
+
+        function showDuplicateWarning(file, fileSize, message, details) {
+            const fileInfo = document.getElementById('file-info');
+            const submitBtn = document.getElementById('submit-btn');
+            const fileName = file.name;
+            const fileSizeKB = (fileSize / 1024).toFixed(1);
+
+            const warningHTML = `
             <div class="file-preview warning" style="background: #fffbeb; border: 2px solid #f59e0b; padding: 15px; border-radius: 8px;">
                 <i class="fas fa-exclamation-triangle" style="color: #d97706; font-size: 24px;"></i>
                 <div class="file-details" style="margin-left: 15px;">
@@ -1002,33 +892,33 @@
             </div>
         `;
 
-        fileInfo.innerHTML = warningHTML;
-        fileInfo.style.display = 'block';
-        submitBtn.disabled = true;
+            fileInfo.innerHTML = warningHTML;
+            fileInfo.style.display = 'block';
+            submitBtn.disabled = true;
 
-        const uploadAnywayBtn = fileInfo.querySelector('.btn-upload-anyway');
-        const cancelBtn = fileInfo.querySelector('.btn-cancel-upload');
+            const uploadAnywayBtn = fileInfo.querySelector('.btn-upload-anyway');
+            const cancelBtn = fileInfo.querySelector('.btn-cancel-upload');
 
-        uploadAnywayBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            confirmDuplicateUpload();
-        });
+            uploadAnywayBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                confirmDuplicateUpload();
+            });
 
-        cancelBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            cancelUpload();
-        });
-    }
+            cancelBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                cancelUpload();
+            });
+        }
 
-    function showFileSuccess(file, fileSize) {
-        const fileInfo = document.getElementById('file-info');
-        const submitBtn = document.getElementById('submit-btn');
-        const fileName = file.name;
-        const fileSizeKB = (fileSize / 1024).toFixed(1);
+        function showFileSuccess(file, fileSize) {
+            const fileInfo = document.getElementById('file-info');
+            const submitBtn = document.getElementById('submit-btn');
+            const fileName = file.name;
+            const fileSizeKB = (fileSize / 1024).toFixed(1);
 
-        fileInfo.innerHTML = `
+            fileInfo.innerHTML = `
             <div class="file-preview" style="background: #f0fdf4; border: 2px solid #10b981; padding: 15px; border-radius: 8px;">
                 <i class="fas fa-check-circle" style="color: #059669; font-size: 24px;"></i>
                 <div class="file-details" style="margin-left: 15px;">
@@ -1040,24 +930,24 @@
                 </div>
             </div>
         `;
-        fileInfo.style.display = 'block';
+            fileInfo.style.display = 'block';
 
-        submitBtn.disabled = false;
-        submitBtn.style.opacity = '1';
-        submitBtn.style.cursor = 'pointer';
-    }
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = '1';
+            submitBtn.style.cursor = 'pointer';
+        }
 
-    function confirmDuplicateUpload() {
-        duplicateConfirmed = true;
-        const fileInfo = document.getElementById('file-info');
-        const submitBtn = document.getElementById('submit-btn');
+        function confirmDuplicateUpload() {
+            duplicateConfirmed = true;
+            const fileInfo = document.getElementById('file-info');
+            const submitBtn = document.getElementById('submit-btn');
 
-        const fileInput = document.getElementById('prescription_file');
-        const file = fileInput.files[0];
-        const fileName = file.name;
-        const fileSizeKB = (file.size / 1024).toFixed(1);
+            const fileInput = document.getElementById('prescription_file');
+            const file = fileInput.files[0];
+            const fileName = file.name;
+            const fileSizeKB = (file.size / 1024).toFixed(1);
 
-        fileInfo.innerHTML = `
+            fileInfo.innerHTML = `
             <div class="file-preview" style="background: #fef3c7; border: 2px solid #f59e0b; padding: 15px; border-radius: 8px;">
                 <i class="fas fa-exclamation-circle" style="color: #d97706; font-size: 24px;"></i>
                 <div class="file-details" style="margin-left: 15px;">
@@ -1070,70 +960,70 @@
             </div>
         `;
 
-        submitBtn.disabled = false;
-        submitBtn.style.opacity = '1';
-        submitBtn.style.cursor = 'pointer';
-    }
-
-    function cancelUpload() {
-        document.getElementById('prescription_file').value = '';
-        document.getElementById('file-info').style.display = 'none';
-        selectedFileHash = null;
-        isDuplicateFile = false;
-        duplicateConfirmed = false;
-
-        const submitBtn = document.getElementById('submit-btn');
-        submitBtn.disabled = true;
-        submitBtn.style.opacity = '0.5';
-    }
-
-    // CRITICAL FIX: Form submission handler that sends the hash
-    document.getElementById('upload-form').addEventListener('submit', function(e) {
-        if (isRestricted) {
-            e.preventDefault();
-            showRestrictionModal();
-            return false;
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = '1';
+            submitBtn.style.cursor = 'pointer';
         }
 
-        const fileInput = document.getElementById('prescription_file');
-        if (!fileInput.files || fileInput.files.length === 0) {
-            e.preventDefault();
-            alert('Please select a file to upload.');
-            return false;
+        function cancelUpload() {
+            document.getElementById('prescription_file').value = '';
+            document.getElementById('file-info').style.display = 'none';
+            selectedFileHash = null;
+            isDuplicateFile = false;
+            duplicateConfirmed = false;
+
+            const submitBtn = document.getElementById('submit-btn');
+            submitBtn.disabled = true;
+            submitBtn.style.opacity = '0.5';
         }
 
-        if (isDuplicateFile && !duplicateConfirmed) {
-            e.preventDefault();
-            alert('⚠️ Please confirm the duplicate upload by clicking "Upload Anyway" button.');
-            return false;
-        }
-
-        // CRITICAL: Add the file hash as a hidden input
-        if (selectedFileHash) {
-            // Remove any existing file_hash input to avoid duplicates
-            const existingHashInput = this.querySelector('input[name="file_hash"]');
-            if (existingHashInput) {
-                existingHashInput.remove();
+        // CRITICAL FIX: Form submission handler that sends the hash
+        document.getElementById('upload-form').addEventListener('submit', function(e) {
+            if (isRestricted) {
+                e.preventDefault();
+                showRestrictionModal();
+                return false;
             }
 
-            // Add new hash input
-            const hashInput = document.createElement('input');
-            hashInput.type = 'hidden';
-            hashInput.name = 'file_hash';
-            hashInput.value = selectedFileHash;
-            this.appendChild(hashInput);
+            const fileInput = document.getElementById('prescription_file');
+            if (!fileInput.files || fileInput.files.length === 0) {
+                e.preventDefault();
+                alert('Please select a file to upload.');
+                return false;
+            }
 
-            console.log('✓ Submitting form with file hash:', selectedFileHash);
-        } else {
-            console.warn('⚠ No file hash available - backend will calculate it');
-        }
+            if (isDuplicateFile && !duplicateConfirmed) {
+                e.preventDefault();
+                alert('⚠️ Please confirm the duplicate upload by clicking "Upload Anyway" button.');
+                return false;
+            }
 
-        return true;
-    });
+            // CRITICAL: Add the file hash as a hidden input
+            if (selectedFileHash) {
+                // Remove any existing file_hash input to avoid duplicates
+                const existingHashInput = this.querySelector('input[name="file_hash"]');
+                if (existingHashInput) {
+                    existingHashInput.remove();
+                }
 
-    function showTemporarySuccess(data) {
-        const overlay = document.createElement('div');
-        overlay.style.cssText = `
+                // Add new hash input
+                const hashInput = document.createElement('input');
+                hashInput.type = 'hidden';
+                hashInput.name = 'file_hash';
+                hashInput.value = selectedFileHash;
+                this.appendChild(hashInput);
+
+                console.log('✓ Submitting form with file hash:', selectedFileHash);
+            } else {
+                console.warn('⚠ No file hash available - backend will calculate it');
+            }
+
+            return true;
+        });
+
+        function showTemporarySuccess(data) {
+            const overlay = document.createElement('div');
+            overlay.style.cssText = `
             position: fixed;
             top: 0;
             left: 0;
@@ -1147,8 +1037,8 @@
             animation: fadeIn 0.3s;
         `;
 
-        const messageBox = document.createElement('div');
-        messageBox.style.cssText = `
+            const messageBox = document.createElement('div');
+            messageBox.style.cssText = `
             background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             color: white;
             padding: 30px;
@@ -1160,23 +1050,23 @@
             animation: slideUp 0.3s;
         `;
 
-        let content = `
+            let content = `
             <div style="font-size: 48px; margin-bottom: 15px;">
                 <i class="fas fa-check-circle"></i>
             </div>
             <h3 style="margin: 0 0 15px 0; font-size: 24px;">${data.message}</h3>
         `;
 
-        if (data.qrImage) {
-            content += `
+            if (data.qrImage) {
+                content += `
                 <div style="background: white; padding: 20px; border-radius: 10px; margin: 20px 0;">
                     <p style="color: #374151; margin: 0 0 10px 0; font-weight: 600;">Scan this QR code at the pharmacy:</p>
                     <img src="${data.qrImage}" alt="QR Code" style="max-width: 200px; margin: 0 auto; display: block;">
                 </div>
             `;
-        }
+            }
 
-        content += `
+            content += `
             <button onclick="this.closest('div[style*=fixed]').remove()"
                 style="background: white; color: #059669; border: none; padding: 12px 30px;
                        border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600;
@@ -1185,30 +1075,30 @@
             </button>
         `;
 
-        if (data.qrLink) {
-            content += `
+            if (data.qrLink) {
+                content += `
                 <p><strong>Order link:</strong></p>
                 <p><a href="${data.qrLink}" target="_blank" style="color: #a7f3d0; text-decoration: underline;">${data.qrLink}</a></p>
             `;
+            }
+
+            messageBox.innerHTML = content;
+            overlay.appendChild(messageBox);
+            document.body.appendChild(overlay);
+
+            setTimeout(() => {
+                overlay.style.animation = 'fadeOut 0.3s';
+                setTimeout(() => overlay.remove(), 300);
+            }, 8000);
+
+            setTimeout(() => {
+                window.location.reload();
+            }, 8500);
         }
 
-        messageBox.innerHTML = content;
-        overlay.appendChild(messageBox);
-        document.body.appendChild(overlay);
-
-        setTimeout(() => {
-            overlay.style.animation = 'fadeOut 0.3s';
-            setTimeout(() => overlay.remove(), 300);
-        }, 8000);
-
-        setTimeout(() => {
-            window.location.reload();
-        }, 8500);
-    }
-
-    function showDuplicateAlert(data) {
-        const overlay = document.createElement('div');
-        overlay.style.cssText = `
+        function showDuplicateAlert(data) {
+            const overlay = document.createElement('div');
+            overlay.style.cssText = `
             position: fixed;
             top: 0;
             left: 0;
@@ -1222,8 +1112,8 @@
             animation: fadeIn 0.3s;
         `;
 
-        const messageBox = document.createElement('div');
-        messageBox.style.cssText = `
+            const messageBox = document.createElement('div');
+            messageBox.style.cssText = `
             background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
             color: #991b1b;
             padding: 30px;
@@ -1235,7 +1125,7 @@
             animation: slideUp 0.3s;
         `;
 
-        messageBox.innerHTML = `
+            messageBox.innerHTML = `
             <div style="font-size: 48px; margin-bottom: 15px; color: #dc2626;">
                 <i class="fas fa-exclamation-triangle"></i>
             </div>
@@ -1249,39 +1139,181 @@
             </button>
         `;
 
-        overlay.appendChild(messageBox);
-        document.body.appendChild(overlay);
+            overlay.appendChild(messageBox);
+            document.body.appendChild(overlay);
 
-        setTimeout(() => {
-            overlay.style.animation = 'fadeOut 0.3s';
-            setTimeout(() => overlay.remove(), 300);
-        }, 10000);
-    }
-
-    // Initialize on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        updateOrderTypeUI();
-
-        if (!isRestricted) {
-            document.querySelectorAll('input[name="order_type"]').forEach(radio => {
-                radio.addEventListener('change', updateOrderTypeUI);
-            });
+            setTimeout(() => {
+                overlay.style.animation = 'fadeOut 0.3s';
+                setTimeout(() => overlay.remove(), 300);
+            }, 10000);
         }
 
-        document.getElementById('status-filter').addEventListener('change', filterOrders);
-        document.getElementById('type-filter').addEventListener('change', filterOrders);
-        document.getElementById('date-filter').addEventListener('change', filterOrders);
-        document.getElementById('order-search').addEventListener('input', filterOrders);
-        document.getElementById('clear-filters').addEventListener('click', clearFilters);
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateOrderTypeUI();
 
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                closeModal();
-                closeRestrictionModal();
+            if (!isRestricted) {
+                const orderTypeRadios = document.querySelectorAll('input[name="order_type"]');
+                if (orderTypeRadios && orderTypeRadios.length > 0) {
+                    orderTypeRadios.forEach(radio => {
+                        radio.addEventListener('change', updateOrderTypeUI);
+                    });
+                }
             }
+
+            // File input change handler - MOVED INSIDE DOMContentLoaded
+            const prescriptionFileInput = document.getElementById('prescription_file');
+            if (prescriptionFileInput) {
+                prescriptionFileInput.addEventListener('change', async function(e) {
+                    if (isRestricted) {
+                        e.preventDefault();
+                        showRestrictionModal();
+                        this.value = '';
+                        return;
+                    }
+
+                    const file = e.target.files[0];
+                    const fileInfo = document.getElementById('file-info');
+                    const submitBtn = document.getElementById('submit-btn');
+
+                    // Reset state
+                    duplicateConfirmed = false;
+                    isDuplicateFile = false;
+                    selectedFileHash = null;
+
+                    if (file) {
+                        const fileSize = file.size;
+                        const maxSize = 5 * 1024 * 1024;
+
+                        if (fileSize > maxSize) {
+                            alert('File size must be less than 5MB');
+                            e.target.value = '';
+                            fileInfo.style.display = 'none';
+                            submitBtn.disabled = true;
+                            return;
+                        }
+
+                        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png',
+                        'application/pdf'];
+                        if (!allowedTypes.includes(file.type)) {
+                            alert('Please upload only JPG, PNG, or PDF files');
+                            e.target.value = '';
+                            fileInfo.style.display = 'none';
+                            submitBtn.disabled = true;
+                            return;
+                        }
+
+                        fileInfo.innerHTML = `
+                    <div class="file-preview" style="background: #f0f9ff; border: 2px dashed #0284c7; padding: 15px; border-radius: 8px;">
+                        <i class="fas fa-spinner fa-spin" style="color: #0284c7; font-size: 24px;"></i>
+                        <div class="file-details" style="margin-left: 15px;">
+                            <strong>Checking for duplicates...</strong><br>
+                            <small>Please wait while we verify this file.</small>
+                        </div>
+                    </div>
+                `;
+                        fileInfo.style.display = 'block';
+                        submitBtn.disabled = true;
+
+                        try {
+                            console.log('Starting hash calculation...');
+                            const hash = await calculateFileHash(file);
+                            selectedFileHash = hash;
+
+                            console.log('Hash calculated:', hash);
+                            console.log('Sending API request to check duplicate...');
+
+                            const response = await fetch('/prescription/quick-duplicate-check', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector(
+                                        'meta[name="csrf-token"]').content,
+                                    'Accept': 'application/json'
+                                },
+                                credentials: 'same-origin',
+                                body: JSON.stringify({
+                                    file_hash: hash
+                                })
+                            });
+
+                            console.log('API Response status:', response.status);
+
+                            if (!response.ok) {
+                                throw new Error(`HTTP error! status: ${response.status}`);
+                            }
+
+                            const result = await response.json();
+                            console.log('API Response data:', result);
+
+                            if (result.is_duplicate) {
+                                console.log('Duplicate detected!');
+                                isDuplicateFile = true;
+                                showDuplicateWarning(file, fileSize, result.message, result.details);
+                            } else {
+                                console.log('File is unique');
+                                isDuplicateFile = false;
+                                showFileSuccess(file, fileSize);
+                            }
+                        } catch (error) {
+                            console.error('Duplicate check failed:', error);
+                            isDuplicateFile = false;
+                            showFileSuccess(file, fileSize);
+                        }
+                    } else {
+                        fileInfo.style.display = 'none';
+                        selectedFileHash = null;
+                        isDuplicateFile = false;
+                        duplicateConfirmed = false;
+                        submitBtn.disabled = true;
+                    }
+                });
+            }
+
+            // Submit button click handler
+            const submitBtn = document.getElementById('submit-btn');
+            if (submitBtn) {
+                submitBtn.addEventListener('click', function(e) {
+                    if (isRestricted) {
+                        e.preventDefault();
+                        showRestrictionModal();
+                        return false;
+                    }
+                });
+            }
+
+            // Filter event listeners with null checks
+            const statusFilter = document.getElementById('status-filter');
+            const typeFilter = document.getElementById('type-filter');
+            const dateFilter = document.getElementById('date-filter');
+            const orderSearch = document.getElementById('order-search');
+            const clearFiltersBtn = document.getElementById('clear-filters');
+
+            if (statusFilter) {
+                statusFilter.addEventListener('change', filterOrders);
+            }
+            if (typeFilter) {
+                typeFilter.addEventListener('change', filterOrders);
+            }
+            if (dateFilter) {
+                dateFilter.addEventListener('change', filterOrders);
+            }
+            if (orderSearch) {
+                orderSearch.addEventListener('input', filterOrders);
+            }
+            if (clearFiltersBtn) {
+                clearFiltersBtn.addEventListener('click', clearFilters);
+            }
+
+            // Escape key handler
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeModal();
+                    closeRestrictionModal();
+                }
+            });
         });
-    });
-</script>
+    </script>
 
     @stack('scripts')
 </body>

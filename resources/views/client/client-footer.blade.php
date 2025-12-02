@@ -363,16 +363,6 @@
                 </div>
             </div>
 
-            <!-- Newsletter -->
-            <div class="newsletter">
-                <h3>📧 Stay Updated</h3>
-                <p>Subscribe to our newsletter for exclusive offers and health tips!</p>
-                <form class="newsletter-form" onsubmit="return false;">
-                    <input type="email" placeholder="Enter your email address" required>
-                    <button type="submit">Subscribe</button>
-                </form>
-            </div>
-
             <!-- Trust Badges -->
             <div class="trust-badges">
                 <span class="trust-badge">✅ FDA Licensed</span>
@@ -395,15 +385,5 @@
             </div>
         </div>
     </footer>
-
-    <script>
-        // Newsletter subscription handler
-        document.querySelector('.newsletter-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const email = this.querySelector('input').value;
-            alert('Thank you for subscribing! We\'ll send updates to ' + email);
-            this.reset();
-        });
-    </script>
 </body>
 </html>
